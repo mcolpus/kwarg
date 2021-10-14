@@ -1626,20 +1626,20 @@ void remove_gene(Genes *g, int a)
 }
 
 /* Remove sequence a from g */
-void remove_annotatedgene(AnnotatedGenes *g, int a)
+void remove_annotatedgene(AnnotatedGenes *annotated_genes, int seq_number)
 {
     LListCounter *lcounter;
 
-    if ((a >= 0) && (a < g->g->n)) {
-        remove_gene(g->g, a);
-        if (g->positions != NULL) {
-            lcounter = MakeCounter(g->positions, a);
-            RemoveMoveRight(g->positions, lcounter);
+    if ((seq_number >= 0) && (seq_number < annotated_genes->g->n)) {
+        remove_gene(annotated_genes->g, seq_number);
+        if (annotated_genes->positions != NULL) {
+            lcounter = MakeCounter(annotated_genes->positions, seq_number);
+            RemoveMoveRight(annotated_genes->positions, lcounter);
             free(lcounter);
         }
-        if (g->sequences != NULL) {
-            lcounter = MakeCounter(g->sequences, a);
-            RemoveMoveRight(g->sequences, lcounter);
+        if (annotated_genes->sequences != NULL) {
+            lcounter = MakeCounter(annotated_genes->sequences, seq_number);
+            RemoveMoveRight(annotated_genes->sequences, lcounter);
             free(lcounter);
         }
     }
