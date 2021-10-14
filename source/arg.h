@@ -19,7 +19,8 @@ typedef enum {ARGDOT,    /* Output ARG as ARG in DOT format */
 	      TREEDOT,   /* Output ARG as list of trees in DOT format */
 	      TREEGDL,   /* Output ARG as list of trees in GDL format */
 	      TREEGML,   /* Output ARG as list of trees in GML format */
-	      TREENEWICK /* Output ARG as list of trees in Newick format */
+	      TREENEWICK, /* Output ARG as list of trees in Newick format */
+        YAML /* Output ARG as tree sequence for tskit */
 } ARGFormat;
 
 typedef enum {ARGSAMPLE,        /* Node represents a sampled sequence */

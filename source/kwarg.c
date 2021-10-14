@@ -44,6 +44,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-D[name]", "Output list of marginal phylogenies for each site in dot format to file name.", 70, -1);
     print_option(f, "-G[name]", "Output list of marginal phylogenies for each site in GDL format to file name.", 70, -1);
     print_option(f, "-J[name]", "Output list of marginal phylogenies for each site in GML format to file name.", 70, -1);
+    print_option(f, "-K[name]", "Export arg in yaml format to file name.", 70, -1);
     print_option(f, "-I", "Marginal trees are only output one for each of the intervals between two recombination points, instead of one for each site.", 70, -1);
     print_option(f, "-v[nodelabel]", "Use nodelabel convention for labelling nodes in ancestral recombination graphs. The possible conventions are: nodelabel = \n'none': do not label nodes\n'id': only label nodes representing sampled sequences, using their sequence ids from the data file, and nodes representing recombinations, indicating the recombination point\n'sequence': label nodes with the inferred sequences; these sequences will be in binary format, with 0 representing wild type and 1 representing mutant type, even if the original data is not in binary format\n'both': label nodes with both id and inferred sequence\n'one': use only one label for a node, sequence id or recombination point if available and otherwise the inferred sequence\nDefault convention is id. The colour coding scheme used for the nodes is red for sequences in the input data, blue for recombination nodes, green for standard coalescent nodes, and yellow for the final coalescence into the most recent common ancestor.", 70, -1);
     print_option(f, "-i", "Sequences not having a sequence id in the data file are assigned their index in the data file as id, e.g. the first sequence in the data file would be assigned '1' as id.", 70, -1);
@@ -66,11 +67,12 @@ static int _unbiased_random(int n)
 {
     long int l = XRAND_MAX / n;
     long int i;
-    
-    do{
+
+    do
+    {
         i = x2random() / l;
     } while (i >= n); /* i ought to always be at most n, but just to make sure */
-    
+
     return i;
 }
 
@@ -88,13 +90,14 @@ static int _minimum_select(double a)
          * number of times we have seen this value.
          */
         return (_unbiased_random(++_ms_w) == 0);
-    else if (a < _ms_v){
+    else if (a < _ms_v)
+    {
         /* The value of a is new minimum - reset count and report this */
         _ms_v = a;
         _ms_w = 1;
         return 1;
     }
-    
+
     /* The old value is still the minimum */
     return 0;
 }
@@ -112,8 +115,10 @@ static int _rs_n = 0;
 static int _random_select(double a)
 {
     /* Check for non-positive values */
-    if (a <= 0){
-        if (_rs_w < a){
+    if (a <= 0)
+    {
+        if (_rs_w < a)
+        {
             _rs_w = a;
             _rs_n = 1;
             return 1;
@@ -123,13 +128,13 @@ static int _random_select(double a)
         else
             return 0;
     }
-    
+
     /* Update _rs_w and perform random selection */
     if (_rs_w < 0)
         _rs_w = a;
     else
         _rs_w += a;
-    
+
     return (a * XRAND_MAX > _rs_w * x2random());
 }
 
@@ -146,18 +151,21 @@ static double _prs_Z = 0;
 static double _prs_offset = 0;
 static int _pseudoenergy_random_select(double a)
 {
-    if (_prs_Z == 0){
+    if (_prs_Z == 0)
+    {
         /* First value seen */
         /* Choose offset such that partition function initially is 1 */
         _prs_offset = a;
         _prs_Z = 1;
         return 1;
     }
-    else{
+    else
+    {
         /* Include contribution of a in partition function and update
          * offset if necessary.
          */
-        if (a < _prs_offset){
+        if (a < _prs_offset)
+        {
             /* It's a good idea to change offset before proceeding */
             _prs_Z = exp((a - _prs_offset) / _prs_kT) * _prs_Z + 1;
             _prs_offset = a;
@@ -166,7 +174,8 @@ static int _pseudoenergy_random_select(double a)
             /* Update partition function */
             _prs_Z += exp((_prs_offset - a) / _prs_kT);
         /* Check whether we should change the offset after the fact */
-        if (_prs_Z > 2){
+        if (_prs_Z > 2)
+        {
             /* By the precheck, inclusion of a can at most increase the
              * value of the partition function by 1 so reducing by a factor
              * of e should be sufficient.
@@ -175,7 +184,7 @@ static int _pseudoenergy_random_select(double a)
             _prs_Z = _prs_Z / M_E;
         }
     }
-    
+
     /* Determine whether to choose a */
     if (exp((_prs_offset - a) / _prs_kT) * XRAND_MAX < x2random() * _prs_Z)
         return 0;
@@ -200,10 +209,10 @@ static void _reset_selections()
 static int _parse_double(char *s, double *value)
 {
     int i;
-    
+
     if (sscanf(s, "%lf%n", value, &i) != 1)
         return 0;
-    
+
     return s[i] == '\0';
 }
 
@@ -213,38 +222,39 @@ static char *_read_file(char *name)
     FILE *f = stdin;
     char *s = (char *)xmalloc(8 * sizeof(char));
     int size = 0, capacity = 8;
-    
+
     /* Open file */
     if ((name != NULL) && ((f = fopen(name, "r")) == NULL))
         return NULL;
-    
+
     /* Read file character by character */
     while ((s[size++] = fgetc(f)) != EOF)
-        if (size == capacity - 1){
+        if (size == capacity - 1)
+        {
             /* Ran out of buffer capacity, double its size */
             capacity *= 2;
             s = (char *)xrealloc(s, capacity * sizeof(char));
         }
-        
-        /* Zero-terminate string, shrink buffer to fit it, and close file */
-        s[size - 1] = '\0';
+
+    /* Zero-terminate string, shrink buffer to fit it, and close file */
+    s[size - 1] = '\0';
     s = xrealloc(s, size);
     if (f != stdin)
         fclose(f);
-    
+
     return s;
 }
 
 int main(int argc, char **argv)
 {
-    Genes *g, *h;
-    AnnotatedGenes *a;
+    Genes *genes, *genes_copy;
+    // AnnotatedGenes *annotated_genes;
     int i, j = 0, k = 0, l = 0, m = 0, t = 0,
-    head = 1,
-    silent = 0,
-    intervals = 0,
-    multruns = 0,
-    costs_in = 0;
+           head = 1,
+           silent = 0,
+           intervals = 0,
+           multruns = 0,
+           costs_in = 0;
     double n;
     Gene_Format format = GENE_ANY;
     Gene_SeqType seqtype = GENE_BINARY;
@@ -252,13 +262,14 @@ int main(int argc, char **argv)
     int (*select)(double) = _random_select;
     FILE *fp;
     LList *history_files = MakeLList(),
-    *dot_files = MakeLList(),
-    *gml_files = MakeLList(),
-    *gdl_files = MakeLList(),
-    *tree_files = MakeLList(),
-    *dottree_files = MakeLList(),
-    *gmltree_files = MakeLList(),
-    *gdltree_files = MakeLList();
+          *dot_files = MakeLList(),
+          *gml_files = MakeLList(),
+          *gdl_files = MakeLList(),
+          *tree_files = MakeLList(),
+          *dottree_files = MakeLList(),
+          *gmltree_files = MakeLList(),
+          *gdltree_files = MakeLList(),
+          *tskit_files = MakeLList();
     ARG *arg = NULL;
     ARGLabels nodelabel = ARGLABEL;
     int edgelabel = 0;
@@ -270,487 +281,576 @@ int main(int argc, char **argv)
     r_seed = 0;
     rec_max = INT_MAX;
     char *token;
-//     int gc_ind = 0;
+    //     int gc_ind = 0;
     double timer;
     clock_t tic, toc;
     char *endptr;
     errno = 0;
     reference = -1;
     rm_max = INT_MAX;
-    
+
     int T_in = 0, cost_in = 0;
     double T_array[100] = {30};
     double se_costs[100] = {0};
     double rm_costs[100] = {0};
     double r_costs[100] = {0};
     double rr_costs[100] = {0};
-    
-    #ifdef ENABLE_VERBOSE
+
+#ifdef ENABLE_VERBOSE
     set_verbose(1);
-    #endif
-    
-    /* Analyse command line options */
-    #define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::Iv:iekofaZ:Q:sL:nhH?"
-    
+#endif
+
+/* Analyse command line options */
+#define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::K::Iv:iekofaZ:Q:sL:nhH?"
+
     /* Parse command line options */
-    while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0){
-        switch(i){
-            case 'S':
-                if (optarg != 0){
-                    token = strtok(optarg, ",");
-                    while(token != NULL) {
-                        se_costs[j] = strtod(token, &endptr);
-                        if(errno != 0 || *endptr != '\0') {
-                            fprintf(stderr, "Cost input should be a positive number.\n");
-                            exit(1);
-                        }
-                        if(se_costs[j] <= 0 && se_costs[j] != -1) {
-                            fprintf(stderr, "Cost input should be a positive number.\n");
-                            exit(1);
-                        }
-                        j++;
-                        token = strtok(NULL, ",");
+    while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0)
+    {
+        switch (i)
+        {
+        case 'S':
+            if (optarg != 0)
+            {
+                token = strtok(optarg, ",");
+                while (token != NULL)
+                {
+                    se_costs[j] = strtod(token, &endptr);
+                    if (errno != 0 || *endptr != '\0')
+                    {
+                        fprintf(stderr, "Cost input should be a positive number.\n");
+                        exit(1);
                     }
-                }
-                break;
-            case 'M':
-                if (optarg != 0){
-                    token = strtok(optarg, ",");
-                    while(token != NULL) {
-                        rm_costs[k] = strtod(token, &endptr);
-                        if(errno != 0 || *endptr != '\0') {
-                            fprintf(stderr, "Cost input should be a positive number.\n");
-                            exit(1);
-                        }
-                        if(rm_costs[k] <= 0 && rm_costs[k] != -1) {
-                            fprintf(stderr, "Cost input should be a positive number.\n");
-                            exit(1);
-                        }
-                        k++;
-                        token = strtok(NULL, ",");
+                    if (se_costs[j] <= 0 && se_costs[j] != -1)
+                    {
+                        fprintf(stderr, "Cost input should be a positive number.\n");
+                        exit(1);
                     }
+                    j++;
+                    token = strtok(NULL, ",");
                 }
-                break;
-            case 'R':
-                if (optarg != 0){
-                    token = strtok(optarg, ",");
-                    while(token != NULL) {
-                        r_costs[l] = strtod(token, &endptr);
-                        if(errno != 0 || *endptr != '\0') {
-                            fprintf(stderr, "Cost input should be a positive number.\n");
-                            exit(1);
-                        }
-                        if(r_costs[l] <= 0 && r_costs[l] != -1) {
-                            fprintf(stderr, "Cost input should be a positive number.\n");
-                            exit(1);
-                        }
-                        l++;
-                        token = strtok(NULL, ",");
+            }
+            break;
+        case 'M':
+            if (optarg != 0)
+            {
+                token = strtok(optarg, ",");
+                while (token != NULL)
+                {
+                    rm_costs[k] = strtod(token, &endptr);
+                    if (errno != 0 || *endptr != '\0')
+                    {
+                        fprintf(stderr, "Cost input should be a positive number.\n");
+                        exit(1);
                     }
-                }
-                break;
-            case 'C':
-                if (optarg != 0){
-                    token = strtok(optarg, ",");
-                    while(token != NULL) {
-                        rr_costs[m] = strtod(token, &endptr);
-                        if(errno != 0 || *endptr != '\0') {
-                            fprintf(stderr, "Cost input should be a positive number.\n");
-                            exit(1);
-                        }
-                        if(rr_costs[m] <= 0 && rr_costs[m] != -1) {
-                            fprintf(stderr, "Cost input should be a positive number.\n");
-                            exit(1);
-                        }
-                        m++;
-                        token = strtok(NULL, ",");
+                    if (rm_costs[k] <= 0 && rm_costs[k] != -1)
+                    {
+                        fprintf(stderr, "Cost input should be a positive number.\n");
+                        exit(1);
                     }
+                    k++;
+                    token = strtok(NULL, ",");
                 }
-                break;
-            case 'T':
-                /* Set new temperature */
-                if (optarg != 0){
-                    token = strtok(optarg, ",");
-                    while(token != NULL) {
-                        T_array[T_in] = strtod(token, &endptr);
-                        if(T_array[T_in] != -1 && (errno != 0 || *endptr != '\0')) {
-                            fprintf(stderr, "Annealing temperature can be -1, 0 or a positive real number.\n");
-                            exit(1);
-                        }
-                        if(T_array[T_in] < 0 && T_array[T_in] != -1) {
-                            fprintf(stderr, "Annealing temperature can be -1, 0 or a positive real number.\n");
-                            exit(1);
-                        }
-                        if(T_array[T_in] >= log(DBL_MAX)) {
-                            fprintf(stderr, "Warning: annealing temperature %.2f too high, setting to -1.\n", T_array[T_in]);
-                            T_array[T_in] = -1;
-                        }
-                        T_in++;
-                        token = strtok(NULL, ",");
+            }
+            break;
+        case 'R':
+            if (optarg != 0)
+            {
+                token = strtok(optarg, ",");
+                while (token != NULL)
+                {
+                    r_costs[l] = strtod(token, &endptr);
+                    if (errno != 0 || *endptr != '\0')
+                    {
+                        fprintf(stderr, "Cost input should be a positive number.\n");
+                        exit(1);
                     }
+                    if (r_costs[l] <= 0 && r_costs[l] != -1)
+                    {
+                        fprintf(stderr, "Cost input should be a positive number.\n");
+                        exit(1);
+                    }
+                    l++;
+                    token = strtok(NULL, ",");
                 }
-                break;
-			case 'V':
-                howverbose = strtol(optarg, &endptr, 10);
-                if(errno != 0 || *endptr != '\0') {
-                    fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
+            }
+            break;
+        case 'C':
+            if (optarg != 0)
+            {
+                token = strtok(optarg, ",");
+                while (token != NULL)
+                {
+                    rr_costs[m] = strtod(token, &endptr);
+                    if (errno != 0 || *endptr != '\0')
+                    {
+                        fprintf(stderr, "Cost input should be a positive number.\n");
+                        exit(1);
+                    }
+                    if (rr_costs[m] <= 0 && rr_costs[m] != -1)
+                    {
+                        fprintf(stderr, "Cost input should be a positive number.\n");
+                        exit(1);
+                    }
+                    m++;
+                    token = strtok(NULL, ",");
+                }
+            }
+            break;
+        case 'T':
+            /* Set new temperature */
+            if (optarg != 0)
+            {
+                token = strtok(optarg, ",");
+                while (token != NULL)
+                {
+                    T_array[T_in] = strtod(token, &endptr);
+                    if (T_array[T_in] != -1 && (errno != 0 || *endptr != '\0'))
+                    {
+                        fprintf(stderr, "Annealing temperature can be -1, 0 or a positive real number.\n");
+                        exit(1);
+                    }
+                    if (T_array[T_in] < 0 && T_array[T_in] != -1)
+                    {
+                        fprintf(stderr, "Annealing temperature can be -1, 0 or a positive real number.\n");
+                        exit(1);
+                    }
+                    if (T_array[T_in] >= log(DBL_MAX))
+                    {
+                        fprintf(stderr, "Warning: annealing temperature %.2f too high, setting to -1.\n", T_array[T_in]);
+                        T_array[T_in] = -1;
+                    }
+                    T_in++;
+                    token = strtok(NULL, ",");
+                }
+            }
+            break;
+        case 'V':
+            howverbose = strtol(optarg, &endptr, 10);
+            if (errno != 0 || *endptr != '\0')
+            {
+                fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
+                exit(1);
+            }
+            if (howverbose > 2 && howverbose < 0)
+            {
+                fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
+                exit(1);
+            }
+            break;
+        case 'b':
+            /* Backtrack history leading to minimum number of recombinations */
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    fprintf(stderr, "Option -b requires an output file.\n");
                     exit(1);
                 }
-                if(howverbose > 2 && howverbose < 0) {
-                    fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
+                /* Check whether file can be written before initiating compuation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Could not open file %s for output\n", optarg);
                     exit(1);
                 }
-				break;
-            case 'b':
-                /* Backtrack history leading to minimum number of recombinations */
-                /* Was a file name specified? */
-                if (optarg != 0){
-                    if(optarg[0] == '-') {
-                        fprintf(stderr, "Option -b requires an output file.\n");
-                        exit(1);
-                    }
-                    /* Check whether file can be written before initiating compuation */
-                    if ((fp = fopen(optarg, "w")) == NULL){
-                        fprintf(stderr, "Could not open file %s for output\n", optarg);
-                        exit(1);
-                    }
-                    fclose(fp);
-                    Enqueue(history_files, (void *)optarg);
+                fclose(fp);
+                Enqueue(history_files, (void *)optarg);
+            }
+            else
+                Enqueue(history_files, stdout);
+            break;
+        case 'd':
+            /* Output ancestral recombination graph of history leading to
+            * minimum number of recombinations in dot format.
+            */
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    fprintf(stderr, "Option -d requires an output file.\n");
+                    exit(1);
                 }
-                else
-                    Enqueue(history_files, stdout);
-                break;
-            case 'd':
-                /* Output ancestral recombination graph of history leading to
-                 * minimum number of recombinations in dot format.
-                 */
-                /* Was a file name specified? */
-                if (optarg != 0){
-                    if(optarg[0] == '-') {
-                        fprintf(stderr, "Option -d requires an output file.\n");
-                        exit(1);
-                    }
-                    /* Check whether file can be written before initiating computation */
-                    if ((fp = fopen(optarg, "w")) == NULL){
-                        fprintf(stderr, "Could not open file %s for output\n", optarg);
-                        exit(1);
-                    }
-                    fclose(fp);
-                    Enqueue(dot_files, (void *)optarg);
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    exit(1);
                 }
-                else
-                    Enqueue(dot_files, stdout);
-                break;
-            case 'g':
-                /* Output ancestral recombination graph of history leading to
-                 * minimum number of recombinations in gdl format.
-                 */
-                /* Was a file name specified? */
-                if (optarg != 0){
-                    if(optarg[0] == '-') {
-                        fprintf(stderr, "Option -g requires an output file.\n");
-                        exit(1);
-                    }
-                    /* Check whether file can be written before initiating computation */
-                    if ((fp = fopen(optarg, "w")) == NULL){
-                        fprintf(stderr, "Could not open file %s for output\n", optarg);
-                        exit(1);
-                    }
-                    fclose(fp);
-                    Enqueue(gdl_files, (void *)optarg);
+                fclose(fp);
+                Enqueue(dot_files, (void *)optarg);
+            }
+            else
+                Enqueue(dot_files, stdout);
+            break;
+        case 'K':
+            /* Export ancestral recombination graph to yml */
+
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    fprintf(stderr, "Option -K requires an output file.\n");
+                    exit(1);
                 }
-                else
-                    Enqueue(gdl_files, stdout);
-                break;
-            case 'j':
-                /* Output ancestral recombination graph of history leading to
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    exit(1);
+                }
+                fclose(fp);
+                Enqueue(tskit_files, (void *)optarg);
+            }
+            else
+                Enqueue(tskit_files, stdout);
+            break;
+        case 'g':
+            /* Output ancestral recombination graph of history leading to
+            * minimum number of recombinations in gdl format.
+            */
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    fprintf(stderr, "Option -g requires an output file.\n");
+                    exit(1);
+                }
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    exit(1);
+                }
+                fclose(fp);
+                Enqueue(gdl_files, (void *)optarg);
+            }
+            else
+                Enqueue(gdl_files, stdout);
+            break;
+        case 'j':
+            /* Output ancestral recombination graph of history leading to
                  * minimum number of recombinations in gml format.
                  */
-                /* Was a file name specified? */
-                if (optarg != 0){
-                    if(optarg[0] == '-') {
-                        fprintf(stderr, "Option -j requires an output file.\n");
-                        exit(1);
-                    }
-                    /* Check whether file can be written before initiating computation */
-                    if ((fp = fopen(optarg, "w")) == NULL){
-                        fprintf(stderr, "Could not open file %s for output\n", optarg);
-                        exit(1);
-                    }
-                    fclose(fp);
-                    Enqueue(gml_files, (void *)optarg);
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    fprintf(stderr, "Option -j requires an output file.\n");
+                    exit(1);
                 }
-                else
-                    Enqueue(gml_files, stdout);
-                break;
-            case 't':
-                /* Output marginal trees in ancestral recombination graph of
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    exit(1);
+                }
+                fclose(fp);
+                Enqueue(gml_files, (void *)optarg);
+            }
+            else
+                Enqueue(gml_files, stdout);
+            break;
+        case 't':
+            /* Output marginal trees in ancestral recombination graph of
                  * history leading to minimum number of recombinations in
                  * Newick's 8:45 format.
                  */
-                /* Was a file name specified? */
-                if (optarg != 0){
-                    if(optarg[0] == '-') {
-                        fprintf(stderr, "Option -t requires an output file.\n");
-                        exit(1);
-                    }
-                    /* Check whether file can be written before initiating computation */
-                    if ((fp = fopen(optarg, "w")) == NULL){
-                        fprintf(stderr, "Could not open file %s for output\n", optarg);
-                        exit(1);
-                    }
-                    fclose(fp);
-                    Enqueue(tree_files, (void *)optarg);
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    fprintf(stderr, "Option -t requires an output file.\n");
+                    exit(1);
                 }
-                else
-                    Enqueue(tree_files, stdout);
-                break;
-            case 'D':
-                /* Output marginal trees in ancestral recombination graph of
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    exit(1);
+                }
+                fclose(fp);
+                Enqueue(tree_files, (void *)optarg);
+            }
+            else
+                Enqueue(tree_files, stdout);
+            break;
+        case 'D':
+            /* Output marginal trees in ancestral recombination graph of
                  * history leading to minimum number of recombinations in
                  * dot format.
                  */
-                /* Was a file name specified? */
-                if (optarg != 0){
-                    if(optarg[0] == '-') {
-                        fprintf(stderr, "Option -D requires an output file.\n");
-                        exit(1);
-                    }
-                    /* Check whether file can be written before initiating computation */
-                    if ((fp = fopen(optarg, "w")) == NULL){
-                        fprintf(stderr, "Could not open file %s for output\n", optarg);
-                        exit(1);
-                    }
-                    fclose(fp);
-                    Enqueue(dottree_files, (void *)optarg);
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    fprintf(stderr, "Option -D requires an output file.\n");
+                    exit(1);
                 }
-                else
-                    Enqueue(dottree_files, stdout);
-                break;
-            case 'G':
-                /* Output marginal trees in ancestral recombination graph of
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    exit(1);
+                }
+                fclose(fp);
+                Enqueue(dottree_files, (void *)optarg);
+            }
+            else
+                Enqueue(dottree_files, stdout);
+            break;
+        case 'G':
+            /* Output marginal trees in ancestral recombination graph of
                  * history leading to minimum number of recombinations in
                  * GDL format.
                  */
-                /* Was a file name specified? */
-                if (optarg != 0){
-                    if(optarg[0] == '-') {
-                        fprintf(stderr, "Option -G requires an output file.\n");
-                        exit(1);
-                    }
-                    /* Check whether file can be written before initiating computation */
-                    if ((fp = fopen(optarg, "w")) == NULL){
-                        fprintf(stderr, "Could not open file %s for output\n", optarg);
-                        exit(1);
-                    }
-                    fclose(fp);
-                    Enqueue(gdltree_files, (void *)optarg);
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    fprintf(stderr, "Option -G requires an output file.\n");
+                    exit(1);
                 }
-                else
-                    Enqueue(gdltree_files, stdout);
-                break;
-            case 'J':
-                /* Output marginal trees in ancestral recombination graph of
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    exit(1);
+                }
+                fclose(fp);
+                Enqueue(gdltree_files, (void *)optarg);
+            }
+            else
+                Enqueue(gdltree_files, stdout);
+            break;
+        case 'J':
+            /* Output marginal trees in ancestral recombination graph of
                  * history leading to minimum number of recombinations in
                  * GML format.
                  */
-                /* Was a file name specified? */
-                if (optarg != 0){
-                    if(optarg[0] == '-') {
-                        fprintf(stderr, "Option -J requires an output file.\n");
-                        exit(1);
-                    }
-                    /* Check whether file can be written before initiating computation */
-                    if ((fp = fopen(optarg, "w")) == NULL){
-                        fprintf(stderr, "Could not open file %s for output\n", optarg);
-                        exit(1);
-                    }
-                    fclose(fp);
-                    Enqueue(gmltree_files, (void *)optarg);
-                }
-                else
-                    Enqueue(gmltree_files, stdout);
-                break;
-            case 'I':
-                intervals = 1;
-                break;
-            case 'v':
-                if (!strcmp(optarg, "none"))
-                    nodelabel = ARGNONE;
-                else if (!strcmp(optarg, "id"))
-                    nodelabel = ARGLABEL;
-                else if (!strcmp(optarg, "sequence"))
-                    nodelabel = ARGSEQUENCE;
-                else if (!strcmp(optarg, "both"))
-                    nodelabel = ARGBOTH;
-                else if (!strcmp(optarg, "one"))
-                    nodelabel = ARGLABELFIRST;
-                else{
-                    fprintf(stderr, "Unrecognised nodelabel convention (%s) for -v option\n", optarg);
-                    _print_usage(stderr, argv[0]);
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    fprintf(stderr, "Option -J requires an output file.\n");
                     exit(1);
                 }
-                break;
-            case 'i':
-                generate_id = 1;
-                break;
-            case 'e':
-                edgelabel = 1;
-                break;
-            case 'k':
-                gene_knownancestor = 1;
-                break;
-            case 'o':
-                format = GENE_BEAGLE;
-                break;
-            case 'f':
-                format = GENE_FASTA;
-                break;
-            case 'a':
-                seqtype = GENE_AMINO;
-                break;
-            case 'n':
-                seqtype = GENE_NUCLEIC;
-                break;
-            case 'Z':
-                r_seed = strtod(optarg, &endptr);
-                if(errno != 0 || *endptr != '\0') {
-                    fprintf(stderr, "Seed input should be a positive integer.\n");
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Could not open file %s for output\n", optarg);
                     exit(1);
                 }
-                if(r_seed <= 0) {
-                    fprintf(stderr, "Seed input should be a positive integer.\n");
-                    exit(1);
-                }
-                break;
-            case 'Q':
-                multruns = strtol(optarg, &endptr, 10) - 1;
-                if(errno != 0 || *endptr != '\0') {
-                    fprintf(stderr, "Number of iterations should be a positive integer.\n");
-                    exit(1);
-                }
-                if(multruns < 0) {
-                    fprintf(stderr, "Number of iterations should be a positive integer.\n");
-                    exit(1);
-                }
-                break;
-            case 'X':
-                rec_max = strtol(optarg, &endptr, 10);
-                if(errno != 0 || *endptr != '\0') {
-                    fprintf(stderr, "Upper bound on number of recombinations should be a positive integer.\n");
-                    exit(1);
-                }
-                break;
-            case 'Y':
-                rm_max = strtol(optarg, &endptr, 10);
-                if(errno != 0 || *endptr != '\0') {
-                    fprintf(stderr, "Upper bound on number of recurrent mutations should be a positive integer.\n");
-                    exit(1);
-                }
-                break;
-            case 's':
-                head = 0;
-                break;
-            case 'L':
-                reference = strtol(optarg, &endptr, 10);
-                if(errno != 0 || *endptr != '\0') {
-                    fprintf(stderr, "Reference should be a positive integer.\n");
-                    exit(1);
-                }
-                if(reference < 0) {
-                    fprintf(stderr, "Reference should be a positive integer.\n");
-                    exit(1);
-                }
-                break;
-            case 'h':
-            case 'H':
-            case '?':
-                _print_usage(stdout, argv[0]);
-                /* Clean up */
-                DestroyLList(dot_files);
-                DestroyLList(gml_files);
-                DestroyLList(gdl_files);
-                DestroyLList(tree_files);
-                DestroyLList(dottree_files);
-                DestroyLList(gmltree_files);
-                DestroyLList(gdltree_files);
-                DestroyLList(history_files);
-                exit(0);
-            case ':':
+                fclose(fp);
+                Enqueue(gmltree_files, (void *)optarg);
+            }
+            else
+                Enqueue(gmltree_files, stdout);
+            break;
+        case 'I':
+            intervals = 1;
+            break;
+        case 'v':
+            if (!strcmp(optarg, "none"))
+                nodelabel = ARGNONE;
+            else if (!strcmp(optarg, "id"))
+                nodelabel = ARGLABEL;
+            else if (!strcmp(optarg, "sequence"))
+                nodelabel = ARGSEQUENCE;
+            else if (!strcmp(optarg, "both"))
+                nodelabel = ARGBOTH;
+            else if (!strcmp(optarg, "one"))
+                nodelabel = ARGLABELFIRST;
+            else
+            {
+                fprintf(stderr, "Unrecognised nodelabel convention (%s) for -v option\n", optarg);
                 _print_usage(stderr, argv[0]);
                 exit(1);
+            }
+            break;
+        case 'i':
+            generate_id = 1;
+            break;
+        case 'e':
+            edgelabel = 1;
+            break;
+        case 'k':
+            gene_knownancestor = 1;
+            break;
+        case 'o':
+            format = GENE_BEAGLE;
+            break;
+        case 'f':
+            format = GENE_FASTA;
+            break;
+        case 'a':
+            seqtype = GENE_AMINO;
+            break;
+        case 'n':
+            seqtype = GENE_NUCLEIC;
+            break;
+        case 'Z':
+            r_seed = strtod(optarg, &endptr);
+            if (errno != 0 || *endptr != '\0')
+            {
+                fprintf(stderr, "Seed input should be a positive integer.\n");
+                exit(1);
+            }
+            if (r_seed <= 0)
+            {
+                fprintf(stderr, "Seed input should be a positive integer.\n");
+                exit(1);
+            }
+            break;
+        case 'Q':
+            multruns = strtol(optarg, &endptr, 10) - 1;
+            if (errno != 0 || *endptr != '\0')
+            {
+                fprintf(stderr, "Number of iterations should be a positive integer.\n");
+                exit(1);
+            }
+            if (multruns < 0)
+            {
+                fprintf(stderr, "Number of iterations should be a positive integer.\n");
+                exit(1);
+            }
+            break;
+        case 'X':
+            rec_max = strtol(optarg, &endptr, 10);
+            if (errno != 0 || *endptr != '\0')
+            {
+                fprintf(stderr, "Upper bound on number of recombinations should be a positive integer.\n");
+                exit(1);
+            }
+            break;
+        case 'Y':
+            rm_max = strtol(optarg, &endptr, 10);
+            if (errno != 0 || *endptr != '\0')
+            {
+                fprintf(stderr, "Upper bound on number of recurrent mutations should be a positive integer.\n");
+                exit(1);
+            }
+            break;
+        case 's':
+            head = 0;
+            break;
+        case 'L':
+            reference = strtol(optarg, &endptr, 10);
+            if (errno != 0 || *endptr != '\0')
+            {
+                fprintf(stderr, "Reference should be a positive integer.\n");
+                exit(1);
+            }
+            if (reference < 0)
+            {
+                fprintf(stderr, "Reference should be a positive integer.\n");
+                exit(1);
+            }
+            break;
+        case 'h':
+        case 'H':
+        case '?':
+            _print_usage(stdout, argv[0]);
+            /* Clean up */
+            DestroyLList(dot_files);
+            DestroyLList(gml_files);
+            DestroyLList(gdl_files);
+            DestroyLList(tree_files);
+            DestroyLList(dottree_files);
+            DestroyLList(gmltree_files);
+            DestroyLList(gdltree_files);
+            DestroyLList(history_files);
+            DestroyLList(tskit_files);
+            exit(0);
+        case ':':
+            _print_usage(stderr, argv[0]);
+            exit(1);
         }
     }
-    
-    if(j != k) {
+
+    if (j != k)
+    {
         fprintf(stderr, "Wrong number of costs specified.\n");
         exit(1);
     }
-    else {
-        cost_in = j;    
+    else
+    {
+        cost_in = j;
     }
-    
-    if((l > 0 || m > 0 ) && (l != m || l != j)) {
+
+    if ((l > 0 || m > 0) && (l != m || l != j))
+    {
         fprintf(stderr, "Wrong number of costs specified.\n");
         exit(1);
     }
 
     /* Read data */
-    if (argc > optind){
+    if (argc > optind)
+    {
         fprintf(stderr, "Not a valid option: %s\n", argv[optind]);
         exit(1);
     }
-    else{
-        if ((a = read_genes(NULL, format, seqtype)) == NULL){
-            fprintf(stderr, "Could not parse input as valid data\n");
-            exit(1);
-        }
+
+    AnnotatedGenes *annotated_genes = read_genes(NULL, format, seqtype);
+    if (annotated_genes == NULL)
+    {
+        fprintf(stderr, "Could not parse input as valid data\n");
+        exit(1);
     }
+
     if ((gene_knownancestor) && (seqtype != GENE_BINARY))
         /* First sequnce only included to specify known common ancestor */
-        remove_annotatedgene(a, 0);
-    g = a->g;
+        remove_annotatedgene(annotated_genes, 0);
+    genes = annotated_genes->g;
 
-    
     /* Set up structures for computation */
-    if ((Length(history_files) > 0) || (Length(dot_files) > 0)
-        || (Length(gml_files) > 0) || (Length(gdl_files) > 0)
-        || (Length(tree_files) > 0) || (Length(dottree_files) > 0)
-        || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0)) {
+    if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0) || (Length(tskit_files) > 0))
+    {
         eventlist = MakeLList();
         multruns = 0;
-	cost_in = 1;
-	T_in = 1;
+        cost_in = 1;
+        T_in = 1;
     }
-    
-    
+
     initialise_xrandom();
-    
-    
-    if(r_seed > 0) {
+
+    if (r_seed > 0)
+    {
         multruns = 0;
         T_in = 1;
         cost_in = 1;
-        se_costs[0] = (se_costs[0] !=0 ? se_costs[0] : 0.5);
-        rm_costs[0] = (rm_costs[0] !=0 ? rm_costs[0] : 0.9);
-        r_costs[0] = (r_costs[0] !=0 ? r_costs[0] : 1.0);
+        se_costs[0] = (se_costs[0] != 0 ? se_costs[0] : 0.5);
+        rm_costs[0] = (rm_costs[0] != 0 ? rm_costs[0] : 0.9);
+        r_costs[0] = (r_costs[0] != 0 ? r_costs[0] : 1.0);
         rr_costs[0] = (rr_costs[0] != 0 ? rr_costs[0] : 2.0);
-        if(howverbose > 0) {
+        if (howverbose > 0)
+        {
             head = 0;
         }
     }
-    else if(cost_in > 0) {
-        if(multruns > 0 || cost_in > 1) {
+    else if (cost_in > 0)
+    {
+        if (multruns > 0 || cost_in > 1)
+        {
             howverbose = 0;
         }
-        for(t = 0; t < cost_in; t++) {
-            se_costs[t] = (se_costs[t] !=0 ? se_costs[t] : 0.5);
-            rm_costs[t] = (rm_costs[t] !=0 ? rm_costs[t] : 0.9);
-            r_costs[t] = (r_costs[t] !=0 ? r_costs[t] : 1.0);
+        for (t = 0; t < cost_in; t++)
+        {
+            se_costs[t] = (se_costs[t] != 0 ? se_costs[t] : 0.5);
+            rm_costs[t] = (rm_costs[t] != 0 ? rm_costs[t] : 0.9);
+            r_costs[t] = (r_costs[t] != 0 ? r_costs[t] : 1.0);
             rr_costs[t] = (rr_costs[t] != 0 ? rr_costs[t] : 2.0);
         }
     }
-    else {
+    else
+    {
         howverbose = 0;
         cost_in = 13;
         double template1[13] = {-1, 1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.01, 1};
@@ -762,236 +862,276 @@ int main(int argc, char **argv)
         set_array(r_costs, template3, cost_in, 0);
         set_array(rr_costs, template4, cost_in, 0);
     }
-    
-    if(T_in == 0) {
+
+    if (T_in == 0)
+    {
         T_in = 1;
     }
-    
-    if(head) {
-        if(reference > 0) {
+
+    if (head)
+    {
+        if (reference > 0)
+        {
             fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
-            "SE", "RM", "R", "N_states", "Time");
+                    "SE", "RM", "R", "N_states", "Time");
         }
-        else {
+        else
+        {
             fprintf(print_progress, "%13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
-            "SE", "RM", "R", "N_states", "Time");
+                    "SE", "RM", "R", "N_states", "Time");
         }
     }
-    
+
     // Create the lookup array if will have multiple runs
-    if(multruns > 0 || cost_in > 1){  
-        if(rec_max == INT_MAX) {
+    if (multruns > 0 || cost_in > 1)
+    {
+        if (rec_max == INT_MAX)
+        {
             rec_max = 1000; // TODO What should this be
         }
         // Will store SE + RM in a lookup list with index = number of recombinations
         lookup = elist_make();
-        for(i = 0; i <= rec_max; i++) {
+        for (i = 0; i <= rec_max; i++)
+        {
             elist_append(lookup, (void *)INT_MAX);
         }
         // We need 0 se/rm for rec_max recombinations
         elist_change(lookup, rec_max, (void *)0);
     }
-    
-    for(l = 0; l < T_in; l++) {
-        
+
+    for (l = 0; l < T_in; l++)
+    {
+
         Temp = T_array[l];
-        if(Temp == -1) {
+        if (Temp == -1)
+        {
             select = _minimum_select;
         }
-        else {
+        else
+        {
             select = _random_select;
         }
-        
-        for(k = 0; k < cost_in; k++) {
-            
+
+        for (k = 0; k < cost_in; k++)
+        {
+
             se_cost = se_costs[k];
             rm_cost = rm_costs[k];
             r_cost = r_costs[k];
             rr_cost = rr_costs[k];
-            if(se_cost == -1 && rm_cost == -1 && r_cost == -1 && rr_cost == -1) {
+            if (se_cost == -1 && rm_cost == -1 && r_cost == -1 && rr_cost == -1)
+            {
                 fprintf(stderr, "At least one type of event should be allowed (all event costs are -1).\n");
                 exit(1);
             }
 
             /* Find a history for each iteration */
-            for(j = 0; j <= multruns; j++) {
-                
+            for (j = 0; j <= multruns; j++)
+            {
+
                 /* Initialise random number generator */
                 initialise_x2random(r_seed);
                 counter = 0;
-                
+
                 // Copy the data and set up the tracking lists
-                h = copy_genes(g);
-                seq_numbering = h->n;
+                genes_copy = copy_genes(genes);
+                seq_numbering = genes_copy->n;
                 elements = elist_make();
                 sites = elist_make();
                 // Initialise list of sequences
-                if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
-                    for(i=0; i < h->n; i++) {
-                        elist_append(elements, (void *)(i+1));
+                if ((gene_knownancestor) && (seqtype != GENE_BINARY))
+                {
+                    for (i = 0; i < genes_copy->n; i++)
+                    {
+                        elist_append(elements, (void *)(i + 1));
                     }
-                } else {
-                    for(i=0; i < h->n; i++) {
+                }
+                else
+                {
+                    for (i = 0; i < genes_copy->n; i++)
+                    {
                         elist_append(elements, (void *)i);
                     }
                 }
                 // Initialise the list of sites
-                for(i=0; i < h->length; i++) {
+                for (i = 0; i < genes_copy->length; i++)
+                {
                     elist_append(sites, (void *)i);
                 }
-                
+
                 // Get a history
                 tic = clock();
-                n = ggreedy(h, print_progress, select, _reset_selections, ontheflyselection);
+                n = ggreedy(genes_copy, print_progress, select, _reset_selections, ontheflyselection);
                 toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
                 // The ggreedy function will update rec_max and the lookup array
-                
+
                 // Tidy up for the next run
-                free_genes(h);
+                free_genes(genes_copy);
                 elist_destroy(elements);
                 elements = NULL;
                 elist_destroy(sites);
                 sites = NULL;
                 r_seed = 0;
-                
             }
-
         }
-        
     }
 
-    
     /* Output inferred ARG */
-    if ((Length(history_files) > 0) || (Length(dot_files) > 0)
-        || (Length(gml_files) > 0) || (Length(gdl_files) > 0)
-        || (Length(tree_files) > 0) || (Length(dottree_files) > 0)
-        || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0)){
-        while ((fp = (FILE *)Pop(history_files)) != NULL){
+    if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0) || (Length(dot_files) > 0) || (Length(tskit_files) > 0))
+    {
+        while ((fp = (FILE *)Pop(history_files)) != NULL)
+        {
             if (fp != stdout)
+            {
                 /* Open named file for output */
-                if ((fp = fopen((char *)fp, "w")) == NULL){
+                if ((fp = fopen((char *)fp, "w")) == NULL)
+                {
                     fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
                     continue;
                 }
-                /* Only remember last ARG constructed (they should all be the same) */
+            }
+            /* Only remember last ARG constructed (they should all be the same) */
             if (arg != NULL)
                 arg_destroy(arg);
-            arg = eventlist2history(a, fp);
+            arg = eventlist2history(annotated_genes, fp);
         }
         if (arg == NULL)
-            arg = eventlist2history(a, NULL);
-        if (arg != NULL){
-            /* Output ARG in dot format */
-            while ((fp = (FILE *)Pop(dot_files)) != NULL){
+            arg = eventlist2history(annotated_genes, NULL);
+        if (arg != NULL)
+        {
+            /* Output ARG in tskit format */
+            while ((fp = (FILE *)Pop(tskit_files)) != NULL)
+            {
                 if (fp != stdout)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                    arg_output(arg, a, fp, ARGDOT, nodelabel, edgelabel, generate_id);
+                arg_output(arg, annotated_genes, fp, YAML, nodelabel, edgelabel, generate_id);
+                
+                if (fp != stdout)
+                    fclose(fp);
+            }
+            /* Output ARG in dot format */
+            while ((fp = (FILE *)Pop(dot_files)) != NULL)
+            {
+                if (fp != stdout)
+                    /* Open named file for output */
+                    if ((fp = fopen((char *)fp, "w")) == NULL)
+                        fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
+                arg_output(arg, annotated_genes, fp, ARGDOT, nodelabel, edgelabel, generate_id);
                 if (fp != stdout)
                     fclose(fp);
             }
             /* Output ARG in GML format */
-            while ((fp = (FILE *)Pop(gml_files)) != NULL){
+            while ((fp = (FILE *)Pop(gml_files)) != NULL)
+            {
                 if (fp != stdout)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                    arg_output(arg, a, fp, ARGGML, nodelabel, edgelabel, generate_id);
+                arg_output(arg, annotated_genes, fp, ARGGML, nodelabel, edgelabel, generate_id);
                 if (fp != stdout)
                     fclose(fp);
             }
             /* Output ARG in dot format */
-            while ((fp = (FILE *)Pop(gdl_files)) != NULL){
+            while ((fp = (FILE *)Pop(gdl_files)) != NULL)
+            {
                 if (fp != stdout)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                    arg_output(arg, a, fp, ARGGDL, nodelabel, edgelabel, generate_id);
+                arg_output(arg, annotated_genes, fp, ARGGDL, nodelabel, edgelabel, generate_id);
                 if (fp != stdout)
                     fclose(fp);
             }
             /* Output marginal trees of ARG in Newick's 8:45 format */
-            while ((fp = (FILE *)Pop(tree_files)) != NULL){
+            while ((fp = (FILE *)Pop(tree_files)) != NULL)
+            {
                 if (fp != stdout)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                    arg_output(arg, a, fp, TREENEWICK, nodelabel, edgelabel, generate_id,
-                               intervals);
-                    if (fp != stdout)
-                        fclose(fp);
+                arg_output(arg, annotated_genes, fp, TREENEWICK, nodelabel, edgelabel, generate_id,
+                           intervals);
+                if (fp != stdout)
+                    fclose(fp);
             }
             /* Output marginal trees of ARG in dot format */
-            while ((fp = (FILE *)Pop(dottree_files)) != NULL){
+            while ((fp = (FILE *)Pop(dottree_files)) != NULL)
+            {
                 if (fp != stdout)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                    arg_output(arg, a, fp, TREEDOT, nodelabel, edgelabel, generate_id,
-                               intervals);
-                    if (fp != stdout)
-                        fclose(fp);
+                arg_output(arg, annotated_genes, fp, TREEDOT, nodelabel, edgelabel, generate_id,
+                           intervals);
+                if (fp != stdout)
+                    fclose(fp);
             }
             /* Output marginal trees of ARG in GML format */
-            while ((fp = (FILE *)Pop(gmltree_files)) != NULL){
+            while ((fp = (FILE *)Pop(gmltree_files)) != NULL)
+            {
                 if (fp != stdout)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                    arg_output(arg, a, fp, TREEGML, nodelabel, edgelabel, generate_id,
-                               intervals);
-                    if (fp != stdout)
-                        fclose(fp);
+                arg_output(arg, annotated_genes, fp, TREEGML, nodelabel, edgelabel, generate_id,
+                           intervals);
+                if (fp != stdout)
+                    fclose(fp);
             }
             /* Output marginal trees of ARG in GDL format */
-            while ((fp = (FILE *)Pop(gdltree_files)) != NULL){
+            while ((fp = (FILE *)Pop(gdltree_files)) != NULL)
+            {
                 if (fp != stdout)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                    arg_output(arg, a, fp, TREEGDL, nodelabel, edgelabel, generate_id,
-                               intervals);
-                    if (fp != stdout)
-                        fclose(fp);
+                arg_output(arg, annotated_genes, fp, TREEGDL, nodelabel, edgelabel, generate_id,
+                           intervals);
+                if (fp != stdout)
+                    fclose(fp);
             }
             arg_destroy(arg);
-        } 
-    
-    
-        if (eventlist != NULL){
+        }
+
+        if (eventlist != NULL)
+        {
             while (Length(eventlist) > 0)
                 free(Pop(eventlist));
             DestroyLList(eventlist);
         }
     }
-    
-        
-        /* Clean up */
-        if (lookup != NULL){
-            elist_destroy(lookup);
-        }
-        
-        if (_greedy_beaglereusable != NULL) {
-            beagle_deallocate_hashtable(_greedy_beaglereusable);
-            _greedy_beaglereusable = NULL;
-        }
-        if (_greedy_functioncalls != NULL) {
-            hashtable_destroy(_greedy_functioncalls, free, NULL, free);
-            _greedy_functioncalls = NULL;
-        }
-        
-        DestroyLList(dot_files);
-        DestroyLList(gml_files);
-        DestroyLList(gdl_files);
-        DestroyLList(tree_files);
-        DestroyLList(dottree_files);
-        DestroyLList(gmltree_files);
-        DestroyLList(gdltree_files);
-        DestroyLList(history_files);
-        free_annotatedgenes(a);
-        
-        return 0;
+
+    /* Clean up */
+    if (lookup != NULL)
+    {
+        elist_destroy(lookup);
+    }
+
+    if (_greedy_beaglereusable != NULL)
+    {
+        beagle_deallocate_hashtable(_greedy_beaglereusable);
+        _greedy_beaglereusable = NULL;
+    }
+    if (_greedy_functioncalls != NULL)
+    {
+        hashtable_destroy(_greedy_functioncalls, free, NULL, free);
+        _greedy_functioncalls = NULL;
+    }
+
+    DestroyLList(dot_files);
+    DestroyLList(gml_files);
+    DestroyLList(gdl_files);
+    DestroyLList(tree_files);
+    DestroyLList(dottree_files);
+    DestroyLList(gmltree_files);
+    DestroyLList(gdltree_files);
+    DestroyLList(history_files);
+    DestroyLList(tskit_files);
+    free_annotatedgenes(annotated_genes);
+
+    return 0;
 }
