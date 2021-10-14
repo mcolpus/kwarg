@@ -279,7 +279,7 @@ int main(int argc, char **argv)
     Event *e;
     LList *tmp;
     r_seed = 0;
-    rec_max = INT_MAX;
+    recombinations_max = INT_MAX;
     char *token;
     //     int gc_ind = 0;
     double timer;
@@ -722,7 +722,7 @@ int main(int argc, char **argv)
             }
             break;
         case 'X':
-            rec_max = strtol(optarg, &endptr, 10);
+            recombinations_max = strtol(optarg, &endptr, 10);
             if (errno != 0 || *endptr != '\0')
             {
                 fprintf(stderr, "Upper bound on number of recombinations should be a positive integer.\n");
@@ -882,21 +882,24 @@ int main(int argc, char **argv)
         }
     }
 
+    EList *lookup;
+
     // Create the lookup array if will have multiple runs
     if (multruns > 0 || cost_in > 1)
     {
-        if (rec_max == INT_MAX)
+        if (recombinations_max == INT_MAX)
         {
-            rec_max = 1000; // TODO: What should this be
+            recombinations_max = 1000; // TODO: What should this be
         }
+
         // Will store SE + RM in a lookup list with index = number of recombinations
         lookup = elist_make();
-        for (i = 0; i <= rec_max; i++)
+        for (i = 0; i <= recombinations_max; i++)
         {
             elist_append(lookup, (void *)INT_MAX);
         }
-        // We need 0 se/rm for rec_max recombinations
-        elist_change(lookup, rec_max, (void *)0);
+        // We need 0 se/rm for recombinations_max recombinations
+        elist_change(lookup, recombinations_max, (void *)0);
     }
 
     for (l = 0; l < T_in; l++)
@@ -956,11 +959,11 @@ int main(int argc, char **argv)
                 // Get a history
                 clock_t tic, toc;
                 tic = clock();
-                n = ggreedy(genes_copy, print_progress, select, _reset_selections, ontheflyselection, se_costs[k], rm_costs[k], r_costs[k], rr_costs[k]);
+                n = ggreedy(genes_copy, print_progress, select, _reset_selections, ontheflyselection, se_costs[k], rm_costs[k], r_costs[k], rr_costs[k], lookup);
                 toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
-                // The ggreedy function will update rec_max and the lookup array
+                // The ggreedy function will update recombinations_max and the lookup array
 
                 // Tidy up for the next run
                 free_genes(genes_copy);

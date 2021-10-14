@@ -1840,7 +1840,7 @@ static void _store(Genes *g)
 static int (*_choice_function)(double);
 
 /* Update the lookup list of SE/RM and recombination numbers
- * This is of length rec_max, and keeps track of the maximum number of RM events seen
+ * This is of length recombinations_max, and keeps track of the maximum number of RM events seen
  * for each given number of recombinations already proposed. For example, if we have
  * seen a solution with 5 recombinations and 10 RMs, and the current solution reaches
  * 5 recombinations and 10 RMs but has not yet resolved all incompatibilities, then
@@ -1871,7 +1871,7 @@ void update_lookup(EList *_lookup, int index, int bd)
 /* Main function of kwarg implementing neighbourhood search.
  */
 double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
-                double se_cost, double rm_cost, double r_cost, double rr_cost)
+                double se_cost, double rm_cost, double r_cost, double rr_cost, EList *lookup)
 {
     int i, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
     double r = 0;
@@ -2219,8 +2219,8 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
             free_genes(genes);
         }
 
-        // Can abandon the run if the number of recombinations already exceeds rec_max
-        if (recombs > rec_max)
+        // Can abandon the run if the number of recombinations already exceeds recombinations_max
+        if (recombs > recombinations_max)
         {
             bad_soln = 1;
             break;
@@ -2228,7 +2228,7 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
 
         // Can also abandon the run if the number of SE+RM when we have r recombinations is greater than what we've
         // seen in earlier solutions.
-        if (rec_max != INT_MAX && lookup != NULL)
+        if (recombinations_max != INT_MAX && lookup != NULL)
         {
             if (seflips + rmflips > (int)elist_get(lookup, recombs))
             {
@@ -2279,10 +2279,10 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
         {
             if (seflips + rmflips < (int)elist_get(lookup, recombs))
             {
-                // If found a better bound r < rec_max for Rmin, update.
+                // If found a better bound r < recombinations_max for Rmin, update.
                 if (seflips + rmflips == 0)
                 {
-                    rec_max = recombs;
+                    recombinations_max = recombs;
                 }
                 update_lookup(lookup, recombs, seflips + rmflips);
             }
