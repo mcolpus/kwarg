@@ -1870,7 +1870,8 @@ void update_lookup(EList *_lookup, int index, int bd)
 
 /* Main function of kwarg implementing neighbourhood search.
  */
-double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection)
+double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
+                double se_cost, double rm_cost, double r_cost, double rr_cost)
 {
     int i, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
     double r = 0;
@@ -1900,10 +1901,10 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
     /* Create working copy of genes */
     genes = copy_genes(genes);
 
-    if (howverbose > 0)
+    if (g_howverbose > 0)
     {
         fprintf(print_progress, "Input data:\n");
-        if (howverbose == 2)
+        if (g_howverbose == 2)
         {
             output_genes(genes, print_progress, NULL);
         }
@@ -1912,7 +1913,7 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
 
     // Reduce the dataset
     implode_genes(genes);
-    if (howverbose > 0)
+    if (g_howverbose > 0)
     {
         printf("%d sequences with %d sites after reducing\n", genes->n, genes->length);
     }
@@ -1952,7 +1953,7 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
          * coalescing compatible sequences where neither is subsumed in the
          * other but where the ancestral material is still entangled.
          */
-        if (howverbose > 0)
+        if (g_howverbose > 0)
         {
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
             fprintf(print_progress, "Searching possible predecessors:\n");
@@ -1966,53 +1967,53 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
         _coalesce_compatibleandentangled_map(genes, action);
         preds = elist_length(_predecessors) - nbdsize;
         nbdsize = elist_length(_predecessors);
-        if (howverbose > 0)
+        if (g_howverbose > 0)
         {
             fprintf(print_progress, "%-40s %3d\n", "Coalescing entangled: ", preds);
         }
 
-        if (g_se_cost != -1)
+        if (se_cost != -1)
         {
             no_events = 1;
-            _recombinations = g_se_cost;
+            _recombinations = se_cost;
             ac = SE;
 
-            seqerror_flips(genes, action);
+            seqerror_flips(genes, action, se_cost);
             preds = elist_length(_predecessors) - nbdsize;
             nbdsize = elist_length(_predecessors);
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Sequencing errors: ", preds);
             }
         }
 
-        if (g_rm_cost != -1)
+        if (rm_cost != -1)
         {
             no_events = 1;
-            _recombinations = g_rm_cost;
+            _recombinations = rm_cost;
             ac = RM;
 
-            recmut_flips(genes, action);
+            recmut_flips(genes, action, rm_cost);
 
             preds = elist_length(_predecessors) - nbdsize;
             nbdsize = elist_length(_predecessors);
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Recurrent mutations: ", preds);
             }
         }
 
         /* Try all sensible events with one split */
-        if (g_r_cost != -1)
+        if (r_cost != -1)
         {
             no_events = 1;
-            _recombinations = g_r_cost;
+            _recombinations = r_cost;
             ac = RECOMB1;
 
             maximal_prefix_coalesces_map(genes, start, end, action);
             preds = elist_length(_predecessors) - nbdsize;
             nbdsize = elist_length(_predecessors);
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Prefix recombinations: ", preds);
             }
@@ -2020,23 +2021,23 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
             maximal_postfix_coalesces_map(genes, start, end, action);
             preds = elist_length(_predecessors) - nbdsize;
             nbdsize = elist_length(_predecessors);
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Postfix recombinations: ", preds);
             }
         }
 
         /* Try all sensible events with two splits */
-        if (g_rr_cost != -1)
+        if (rr_cost != -1)
         {
             no_events = 2;
-            _recombinations = g_rr_cost;
+            _recombinations = rr_cost;
             ac = RECOMB2;
 
             maximal_infix_coalesces_map(genes, start, end, action);
             preds = elist_length(_predecessors) - nbdsize;
             nbdsize = elist_length(_predecessors);
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Two recombinations (infix): ", preds);
             }
@@ -2044,13 +2045,13 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
             maximal_overlap_coalesces_map(genes, start, end, action);
             preds = elist_length(_predecessors) - nbdsize;
             nbdsize = elist_length(_predecessors);
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Two recombinations (overlap): ", preds);
             }
         }
 
-        if (howverbose > 0)
+        if (g_howverbose > 0)
         {
             fprintf(print_progress, "%-40s %3d\n", "Finished constructing predecessors.", elist_length(_predecessors));
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
@@ -2104,7 +2105,7 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
                 
                 _recombinations = predecessor->recombinations;
                 printscore = score_renormalise(predecessor->g, score_array[i]);
-                if (print_progress != NULL && howverbose == 2)
+                if (print_progress != NULL && g_howverbose == 2)
                 {
                     fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, predecessor->recombinations);
                     output_genes(predecessor->g, print_progress, NULL);
@@ -2173,10 +2174,10 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
         case COAL:
             break;
         case SE:
-            seflips = seflips + _greedy_choice->recombinations / g_se_cost;
+            seflips = seflips + _greedy_choice->recombinations / se_cost;
             break;
         case RM:
-            rmflips = rmflips + _greedy_choice->recombinations / g_rm_cost;
+            rmflips = rmflips + _greedy_choice->recombinations / rm_cost;
             break;
         case RECOMB1:
             recombs++;
@@ -2186,7 +2187,7 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
             break;
         }
 
-        if (print_progress != NULL && howverbose == 2)
+        if (print_progress != NULL && g_howverbose == 2)
         {
             fprintf(print_progress, "%s completed at cost of %.3f.\n", names[_greedy_choice->action], _greedy_choice->recombinations);
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
@@ -2194,7 +2195,7 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
             output_genes(_greedy_choice->g, print_progress, NULL);
             fflush(print_progress);
         }
-        if (print_progress != NULL && howverbose == 1)
+        if (print_progress != NULL && g_howverbose == 1)
         {
             fprintf(print_progress, "%s at cost %.3f \n", names[_greedy_choice->action], _greedy_choice->recombinations);
             fflush(print_progress);
@@ -2242,17 +2243,17 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
     {
         if (reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", reference, r_seed, Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", reference, r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", r_seed, Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
         }
     }
     else
     {
         // Otherwise, record the result
-        if (print_progress != NULL && howverbose > 0)
+        if (print_progress != NULL && g_howverbose > 0)
         {
             fprintf(print_progress, "\nTotal number of states considered: %d\n", total_nbdsize);
             fprintf(print_progress, "Total event cost: %.1f\n", r);
@@ -2268,11 +2269,11 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
         }
         if (reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", reference, r_seed, Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", reference, r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", r_seed, Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
         if (lookup != NULL)
         {

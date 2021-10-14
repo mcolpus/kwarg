@@ -424,13 +424,13 @@ int main(int argc, char **argv)
             }
             break;
         case 'V':
-            howverbose = strtol(optarg, &endptr, 10);
+            g_howverbose = strtol(optarg, &endptr, 10);
             if (errno != 0 || *endptr != '\0')
             {
                 fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
                 exit(1);
             }
-            if (howverbose > 2 && howverbose < 0)
+            if (g_howverbose > 2 && g_howverbose < 0)
             {
                 fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
                 exit(1);
@@ -829,7 +829,7 @@ int main(int argc, char **argv)
         rm_costs[0] = (rm_costs[0] != 0 ? rm_costs[0] : 0.9);
         r_costs[0] = (r_costs[0] != 0 ? r_costs[0] : 1.0);
         rr_costs[0] = (rr_costs[0] != 0 ? rr_costs[0] : 2.0);
-        if (howverbose > 0)
+        if (g_howverbose > 0)
         {
             head = 0;
         }
@@ -838,7 +838,7 @@ int main(int argc, char **argv)
     {
         if (multruns > 0 || cost_in > 1)
         {
-            howverbose = 0;
+            g_howverbose = 0;
         }
         for (t = 0; t < cost_in; t++)
         {
@@ -851,7 +851,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        howverbose = 0;
+        g_howverbose = 0;
         cost_in = 13;
         double template1[13] = {-1, 1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.01, 1};
         double template2[13] = {-1, 1.01, 0.91, 0.81, 0.71, 0.61, 0.51, 0.41, 0.31, 0.21, 0.11, 0.02, 1.1};
@@ -913,11 +913,7 @@ int main(int argc, char **argv)
 
         for (k = 0; k < cost_in; k++)
         {
-            g_se_cost = se_costs[k];
-            g_rm_cost = rm_costs[k];
-            g_r_cost = r_costs[k];
-            g_rr_cost = rr_costs[k];
-            if (g_se_cost == -1 && g_rm_cost == -1 && g_r_cost == -1 && g_rr_cost == -1)
+            if (se_costs[k] == -1 && rm_costs[k] == -1 && r_costs[k] == -1 && rr_costs[k] == -1)
             {
                 fprintf(stderr, "At least one type of event should be allowed (all event costs are -1).\n");
                 exit(1);
@@ -960,7 +956,7 @@ int main(int argc, char **argv)
                 // Get a history
                 clock_t tic, toc;
                 tic = clock();
-                n = ggreedy(genes_copy, print_progress, select, _reset_selections, ontheflyselection);
+                n = ggreedy(genes_copy, print_progress, select, _reset_selections, ontheflyselection, se_costs[k], rm_costs[k], r_costs[k], rr_costs[k]);
                 toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);

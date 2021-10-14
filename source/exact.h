@@ -17,5 +17,5 @@ void beagle_deallocate_hashtable(HashTable *t);
 double scoring_function(Genes *g);
 double score_renormalise(Genes *g, double sc);
 double ggreedy(Genes *g, FILE *print_progress, int (*select)(double),
-               void (*reset)(void), int ontheflyselection);
+               void (*reset)(void), int ontheflyselection, double se_cost, double rm_cost, double r_cost, double rr_cost);
 #endif

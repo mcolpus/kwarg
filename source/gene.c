@@ -7469,7 +7469,7 @@ void init_packedgeneshashtable(HashTable *table, int bits)
 
 /* Function to try all possible flips of sequencing errors
  */
-void seqerror_flips(Genes *g, void (*f)(Genes *))
+void seqerror_flips(Genes *g, void (*f)(Genes *), double se_cost)
 {
     int q, s, m;
     Genes *h;
@@ -7486,12 +7486,12 @@ void seqerror_flips(Genes *g, void (*f)(Genes *))
         {
             for (s = 0; s < g->length; s++)
             {
-                _recombinations = g_se_cost;
+                _recombinations = se_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = (int)(elist_get(tmp_sites, s));
                 if (m < 0)
                 {
-                    _recombinations = g_se_cost * (-m);
+                    _recombinations = se_cost * (-m);
                     no_events = -m;
                 }
                 c = get_genes_character(g, q, s);
@@ -7534,7 +7534,7 @@ void seqerror_flips(Genes *g, void (*f)(Genes *))
     }
 
     no_events = 1;
-    _recombinations = g_se_cost;
+    _recombinations = se_cost;
     eventlist = tmp;
     elements = tmp_elements;
     sites = tmp_sites;
@@ -7542,7 +7542,7 @@ void seqerror_flips(Genes *g, void (*f)(Genes *))
 
 /* Function to try all possible flips of recurrent mutations
  */
-void recmut_flips(Genes *g, void (*f)(Genes *))
+void recmut_flips(Genes *g, void (*f)(Genes *), double rm_cost)
 {
     int q, s, m;
     Genes *h;
@@ -7559,12 +7559,12 @@ void recmut_flips(Genes *g, void (*f)(Genes *))
         {
             for (s = 0; s < g->length; s++)
             {
-                _recombinations = g_rm_cost;
+                _recombinations = rm_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = (int)(elist_get(tmp_sites, s));
                 if (m < 0)
                 {
-                    _recombinations = g_rm_cost * (-m);
+                    _recombinations = rm_cost * (-m);
                     no_events = -m;
                 }
                 c = get_genes_character(g, q, s);
@@ -7606,7 +7606,7 @@ void recmut_flips(Genes *g, void (*f)(Genes *))
         }
     }
 
-    _recombinations = g_rm_cost;
+    _recombinations = rm_cost;
     no_events = 1;
     eventlist = tmp;
     elements = tmp_elements;

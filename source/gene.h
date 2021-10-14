@@ -156,8 +156,8 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
 EList *maximal_postfix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
 				     void (*f)(Genes *));
-void seqerror_flips(Genes* g, void (*f)(Genes *));
-void recmut_flips(Genes* g, void (*f)(Genes *));
+void seqerror_flips(Genes* g, void (*f)(Genes *), double se_cost);
+void recmut_flips(Genes* g, void (*f)(Genes *), double rm_cost);
 EList *maximal_infix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
 				  void (*f)(Genes *));
