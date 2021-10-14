@@ -62,7 +62,7 @@ int main(int argc, char **argv)
                 }
                 break;
             case 'k':
-                gene_knownancestor = 1;
+                g_gene_knownancestor = 1;
                 break;
             case 'Q':
                 quiet = 1;
@@ -103,7 +103,7 @@ int main(int argc, char **argv)
         }
     }
     
-    if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
+    if ((g_gene_knownancestor) && (seqtype != GENE_BINARY)) {
         /* First sequence only included to specify known common ancestor */
         remove_annotatedgene(a, 0);
     }
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
     //Initialise the elements array (this will track the number of recombinations which each of the sequences has undergone)
     elements = elist_make();
     sites = elist_make();
-    if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
+    if ((g_gene_knownancestor) && (seqtype != GENE_BINARY)) {
         for(i=0; i < g->n; i++) {
             elist_append(elements, (void *)(i+1));
         }

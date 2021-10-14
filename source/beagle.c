@@ -87,7 +87,7 @@ int main(int argc, char **argv)
     #ifdef HAPLOTYPE_BLOCKS
     FILE *haploblock_file = NULL;
     #endif
-    gene_knownancestor = 0;
+    g_gene_knownancestor = 0;
     
     /* Initialise random number generator */
     initialise_xrandom();
@@ -346,7 +346,7 @@ int main(int argc, char **argv)
                 break;
                 #endif
             case 'k':
-                gene_knownancestor = 1;
+                g_gene_knownancestor = 1;
                 break;
             case 'o':
                 format = GENE_BEAGLE;
@@ -407,7 +407,7 @@ int main(int argc, char **argv)
             exit(1);
         }
     }
-    if ((gene_knownancestor) && (seqtype != GENE_BINARY))
+    if ((g_gene_knownancestor) && (seqtype != GENE_BINARY))
         /* First sequnce only included to specify known common ancestor */
         remove_annotatedgene(a, 0);
     g = a->g;

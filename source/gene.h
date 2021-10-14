@@ -56,7 +56,7 @@ typedef struct _Index {
 /* Global variable for specifying whether the common ancestral
  * sequence is known or not.
  */
-extern int gene_knownancestor;
+extern int g_gene_knownancestor;
 /* Prototypes */
 void free_genes(Genes *g);
 Genes *make_genes();
@@ -138,7 +138,7 @@ void splitafter_coalescepostfix(Genes *g, int a, int index, int block, int b);
 int split_removeprefix(Genes *g, int a, int index, int block);
 int split_removepostfix(Genes *g, int a, int index, int block);
 int individual_ancestral_material(Genes *g, int i);
-int ancestral_material(Genes *g);
+int count_ancestral_material(Genes *g);
 int individual_all_ancestral(Genes *g, int i);
 int all_ancestral(Genes *g);
 int informative_ancestral_material(Genes *g);

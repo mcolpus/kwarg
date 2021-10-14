@@ -1,12 +1,12 @@
 /***************************************************************************
-*
-*    gene.c: Implementation of functions to read, print, and mutate an
-*    SNP data set.
-*
-*    Implementation of functions for building and outputting an
-*    ancestral recombination graph
-*
-****************************************************************************/
+ *
+ *    gene.c: Implementation of functions to read, print, and mutate an
+ *    SNP data set.
+ *
+ *    Implementation of functions for building and outputting an
+ *    ancestral recombination graph
+ *
+ ****************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,9 +27,26 @@
 #include "backtrack.h"
 
 /* Private type declarations */
-typedef enum { _GENE_SAME = 0, _GENE_OPPOSITE = 1, _GENE_MATCH = 2, _GENE_LEFT = 4, _GENE_RIGHT = 8 } _Gene_TwinTypeComponents;
-typedef enum { _GENE_INCOMPATIBLE = 0, _GENE_IDENTICAL = _GENE_SAME | _GENE_MATCH, _GENE_CONJUGATE = _GENE_OPPOSITE | _GENE_MATCH, _GENE_LEFTIDENTICAL = _GENE_SAME | _GENE_LEFT, _GENE_LEFTCONJUGATE = _GENE_OPPOSITE | _GENE_LEFT, _GENE_RIGHTIDENTICAL = _GENE_SAME | _GENE_RIGHT, _GENE_RIGHTCONJUGATE = _GENE_OPPOSITE | _GENE_RIGHT } _Gene_TwinType;
-typedef struct __SiameseBlock {
+typedef enum
+{
+    _GENE_SAME = 0,
+    _GENE_OPPOSITE = 1,
+    _GENE_MATCH = 2,
+    _GENE_LEFT = 4,
+    _GENE_RIGHT = 8
+} _Gene_TwinTypeComponents;
+typedef enum
+{
+    _GENE_INCOMPATIBLE = 0,
+    _GENE_IDENTICAL = _GENE_SAME | _GENE_MATCH,
+    _GENE_CONJUGATE = _GENE_OPPOSITE | _GENE_MATCH,
+    _GENE_LEFTIDENTICAL = _GENE_SAME | _GENE_LEFT,
+    _GENE_LEFTCONJUGATE = _GENE_OPPOSITE | _GENE_LEFT,
+    _GENE_RIGHTIDENTICAL = _GENE_SAME | _GENE_RIGHT,
+    _GENE_RIGHTCONJUGATE = _GENE_OPPOSITE | _GENE_RIGHT
+} _Gene_TwinType;
+typedef struct __SiameseBlock
+{
     int start;  /* Start of block of Siamese sites */
     int end;    /* End of block of Siamese sites */
     int master; /* Master site of block */
@@ -38,14 +55,15 @@ typedef struct __SiameseBlock {
 /* Global variable determining whether the most recent common ancestor
  * is assumed known.
  */
-int gene_knownancestor = 0;
+int g_gene_knownancestor = 0;
 
 /* Free memory used by a genes data structure */
 void free_genes(Genes *g)
 {
     int i;
 
-    for (i = 0; i < g->n; i++) {
+    for (i = 0; i < g->n; i++)
+    {
         free(g->data[i].type);
         free(g->data[i].ancestral);
     }
@@ -73,12 +91,14 @@ Genes *make_genes()
 /* Free memory used by an annotatedgenes data structure */
 void free_annotatedgenes(AnnotatedGenes *g)
 {
-    if (g->positions != NULL) {
+    if (g->positions != NULL)
+    {
         while (Length(g->positions) > 0)
             free(Pop(g->positions));
         DestroyLList(g->positions);
     }
-    if (g->sequences != NULL) {
+    if (g->sequences != NULL)
+    {
         while (Length(g->sequences) > 0)
             free(Pop(g->sequences));
         DestroyLList(g->sequences);
@@ -92,7 +112,8 @@ void free_sites(Sites *s)
 {
     int i;
 
-    for (i = 0; i < s->length; i++) {
+    for (i = 0; i < s->length; i++)
+    {
         free(s->data[i].type);
         free(s->data[i].ancestral);
     }
@@ -142,14 +163,16 @@ static void init_gene(Gene *g, int n, char *s, char *anc, Gene_SeqType t)
 
     g->type = (unsigned long *)xcalloc(divblocksize(n - 1) + 1,
                                        sizeof(unsigned long));
-    g->ancestral = (unsigned long*)xcalloc(divblocksize(n - 1) + 1,
-                                           sizeof(unsigned long));
+    g->ancestral = (unsigned long *)xcalloc(divblocksize(n - 1) + 1,
+                                            sizeof(unsigned long));
 
     index = 1;
     j = 0;
     /* Initialise the sites */
-    for (i = 0; i < n; i++) {
-        switch(t) {
+    for (i = 0; i < n; i++)
+    {
+        switch (t)
+        {
         case GENE_BINARY:
             if (s[i] == '1')
                 /* Type in this position is 1 */
@@ -161,14 +184,16 @@ static void init_gene(Gene *g, int n, char *s, char *anc, Gene_SeqType t)
         case GENE_NUCLEIC:
             c = tolower(s[i]);
             a = tolower(anc[i]);
-            switch(a) {
+            switch (a)
+            {
             case 'a':
             case 'c':
             case 'g':
             case 't':
             case 'u':
                 /* Ancestral sequence is resolved for this site */
-                switch(c) {
+                switch (c)
+                {
                 case 'a':
                 case 'c':
                 case 'g':
@@ -186,7 +211,8 @@ static void init_gene(Gene *g, int n, char *s, char *anc, Gene_SeqType t)
                 break;
             default:
                 /* Ancestral sequence as yet undetermined in this site */
-                switch(c) {
+                switch (c)
+                {
                 case 'a':
                 case 'c':
                 case 'g':
@@ -204,7 +230,8 @@ static void init_gene(Gene *g, int n, char *s, char *anc, Gene_SeqType t)
         case GENE_AMINO:
             c = tolower(s[i]);
             a = tolower(anc[i]);
-            switch(a) {
+            switch (a)
+            {
             case 'a':
             case 'c':
             case 'd':
@@ -226,7 +253,8 @@ static void init_gene(Gene *g, int n, char *s, char *anc, Gene_SeqType t)
             case 'w':
             case 'y':
                 /* Ancestral sequence is resolved for this site */
-                switch(c) {
+                switch (c)
+                {
                 case 'a':
                 case 'c':
                 case 'd':
@@ -256,7 +284,8 @@ static void init_gene(Gene *g, int n, char *s, char *anc, Gene_SeqType t)
                 }
                 break;
             default:
-                switch(c) {
+                switch (c)
+                {
                 case 'a':
                 case 'c':
                 case 'd':
@@ -287,7 +316,8 @@ static void init_gene(Gene *g, int n, char *s, char *anc, Gene_SeqType t)
             }
         }
         index <<= 1;
-        if (index == 0) {
+        if (index == 0)
+        {
             /* The ancestral information created is complement of the actual
              * ancestral inforamtion.
              */
@@ -330,7 +360,8 @@ static char *read_file(FILE *fp)
 
     /* Read file, character by character */
     while ((data[i] = fgetc(fp)) != EOF)
-        if (++i == n) {
+        if (++i == n)
+        {
             /* Running out of space - double it */
             data = xrealloc(data, 2 * n * sizeof(char));
             n *= 2;
@@ -344,8 +375,13 @@ static char *read_file(FILE *fp)
 }
 
 /* Return next token from s. The `\' character escapes the following symbol */
-typedef enum { CHAR, ESCCHAR } Gene_Token_Type;
-typedef struct _Gene_Token {
+typedef enum
+{
+    CHAR,
+    ESCCHAR
+} Gene_Token_Type;
+typedef struct _Gene_Token
+{
     Gene_Token_Type type;
     char value;
 } Gene_Token;
@@ -358,20 +394,23 @@ static Gene_Token *get_token(char **s)
         /* Reached end of the string */
         return NULL;
 
-    if (**s == '\\') {
+    if (**s == '\\')
+    {
         /* Escaped character */
         (*s)++;
         if (**s == '\0')
             /* Reached end of the string (in a rather weird way) */
             return NULL;
-        else if (**s == '\n') {
+        else if (**s == '\n')
+        {
             /* Escape character glues two lines together */
             (*s)++;
             return get_token(s);
         }
         token = (Gene_Token *)xmalloc(sizeof(Gene_Token));
         token->type = ESCCHAR;
-        switch(**s) {
+        switch (**s)
+        {
         case 'n':
             token->value = '\n';
             break;
@@ -385,7 +424,8 @@ static Gene_Token *get_token(char **s)
             token->value = **s;
         }
     }
-    else {
+    else
+    {
         /* Normal character */
         token = (Gene_Token *)xmalloc(sizeof(Gene_Token));
         token->type = CHAR;
@@ -402,18 +442,22 @@ static LList *get_line(char **s)
     Gene_Token *t;
     LList *line = MakeLList();
 
-    for (;;) {
+    for (;;)
+    {
         t = get_token(s);
-        if (t == NULL) {
+        if (t == NULL)
+        {
             /* Reached end of file */
-            if (Length(line) == 0) {
+            if (Length(line) == 0)
+            {
                 DestroyLList(line);
                 return NULL;
             }
             else
                 return line;
         }
-        else if ((t->type == CHAR) && (t->value == '\n')) {
+        else if ((t->type == CHAR) && (t->value == '\n'))
+        {
             /* Reached end of line */
             free(t);
             if (Length(line) > 0)
@@ -434,17 +478,21 @@ static char *get_sequence(LList *s)
     LListCounter *c = MakeCounter(s, FIRST);
     Gene_Token *token = (Gene_Token *)Next(c);
 
-    while (token != NULL) {
-        if (token->type == CHAR) {
+    while (token != NULL)
+    {
+        if (token->type == CHAR)
+        {
             /* Next character was not escaped */
-            if (token->value == '#') {
+            if (token->value == '#')
+            {
                 /* Remainder of line is comment */
                 n = Length(s);
                 for (i = GetPosition(c); i < n; i++)
                     free(Dequeue(s));
                 break;
             }
-            else if (isspace(token->value)) {
+            else if (isspace(token->value))
+            {
                 /* Ignore white space */
                 free(RemoveMoveRight(s, c));
                 token = (Gene_Token *)Current(c);
@@ -456,9 +504,11 @@ static char *get_sequence(LList *s)
 
     /* Transfer characters to string */
     n = Length(s);
-    if (n > 0) {
+    if (n > 0)
+    {
         t = (char *)xmalloc((n + 1) * sizeof(char));
-        for (i = 0; i < n; i++) {
+        for (i = 0; i < n; i++)
+        {
             token = (Gene_Token *)Pop(s);
             t[i] = token->value;
             free(token);
@@ -484,9 +534,11 @@ static LList *get_labels(LList *s)
     Gene_Token *token = (Gene_Token *)Next(c);
     LList *labels = MakeLList();
 
-    while (token != NULL) {
+    while (token != NULL)
+    {
         /* Remove stretch of white spaces */
-        do {
+        do
+        {
             if ((!isspace(token->value)) || (token->type == ESCCHAR))
                 /* Next character is not white space */
                 break;
@@ -498,7 +550,8 @@ static LList *get_labels(LList *s)
             break;
 
         /* Find stretch of non-white space characters */
-        do {
+        do
+        {
             if ((isspace(token->value)) && (token->type == CHAR))
                 /* Next token is white space */
                 break;
@@ -509,7 +562,8 @@ static LList *get_labels(LList *s)
         if (n < 0)
             n = Length(s);
         t = (char *)xmalloc((n + 1) * sizeof(char));
-        for (i = 0; i < n; i++) {
+        for (i = 0; i < n; i++)
+        {
             token = (Gene_Token *)Pop(s);
             t[i] = token->value;
             free(token);
@@ -536,12 +590,13 @@ static void abort_parse(AnnotatedGenes *g, LListCounter *c, char **sequences,
     while (Length(g->positions) > 0)
         free(Pop(g->positions));
     DestroyLList(g->positions);
-    while (Length(g->sequences)> 0)
+    while (Length(g->sequences) > 0)
         free(Pop(g->sequences));
     DestroyLList(g->sequences);
     if (c != NULL)
         DestroyCounter(c);
-    if (n > 0) {
+    if (n > 0)
+    {
         for (i = 0; i < n; i++)
             free(sequences[i]);
         free(sequences);
@@ -561,54 +616,62 @@ static AnnotatedGenes *parse_genes_beagle(char *s, Gene_SeqType seqtype)
     AnnotatedGenes *g = (AnnotatedGenes *)xmalloc(sizeof(AnnotatedGenes));
     Gene_Token *token;
     int tagcount = 2, i, tag, l, m, n = 0;
-    static char tags[][11] = { ">", "positions:" };
+    static char tags[][11] = {">", "positions:"};
     char *t = NULL, *sequence, **sequences;
 
-    if (line == NULL) {
+    if (line == NULL)
+    {
         free(g);
         return NULL;
     }
     c = MakeCounter(line, FIRST);
     g->positions = MakeLList();
     g->sequences = MakeLList();
-    while (line != NULL) {
+    while (line != NULL)
+    {
         token = (Gene_Token *)Top(line);
-        if ((token->value == '#') && (token->type == CHAR)) {
+        if ((token->value == '#') && (token->type == CHAR))
+        {
             /* Entire line is comment */
             free(Pop(line));
             /* Remove initial white spaces */
-            while (Length(line) > 0) {
+            while (Length(line) > 0)
+            {
                 token = (Gene_Token *)Top(line);
                 if (!isspace(token->value) || (token->type == ESCCHAR))
                     break;
                 free(Pop(line));
             }
             /* Check whether it contains a sequence label or a list of site labels */
-            for (tag = 0; tag < tagcount; tag++) {
+            for (tag = 0; tag < tagcount; tag++)
+            {
                 InitCounter(c, line, FIRST);
-                for (i = 0; i < strlen(tags[tag]); i++) {
+                for (i = 0; i < strlen(tags[tag]); i++)
+                {
                     token = (Gene_Token *)Next(c);
-                    if ((tolower(token->value) != tags[tag][i])
-                            || (token->type == ESCCHAR))
+                    if ((tolower(token->value) != tags[tag][i]) || (token->type == ESCCHAR))
                         break;
                 }
                 if (i >= strlen(tags[tag]))
                     /* Matched tag */
                     break;
             }
-            switch(tag) {
+            switch (tag)
+            {
             case 0:
                 /* Matched sequence label tag */
                 for (i = 0; i < strlen(tags[0]); i++)
                     free(Pop(line));
                 /* Remove initial and trailing white space stretches */
-                while (Length(line) > 0) {
+                while (Length(line) > 0)
+                {
                     token = (Gene_Token *)Top(line);
                     if (!isspace(token->value) || (token->type == ESCCHAR))
                         break;
                     free(Pop(line));
                 }
-                while (Length(line) > 0) {
+                while (Length(line) > 0)
+                {
                     token = (Gene_Token *)Bottom(line);
                     if (!isspace(token->value) || (token->type == ESCCHAR))
                         break;
@@ -619,7 +682,8 @@ static AnnotatedGenes *parse_genes_beagle(char *s, Gene_SeqType seqtype)
                     /* Free old label */
                     free(t);
                 t = (char *)xmalloc((Length(line) + 1) * sizeof(char));
-                for (i = 0; Length(line) > 0; i++) {
+                for (i = 0; Length(line) > 0; i++)
+                {
                     token = Pop(line);
                     t[i] = token->value;
                     free(token);
@@ -641,40 +705,48 @@ static AnnotatedGenes *parse_genes_beagle(char *s, Gene_SeqType seqtype)
                 DestroyLList(line);
             }
         }
-        else {
+        else
+        {
             /* Line is not all comment - must be a sequence */
             sequence = get_sequence(line);
-            if (sequence != NULL) {
+            if (sequence != NULL)
+            {
                 /* And it was non-empty */
-                if (n == 0) {
+                if (n == 0)
+                {
                     /* First sequence encountered */
                     sequences = (char **)xmalloc(sizeof(char *));
                     sequences[0] = sequence;
                     m = n = 1;
                     l = strlen(sequence);
                 }
-                else {
-                    if (l != strlen(sequence)) {
+                else
+                {
+                    if (l != strlen(sequence))
+                    {
                         /* Sequences are not of identical length - abort */
                         abort_parse(g, c, sequences, n, t);
                         free(sequence);
                         return NULL;
                     }
-                    if (m == n) {
+                    if (m == n)
+                    {
                         /* We are running out of space - double it */
                         m *= 2;
                         sequences = (char **)xrealloc(sequences, m * sizeof(char *));
                     }
                     sequences[n++] = sequence;
                 }
-                if (t != NULL) {
+                if (t != NULL)
+                {
                     /* This sequence had a label */
                     for (i = Length(g->sequences) + 1; i < n; i++)
                         /* Make sure all previous sequences have an associated
                          * label by assigning unlabeled sequences the NULL label.
                          */
                         Enqueue(g->sequences, NULL);
-                    if (strlen(t) == 0) {
+                    if (strlen(t) == 0)
+                    {
                         /* Empty sequence label */
                         free(t);
                         Enqueue(g->sequences, NULL);
@@ -689,7 +761,8 @@ static AnnotatedGenes *parse_genes_beagle(char *s, Gene_SeqType seqtype)
     }
 
     /* Check for consistency, etc. */
-    if ((n == 0) || ((Length(g->positions) > 0) && (Length(g->positions) != l))) {
+    if ((n == 0) || ((Length(g->positions) > 0) && (Length(g->positions) != l)))
+    {
         /* either no sequences, or number of site labels does not match
          * number of sites.
          */
@@ -702,11 +775,13 @@ static AnnotatedGenes *parse_genes_beagle(char *s, Gene_SeqType seqtype)
          */
         for (i = Length(g->sequences); i < n; i++)
             Enqueue(g->sequences, NULL);
-    else {
+    else
+    {
         DestroyLList(g->sequences);
         g->sequences = NULL;
     }
-    if (Length(g->positions) == 0) {
+    if (Length(g->positions) == 0)
+    {
         DestroyLList(g->positions);
         g->positions = NULL;
     }
@@ -732,12 +807,14 @@ static void add_sequence(char *s, int *l, int *n, int *m, char ***sequences,
 {
     int i = 0;
 
-    if (*n == 0) {
+    if (*n == 0)
+    {
         /* First sequence to be added */
         *sequences = (char **)xmalloc(sizeof(char *));
         *m = 1;
     }
-    else if (*n == *m) {
+    else if (*n == *m)
+    {
         /* We are running out of space - double it */
         (*m) *= 2;
         *sequences = (char **)xrealloc(*sequences, *m * sizeof(char *));
@@ -745,7 +822,8 @@ static void add_sequence(char *s, int *l, int *n, int *m, char ***sequences,
 
     /* Copy sequence to sequences */
     (*sequences)[*n] = (char *)xmalloc((*l + 1) * sizeof(char));
-    while (i < *l) {
+    while (i < *l)
+    {
         if (!isspace(*s))
             (*sequences)[*n][i++] = *s;
         s++;
@@ -767,26 +845,31 @@ static AnnotatedGenes *parse_genes_fasta(char *s, Gene_SeqType seqtype)
 {
     int tagcount = 1, i, j, tag, k = 0, l = 0, m, n = 0;
     AnnotatedGenes *g = (AnnotatedGenes *)xmalloc(sizeof(AnnotatedGenes));
-    static char tags[][11] = { "positions:" };
+    static char tags[][11] = {"positions:"};
     char *sequence = NULL, *label, **sequences, *t;
 
     /* First line should be first sequence label */
-    if (*s != '>') {
+    if (*s != '>')
+    {
         free(g);
         return NULL;
     }
 
     g->sequences = MakeLList();
     g->positions = MakeLList();
-    while (*s != '\0') {
-        switch (*s) {
+    while (*s != '\0')
+    {
+        switch (*s)
+        {
         case '>':
             /* Beginning of new sequence */
-            if (sequence != NULL) {
+            if (sequence != NULL)
+            {
                 /* Store previous sequence */
                 if (l == 0)
                     l = k;
-                if ((k == 0) || (k != l)) {
+                if ((k == 0) || (k != l))
+                {
                     /* No sequence for last sequence label or sequences not of
                      * equal length.
                      */
@@ -801,7 +884,8 @@ static AnnotatedGenes *parse_genes_fasta(char *s, Gene_SeqType seqtype)
             while ((isspace(*s)) && (*s != '\n'))
                 s++;
             /* Determine sequence label */
-            if (*s == '\0') {
+            if (*s == '\0')
+            {
                 /* End of file - last sequence is empty */
                 abort_parse(g, NULL, sequences, n, sequence);
                 return NULL;
@@ -809,10 +893,13 @@ static AnnotatedGenes *parse_genes_fasta(char *s, Gene_SeqType seqtype)
             if (*s == '\n')
                 /* No sequence name */
                 sequence = NULL;
-            else {
-                for (i = 0; (s[i] != '\n') && (s[i] != '\0'); i++);
+            else
+            {
+                for (i = 0; (s[i] != '\n') && (s[i] != '\0'); i++)
+                    ;
                 /* Removing trailing stretch of white space */
-                for (j = i - 1; isspace(s[j]); j--);
+                for (j = i - 1; isspace(s[j]); j--)
+                    ;
                 sequence = (char *)xcalloc(j + 2, sizeof(char));
                 strncpy(sequence, s, j + 1);
                 s += i;
@@ -822,7 +909,8 @@ static AnnotatedGenes *parse_genes_fasta(char *s, Gene_SeqType seqtype)
             break;
         case ';':
             /* Comment line */
-            if (k > 0) {
+            if (k > 0)
+            {
                 /* Comments should precede sequences */
                 abort_parse(g, NULL, sequences, n, sequence);
                 return NULL;
@@ -833,34 +921,40 @@ static AnnotatedGenes *parse_genes_fasta(char *s, Gene_SeqType seqtype)
             /* Remove white spaces */
             while (isspace(*s) && (*s != '\n'))
                 s++;
-            if (*s == '\n') {
+            if (*s == '\n')
+            {
                 /* Empty comment line */
                 /* Record (possible) start of sequence data */
                 t = s + 1;
                 break;
             }
             /* Check whether comment line contains special tag */
-            for (tag = 0; tag < tagcount; tag++) {
+            for (tag = 0; tag < tagcount; tag++)
+            {
                 for (i = 0; i < strlen(tags[tag]); i++)
                     if (tolower(s[i]) != tags[tag][i])
                         break;
-                if (i >= strlen(tags[tag])) {
+                if (i >= strlen(tags[tag]))
+                {
                     /* Matched tag */
                     s += i;
                     break;
                 }
             }
-            switch(tag) {
+            switch (tag)
+            {
             case 0:
                 /* Matched site labels tag */
-                while ((*s != '\n') && (*s != '\0')) {
+                while ((*s != '\n') && (*s != '\0'))
+                {
                     /* Skip stretches of white space */
                     while (isspace(*s) && (*s != '\n'))
                         s++;
                     if ((*s == '\n') || (*s == '\0'))
                         break;
                     /* Determine next label */
-                    for (i = 0; !isspace(s[i]) && (s[i] != '\0'); i++);
+                    for (i = 0; !isspace(s[i]) && (s[i] != '\0'); i++)
+                        ;
                     label = (char *)xcalloc(i + 1, sizeof(char));
                     strncpy(label, s, i);
                     Enqueue(g->positions, label);
@@ -877,7 +971,8 @@ static AnnotatedGenes *parse_genes_fasta(char *s, Gene_SeqType seqtype)
             break;
         default:
             /* Line containts (part of) the sequence - count number of symbols */
-            while ((*s != '\n') && (*s != '\0')) {
+            while ((*s != '\n') && (*s != '\0'))
+            {
                 s++;
                 k++;
             }
@@ -888,7 +983,8 @@ static AnnotatedGenes *parse_genes_fasta(char *s, Gene_SeqType seqtype)
     }
 
     /* Store last sequence */
-    if ((k == 0) || ((n > 0) && (l != k))) {
+    if ((k == 0) || ((n > 0) && (l != k)))
+    {
         /* No sequence for last sequence label or sequences not of
          * equal length.
          */
@@ -898,12 +994,14 @@ static AnnotatedGenes *parse_genes_fasta(char *s, Gene_SeqType seqtype)
     add_sequence(t, &k, &n, &m, &sequences, g, sequence);
 
     /* Check for consistency */
-    if ((Length(g->positions) > 0) && (Length(g->positions) != l)) {
+    if ((Length(g->positions) > 0) && (Length(g->positions) != l))
+    {
         /* Number of site labels does not match number of sites */
         abort_parse(g, NULL, sequences, n, NULL);
         return NULL;
     }
-    if (Length(g->positions) == 0) {
+    if (Length(g->positions) == 0)
+    {
         DestroyLList(g->positions);
         g->positions = NULL;
     }
@@ -929,8 +1027,10 @@ AnnotatedGenes *read_genes(char *fname, Gene_Format f, Gene_SeqType t)
     /* Set up file for input */
     if (fname == NULL)
         fp = stdin;
-    else {
-        if ((fp = fopen(fname, "r")) == NULL) {
+    else
+    {
+        if ((fp = fopen(fname, "r")) == NULL)
+        {
             fprintf(stderr, "Cannot open file %s\n", fname);
             exit(1);
         }
@@ -949,11 +1049,12 @@ AnnotatedGenes *read_genes(char *fname, Gene_Format f, Gene_SeqType t)
     free(s);
 
     /* Did we succeed? */
-    if (g == NULL) {
+    if (g == NULL)
+    {
         /* No! */
-        fprintf(stderr, "Could not read data from %s", (fname != NULL ? fname :
-                "standard input"));
-        switch(f) {
+        fprintf(stderr, "Could not read data from %s", (fname != NULL ? fname : "standard input"));
+        switch (f)
+        {
         case GENE_ANY:
             fprintf(stderr, ".\n");
             break;
@@ -981,11 +1082,13 @@ static int _output_genes(Genes *g, FILE *fp, LList *labels)
     LListCounter *c;
     char *label;
 
-    if (labels != NULL) {
+    if (labels != NULL)
+    {
         /* Find length of longest sequence label */
         l = 0;
         c = MakeCounter(labels, FIRST);
-        while ((label = (char *)Next(c)) != NULL) {
+        while ((label = (char *)Next(c)) != NULL)
+        {
             i = strlen(label);
             l = (i > l ? i : l);
         }
@@ -993,60 +1096,74 @@ static int _output_genes(Genes *g, FILE *fp, LList *labels)
     }
 
     /* Output genes */
-    for (i = 0; i < g->n; i++) {
-        if (labels != NULL) {
+    for (i = 0; i < g->n; i++)
+    {
+        if (labels != NULL)
+        {
             /* First output label */
             label = Next(c);
-            if (fprintf(fp, "%s", label) < 0) {
+            if (fprintf(fp, "%s", label) < 0)
+            {
                 fprintf(stderr, "Error outputting data\n");
                 exit(1);
             }
             /* Output alignment spaces */
             for (j = strlen(label); j <= l; j++)
-                if (fputc((int)' ', fp) == EOF) {
+                if (fputc((int)' ', fp) == EOF)
+                {
                     fprintf(stderr, "Error outputting data\n");
                     exit(1);
                 }
         }
         index = 1;
         block = 0;
-        for (j = 0; j < g->length; j++) {
-            if (g->data[i].ancestral[block] & index) {
-                if (g->data[i].type[block] & index) {
+        for (j = 0; j < g->length; j++)
+        {
+            if (g->data[i].ancestral[block] & index)
+            {
+                if (g->data[i].type[block] & index)
+                {
                     /* Gene i has type 1 at site j */
-                    if (fputc((int)'1', fp) == EOF) {
+                    if (fputc((int)'1', fp) == EOF)
+                    {
                         fprintf(stderr, "Error outputting data\n");
                         exit(1);
                     }
                 }
                 else
                     /* Gene i has type 0 at site j */
-                    if (fputc((int)'0', fp) == EOF) {
+                    if (fputc((int)'0', fp) == EOF)
+                    {
                         fprintf(stderr, "Error outputting data\n");
                         exit(1);
                     }
             }
-            else {
+            else
+            {
                 /* Gene i does not have ancestral data at site j */
-                if (fputc((int)'x', fp) == EOF) {
+                if (fputc((int)'x', fp) == EOF)
+                {
                     fprintf(stderr, "Error outputting data\n");
                     exit(1);
                 }
             }
             index <<= 1;
-            if (index == 0) {
+            if (index == 0)
+            {
                 index = 1;
                 block++;
             }
         }
         /* Finished outputting gene i */
-        if (fputc((int)'\n', fp) == EOF) {
+        if (fputc((int)'\n', fp) == EOF)
+        {
             fprintf(stderr, "Error outputting data\n");
             exit(1);
         }
     }
 
-    if (labels != NULL) {
+    if (labels != NULL)
+    {
         /* Clean up */
         DestroyCounter(c);
         return l + 1;
@@ -1078,7 +1195,7 @@ void output_labelled_genes(Genes *g, FILE *fp, LList *labels)
     /* Set up file for output */
     if (fp == NULL)
         fp = stdout;
-    
+
     _output_genes(g, fp, labels);
 }
 
@@ -1118,28 +1235,34 @@ void output_annotatedgenes(AnnotatedGenes *a, FILE *fp, char *comment)
     l = _output_genes(a->g, fp, a->sequences);
 
     /* Output labels */
-    if (a->positions != NULL) {
+    if (a->positions != NULL)
+    {
         c = MakeCounter(a->positions, FIRST);
         while ((label = (char *)Next(c)) != NULL)
             if (strlen(label) > 0)
                 break;
-        if (label != NULL) {
+        if (label != NULL)
+        {
             /* At least one label was not the empty string */
             i = 0;
             m = 1;
-            while (m) {
+            while (m)
+            {
                 m = 0;
                 /* Start by emitting as many spaces as the sequence labels took up */
                 for (j = 0; j < l; j++)
-                    if (fputc((int)' ', fp) == EOF) {
+                    if (fputc((int)' ', fp) == EOF)
+                    {
                         fprintf(stderr, "Error outputting data\n");
                         exit(1);
                     }
                 /* Now emit next symbol of the sequence labels */
                 InitCounter(c, a->positions, FIRST);
-                while ((label = (char *)Next(c)) != NULL) {
+                while ((label = (char *)Next(c)) != NULL)
+                {
                     j = strlen(label);
-                    if (i < j) {
+                    if (i < j)
+                    {
                         if (i < j - 1)
                             /* This label will require at least one more iteration */
                             m = 1;
@@ -1148,12 +1271,14 @@ void output_annotatedgenes(AnnotatedGenes *a, FILE *fp, char *comment)
                     else
                         /* This label does not contain any more symbols */
                         j = ' ';
-                    if (fputc(j, fp) == EOF) {
+                    if (fputc(j, fp) == EOF)
+                    {
                         fprintf(stderr, "Error outputting data\n");
                         exit(1);
                     }
                 }
-                if (fputc('\n', fp) == EOF) {
+                if (fputc('\n', fp) == EOF)
+                {
                     fprintf(stderr, "Error outputting data\n");
                     exit(1);
                 }
@@ -1175,7 +1300,8 @@ void add_gene(Genes *g, Gene *new, ...)
     va_list args;
 
     /* Determine length of sequences and corresponding number of blocks */
-    if (g->n == 0) {
+    if (g->n == 0)
+    {
         va_start(args, new);
         g->length = (int)va_arg(args, int);
         va_end(args);
@@ -1187,12 +1313,10 @@ void add_gene(Genes *g, Gene *new, ...)
     g->data = (Gene *)xrealloc(g->data, g->n * sizeof(Gene));
 
     /* Copy new gene to structure */
-    g->data[g->n - 1].type
-        = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+    g->data[g->n - 1].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
     memcpy(g->data[g->n - 1].type, new->type,
            blocks * sizeof(unsigned long));
-    g->data[g->n - 1].ancestral
-        = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+    g->data[g->n - 1].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
     memcpy(g->data[g->n - 1].ancestral, new->ancestral,
            blocks * sizeof(unsigned long));
 }
@@ -1208,7 +1332,8 @@ void add_site(Sites *s, Site *new, ...)
 
     va_list args;
     /* Determine number of sequences and corresponding number of blocks */
-    if (s->length == 0) {
+    if (s->length == 0)
+    {
         va_start(args, new);
         s->n = (int)va_arg(args, int);
         va_end(args);
@@ -1220,12 +1345,10 @@ void add_site(Sites *s, Site *new, ...)
     s->data = (Site *)xrealloc(s->data, s->length * sizeof(Site));
 
     /* Copy new site to structure */
-    s->data[s->length - 1].type
-        = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+    s->data[s->length - 1].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
     memcpy(s->data[s->length - 1].type, new->type,
            blocks * sizeof(unsigned long));
-    s->data[s->length - 1].ancestral
-        = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+    s->data[s->length - 1].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
     memcpy(s->data[s->length - 1].ancestral, new->ancestral,
            blocks * sizeof(unsigned long));
 }
@@ -1268,24 +1391,25 @@ Genes *select_genes(Genes *g, EList *l)
     Genes *h = xmalloc(sizeof(Genes));
     h->n = elist_length(l);
 
-    if (h->n == 0) {
+    if (h->n == 0)
+    {
         /* Empty list of sequences */
         h->length = 0;
         h->data = (Gene *)xmalloc(sizeof(Gene));
         h->data[0].type = (unsigned long *)xcalloc(1, sizeof(unsigned long));
         h->data[0].ancestral = (unsigned long *)xcalloc(1, sizeof(unsigned long));
     }
-    else {
+    else
+    {
         /* Add specified sequences to h */
         h->length = g->length;
         h->data = (Gene *)xmalloc(h->n * sizeof(Gene));
-        for (i = 0; i < h->n; i++) {
-            h->data[i].type
-                = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+        for (i = 0; i < h->n; i++)
+        {
+            h->data[i].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
             memcpy(h->data[i].type, g->data[(int)elist_get(l, i)].type,
                    blocks * sizeof(unsigned long));
-            h->data[i].ancestral
-                = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+            h->data[i].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
             memcpy(h->data[i].ancestral, g->data[(int)elist_get(l, i)].ancestral,
                    blocks * sizeof(unsigned long));
         }
@@ -1304,24 +1428,25 @@ Sites *select_sites(Sites *s, EList *l)
     Sites *t = xmalloc(sizeof(Sites));
     t->length = elist_length(l);
 
-    if (t->length == 0) {
+    if (t->length == 0)
+    {
         /* Empty list of sequences */
         t->n = 0;
         t->data = (Site *)xmalloc(sizeof(Site));
         t->data[0].type = (unsigned long *)xcalloc(1, sizeof(unsigned long));
         t->data[0].ancestral = (unsigned long *)xcalloc(1, sizeof(unsigned long));
     }
-    else {
+    else
+    {
         /* Add specified sites to t */
         t->n = s->n;
         t->data = (Site *)xmalloc(elist_length(l) * sizeof(Gene));
-        for (i = 0; i < t->n; i++) {
-            t->data[i].type
-                = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+        for (i = 0; i < t->n; i++)
+        {
+            t->data[i].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
             memcpy(t->data[i].type, s->data[(int)elist_get(l, i)].type,
                    blocks * sizeof(unsigned long));
-            t->data[i].ancestral
-                = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+            t->data[i].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
             memcpy(t->data[i].ancestral, s->data[(int)elist_get(l, i)].ancestral,
                    blocks * sizeof(unsigned long));
         }
@@ -1442,11 +1567,10 @@ void add_ancestral_genes(Genes *g)
     g->data = (Gene *)xrealloc(g->data, g->n * sizeof(Gene));
 
     /* Insert the all 0 sequence */
-    g->data[g->n - 1].type
-        = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    g->data[g->n - 1].ancestral
-        = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    for (i = 0; i < blocks - 1; i++) {
+    g->data[g->n - 1].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+    g->data[g->n - 1].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+    for (i = 0; i < blocks - 1; i++)
+    {
         g->data[g->n - 1].type[i] = 0;
         g->data[g->n - 1].ancestral[i] = ~0;
     }
@@ -1465,14 +1589,13 @@ void add_ancestral_sites(Sites *s)
     /* Insert the all 0 sequence */
     if (index == 0)
         /* We need to extend the bit arrays for each size */
-        for (i = 0; i < s->length; i++) {
-            s->data[i].type
-                = (unsigned long *)xrealloc(s->data[i].type,
-                                            blocks * sizeof(unsigned long));
+        for (i = 0; i < s->length; i++)
+        {
+            s->data[i].type = (unsigned long *)xrealloc(s->data[i].type,
+                                                        blocks * sizeof(unsigned long));
             s->data[i].type[blocks - 1] = 0;
-            s->data[i].ancestral
-                = (unsigned long *)xrealloc(s->data[i].ancestral,
-                                            blocks * sizeof(unsigned long));
+            s->data[i].ancestral = (unsigned long *)xrealloc(s->data[i].ancestral,
+                                                             blocks * sizeof(unsigned long));
             s->data[i].ancestral[blocks - 1] = 1;
         }
     else
@@ -1491,12 +1614,11 @@ Genes *copy_genes(Genes *g)
     new->n = g->n;
     new->data = (Gene *)xmalloc(new->n * sizeof(Gene));
 
-    for (i = 0; i < new->n; i++) {
-        new->data[i].type
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+    for (i = 0; i < new->n; i++)
+    {
+        new->data[i].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
         memcpy(new->data[i].type, g->data[i].type, blocks * sizeof(unsigned long));
-        new->data[i].ancestral
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+        new->data[i].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
         memcpy(new->data[i].ancestral, g->data[i].ancestral,
                blocks * sizeof(unsigned long));
     }
@@ -1514,12 +1636,11 @@ Sites *copy_sites(Sites *s)
     new->n = s->n;
     new->data = (Site *)xmalloc(new->length * sizeof(Site));
 
-    for (i = 0; i < new->length; i++) {
-        new->data[i].type
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+    for (i = 0; i < new->length; i++)
+    {
+        new->data[i].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
         memcpy(new->data[i].type, s->data[i].type, blocks * sizeof(unsigned long));
-        new->data[i].ancestral
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+        new->data[i].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
         memcpy(new->data[i].ancestral, s->data[i].ancestral,
                blocks * sizeof(unsigned long));
     }
@@ -1539,22 +1660,20 @@ Genes *copy_allbutone(Genes *g, int a)
     new->n = g->n - 1;
     new->data = (Gene *)xmalloc(new->n * sizeof(Gene));
 
-    for (i = 0; i < a; i++) {
-        new->data[i].type
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+    for (i = 0; i < a; i++)
+    {
+        new->data[i].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
         memcpy(new->data[i].type, g->data[i].type, blocks * sizeof(unsigned long));
-        new->data[i].ancestral
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+        new->data[i].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
         memcpy(new->data[i].ancestral, g->data[i].ancestral,
                blocks * sizeof(unsigned long));
     }
-    for (; i < new->n; i++) {
-        new->data[i].type
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+    for (; i < new->n; i++)
+    {
+        new->data[i].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
         memcpy(new->data[i].type, g->data[i + 1].type,
                blocks * sizeof(unsigned long));
-        new->data[i].ancestral
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+        new->data[i].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
         memcpy(new->data[i].ancestral, g->data[i + 1].ancestral,
                blocks * sizeof(unsigned long));
     }
@@ -1572,40 +1691,40 @@ Genes *copy_region(Genes *g, int a, int b)
               shift = modblocksize(a), gblocks = divblocksize(g->n - 1) + 1;
     unsigned long pattern = ((unsigned long)1 << modblocksize(b - a)) - 1;
 
-    if ((new->length = b - a) < 0) {
+    if ((new->length = b - a) < 0)
+    {
         /* Cannot copy a region of negative size */
-        free (new);
+        free(new);
         return NULL;
     }
     new->n = g->n;
     new->data = (Gene *)xmalloc(new->n * sizeof(Gene));
 
-    for (i = 0; i < new->n; i++) {
+    for (i = 0; i < new->n; i++)
+    {
         /* Copy sequence i region */
-        new->data[i].type
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-        new->data[i].ancestral
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-        for (j = 0; j < blocks - 1; j++) {
+        new->data[i].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+        new->data[i].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+        for (j = 0; j < blocks - 1; j++)
+        {
             new->data[i].type[j] = g->data[i].type[j + start] >> shift;
             new->data[i].ancestral[j] = g->data[i].ancestral[j + start] >> shift;
-            if (shift != 0) {
-                new->data[i].type[j]
-                |= g->data[i].type[j + start + 1] << (BLOCKSIZE - shift);
-                new->data[i].ancestral[j]
-                |= g->data[i].ancestral[j + start + 1] << (BLOCKSIZE - shift);
+            if (shift != 0)
+            {
+                new->data[i].type[j] |= g->data[i].type[j + start + 1] << (BLOCKSIZE - shift);
+                new->data[i].ancestral[j] |= g->data[i].ancestral[j + start + 1] << (BLOCKSIZE - shift);
             }
         }
         /* Last block - handle with care */
         new->data[i].type[j] = g->data[i].type[j + start] >> shift;
         new->data[i].ancestral[j] = g->data[i].ancestral[j + start] >> shift;
-        if ((shift != 0) && (j + start < gblocks - 1)) {
-            new->data[i].type[j]
-            |= g->data[i].type[j + start + 1] << (BLOCKSIZE - shift);
-            new->data[i].ancestral[j]
-            |= g->data[i].ancestral[j + start + 1] << (BLOCKSIZE - shift);
+        if ((shift != 0) && (j + start < gblocks - 1))
+        {
+            new->data[i].type[j] |= g->data[i].type[j + start + 1] << (BLOCKSIZE - shift);
+            new->data[i].ancestral[j] |= g->data[i].ancestral[j + start + 1] << (BLOCKSIZE - shift);
         }
-        if (pattern != 0) {
+        if (pattern != 0)
+        {
             new->data[i].type[j] &= pattern;
             new->data[i].ancestral[j] &= pattern;
         }
@@ -1617,7 +1736,8 @@ Genes *copy_region(Genes *g, int a, int b)
 /* Remove sequence a from g */
 void remove_gene(Genes *g, int a)
 {
-    if ((a >= 0) && (a < g->n)) {
+    if ((a >= 0) && (a < g->n))
+    {
         g->n--;
         free(g->data[a].type);
         free(g->data[a].ancestral);
@@ -1630,14 +1750,17 @@ void remove_annotatedgene(AnnotatedGenes *annotated_genes, int seq_number)
 {
     LListCounter *lcounter;
 
-    if ((seq_number >= 0) && (seq_number < annotated_genes->g->n)) {
+    if ((seq_number >= 0) && (seq_number < annotated_genes->g->n))
+    {
         remove_gene(annotated_genes->g, seq_number);
-        if (annotated_genes->positions != NULL) {
+        if (annotated_genes->positions != NULL)
+        {
             lcounter = MakeCounter(annotated_genes->positions, seq_number);
             RemoveMoveRight(annotated_genes->positions, lcounter);
             free(lcounter);
         }
-        if (annotated_genes->sequences != NULL) {
+        if (annotated_genes->sequences != NULL)
+        {
             lcounter = MakeCounter(annotated_genes->sequences, seq_number);
             RemoveMoveRight(annotated_genes->sequences, lcounter);
             free(lcounter);
@@ -1654,13 +1777,12 @@ void reallocate_genes(Genes *g)
     int i, blocks = divblocksize(g->length - 1) + 1;
 
     g->data = (Gene *)xrealloc(g->data, g->n * sizeof(Gene));
-    for (i = 0; i < g->n; i++) {
-        g->data[i].type
-            = (unsigned long *)xrealloc(g->data[i].type,
-                                        blocks * sizeof(unsigned long));
-        g->data[i].ancestral
-            = (unsigned long *)xrealloc(g->data[i].ancestral,
-                                        blocks * sizeof(unsigned long));
+    for (i = 0; i < g->n; i++)
+    {
+        g->data[i].type = (unsigned long *)xrealloc(g->data[i].type,
+                                                    blocks * sizeof(unsigned long));
+        g->data[i].ancestral = (unsigned long *)xrealloc(g->data[i].ancestral,
+                                                         blocks * sizeof(unsigned long));
     }
 }
 
@@ -1679,11 +1801,13 @@ Genes *random_genes(int n, int m)
     /* Determine how many unbiased bits we obtain from rand, and create
      * a filter for obtaining them.
      */
-    while (filter & XRAND_MAX) {
+    while (filter & XRAND_MAX)
+    {
         bits++;
         filter <<= 1;
     }
-    if (bits > BLOCKSIZE) {
+    if (bits > BLOCKSIZE)
+    {
         bits = BLOCKSIZE;
         filter = ~0;
     }
@@ -1691,27 +1815,27 @@ Genes *random_genes(int n, int m)
         filter--;
 
     /* Create new genes */
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < n; i++)
+    {
         /* Allocate memory for gene i */
         g->data[i].type = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
-        g->data[i].ancestral
-            = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+        g->data[i].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
         /* Set type to random value */
-        for (j = 0; j < m; j += bits) {
+        for (j = 0; j < m; j += bits)
+        {
             data = xrandom();
             g->data[i].type[divblocksize(j)] |= data << modblocksize(j);
-            if ((modblocksize(j) + bits > BLOCKSIZE)
-                    && (divblocksize(j) < blocks - 1))
+            if ((modblocksize(j) + bits > BLOCKSIZE) && (divblocksize(j) < blocks - 1))
                 /* This block of random bits extends into the next block in g */
-                g->data[i].type[divblocksize(j) + 1]
-                    = (j == 0 ? 0 : data >> (BLOCKSIZE - modblocksize(j)));
+                g->data[i].type[divblocksize(j) + 1] = (j == 0 ? 0 : data >> (BLOCKSIZE - modblocksize(j)));
         }
         /* Set gene to have ancestral material in all positions */
         for (j = 0; j < blocks - 1; j++)
             g->data[i].ancestral[j] = ~0;
         if (modblocksize(m) == 0)
             g->data[i].ancestral[j] = ~0;
-        else {
+        else
+        {
             g->data[i].ancestral[j] = ((unsigned long)1 << modblocksize(m)) - 1;
             g->data[i].type[j] &= g->data[i].ancestral[j];
         }
@@ -1732,22 +1856,23 @@ Sites *genes2sites(Genes *g)
     s->n = g->n;
     s->length = g->length;
     s->data = (Site *)xmalloc(g->length * sizeof(Site));
-    for (i = 0; i < s->length; i++) {
+    for (i = 0; i < s->length; i++)
+    {
         /* Construct site i */
-        s->data[i].type
-            = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
-        s->data[i].ancestral
-            = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
+        s->data[i].type = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
+        s->data[i].ancestral = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
         /* Collect data from all sequences */
         index = 1;
         block = 0;
-        for (j = 0; j < s->n; j++) {
+        for (j = 0; j < s->n; j++)
+        {
             if (g->data[j].type[divblocksize(i)] & (unsigned long)1 << modblocksize(i))
                 s->data[i].type[block] |= index;
             if (g->data[j].ancestral[divblocksize(i)] & (unsigned long)1 << modblocksize(i))
                 s->data[i].ancestral[block] |= index;
             index <<= 1;
-            if (index == 0) {
+            if (index == 0)
+            {
                 index = 1;
                 block += 1;
             }
@@ -1769,23 +1894,24 @@ Genes *sites2genes(Sites *s)
     g->n = s->n;
     g->length = s->length;
     g->data = (Gene *)xmalloc(g->n * sizeof(Gene));
-    for (i = 0; i < g->n; i++) {
+    for (i = 0; i < g->n; i++)
+    {
         /* Construct sequence i */
-        g->data[i].type
-            = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
-        g->data[i].ancestral
-            = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
+        g->data[i].type = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
+        g->data[i].ancestral = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
         /* Collect data from all sites */
         index = 1;
         block = 0;
-        for (j = 0; j < g->length; j++) {
+        for (j = 0; j < g->length; j++)
+        {
             /* Handle site j */
             if (s->data[j].type[divblocksize(i)] & (unsigned long)1 << modblocksize(i))
                 g->data[i].type[block] |= index;
             if (s->data[j].ancestral[divblocksize(i)] & (unsigned long)1 << modblocksize(i))
                 g->data[i].ancestral[block] |= index;
             index <<= 1;
-            if (index == 0) {
+            if (index == 0)
+            {
                 index = 1;
                 block += 1;
             }
@@ -1801,12 +1927,14 @@ char **genes2string(Genes *g)
     int i, j;
     char **s = NULL;
 
-    if (g->n > 0) {
+    if (g->n > 0)
+    {
         /* Allocate array for the sequences */
         s = (char **)xmalloc(g->n * sizeof(char *));
 
         /* Now convert the sequences in g to strings */
-        for (i = 0; i < g->n; i++) {
+        for (i = 0; i < g->n; i++)
+        {
             s[i] = (char *)xcalloc(g->length + 1, sizeof(char));
             for (j = 0; j < g->length; j++)
                 if (g->data[i].type[divblocksize(j)] & (unsigned long)1 << modblocksize(j))
@@ -1820,7 +1948,6 @@ char **genes2string(Genes *g)
 
     return s;
 }
-
 
 /* Output site data in s to file fp (stdout if fp is NULL), prefixed
  * with comment if not NULL.
@@ -1839,38 +1966,48 @@ void output_sites(Sites *s, FILE *fp, char *comment)
         fprintf(fp, "%s", comment);
     index = 1;
     block = 0;
-    for (i = 0; i < s->n; i++) {
-        for (j = 0; j < s->length; j++) {
-            if (s->data[j].ancestral[block] & index) {
-                if (s->data[j].type[block] & index) {
+    for (i = 0; i < s->n; i++)
+    {
+        for (j = 0; j < s->length; j++)
+        {
+            if (s->data[j].ancestral[block] & index)
+            {
+                if (s->data[j].type[block] & index)
+                {
                     /* Gene i has type 1 at site j */
-                    if (fputc((int)'1', fp) == EOF) {
+                    if (fputc((int)'1', fp) == EOF)
+                    {
                         fprintf(stderr, "Error outputting data\n");
                         exit(1);
                     }
                 }
                 else
                     /* Gene i has type 0 at site j */
-                    if (fputc((int)'0', fp) == EOF) {
+                    if (fputc((int)'0', fp) == EOF)
+                    {
                         fprintf(stderr, "Error outputting data\n");
                         exit(1);
                     }
             }
-            else {
+            else
+            {
                 /* Gene i does not have ancestral data at site j */
-                if (fputc((int)'x', fp) == EOF) {
+                if (fputc((int)'x', fp) == EOF)
+                {
                     fprintf(stderr, "Error outputting data\n");
                     exit(1);
                 }
             }
         }
         /* Finished outputting gene i */
-        if (fputc((int)'\n', fp) == EOF) {
+        if (fputc((int)'\n', fp) == EOF)
+        {
             fprintf(stderr, "Error outputting data\n");
             exit(1);
         }
         index <<= 1;
-        if (index == 0) {
+        if (index == 0)
+        {
             index = 1;
             block++;
         }
@@ -1907,34 +2044,40 @@ static void transfer_data(Genes *g, int block, int low, int high,
 
     filter = ((unsigned long)2 << high) - ((unsigned long)1 << low);
 
-    if (high - low + 1 + *index >= BLOCKSIZE) {
+    if (high - low + 1 + *index >= BLOCKSIZE)
+    {
         /* We have enough data to fill a block, and data does not need to
          * be shifted right as the above inequality implies that index >= low.
          */
-        for (i = 0; i < g->n; i++) {
+        for (i = 0; i < g->n; i++)
+        {
             /* Copy type data */
             tmp = g->data[i].type[block] & filter;
-            if (low == *index) {
+            if (low == *index)
+            {
                 /* If low = index, the standard shift to construct new initial
                  * value of new would be equal to BLOCKSIZE.
                  */
                 g->data[i].type[*nblock] = new[0][i] | tmp;
                 new[0][i] = 0;
             }
-            else {
+            else
+            {
                 g->data[i].type[*nblock] = new[0][i] | tmp << (*index - low);
                 new[0][i] = tmp >> (low + BLOCKSIZE - *index);
             }
             /* Copy ancestral data */
             tmp = g->data[i].ancestral[block] & filter;
-            if (low == *index) {
+            if (low == *index)
+            {
                 /* If low = index, the standard shift to construct new initial
                  * value of new would be equal to BLOCKSIZE.
                  */
                 g->data[i].ancestral[*nblock] = new[1][i] | tmp;
                 new[1][i] = 0;
             }
-            else {
+            else
+            {
                 g->data[i].ancestral[*nblock] = new[1][i] | tmp << (*index - low);
                 new[1][i] = tmp >> (low + BLOCKSIZE - *index);
             }
@@ -1945,11 +2088,13 @@ static void transfer_data(Genes *g, int block, int low, int high,
         *index += high - low + 1 - BLOCKSIZE;
         *nblock += 1;
     }
-    else {
+    else
+    {
         /* Not enough data to fill block */
         if (*index > low)
             /* Data needs to be shifted left */
-            for (i = 0; i < g->n; i++) {
+            for (i = 0; i < g->n; i++)
+            {
                 /* Copy type data */
                 new[0][i] |= (g->data[i].type[block] & filter) << (*index - low);
                 /* Copy ancestral data */
@@ -1957,7 +2102,8 @@ static void transfer_data(Genes *g, int block, int low, int high,
             }
         else
             /* Data needs to be shifted right */
-            for (i = 0; i < g->n; i++) {
+            for (i = 0; i < g->n; i++)
+            {
                 /* Copy type data */
                 new[0][i] |= (g->data[i].type[block] & filter) >> (low - *index);
                 /* Copy ancestral data */
@@ -1980,8 +2126,8 @@ static void upgrade_subsumed(Genes *g, int to_index, int to_block,
                   from_pattern = (unsigned long)1 << from_index;
 
     for (i = 0; i < g->n; i++)
-        if (((g->data[i].ancestral[to_block] & to_pattern) == 0)
-                && ((g->data[i].ancestral[from_block] & from_pattern) != 0)) {
+        if (((g->data[i].ancestral[to_block] & to_pattern) == 0) && ((g->data[i].ancestral[from_block] & from_pattern) != 0))
+        {
             /* No ancestral material in destination site but ancestral
              * material in source site for sequence i.
              */
@@ -2004,17 +2150,22 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
 {
     int i;
     unsigned long pattern, ancestral,
-             subsumation = 3; /* Initially both sites could be subsumed in each other */
+        subsumation = 3; /* Initially both sites could be subsumed in each other */
 
-    if (index != BLOCKSIZE - 1) {
+    if (index != BLOCKSIZE - 1)
+    {
         /* Both sites are in the current block */
         pattern = (unsigned long)1 << index;
-        for (i = 0; i < g->n; i++) {
+        for (i = 0; i < g->n; i++)
+        {
             ancestral = (g->data[i].ancestral[block] >> index) & 3;
-            if (ancestral != 3) {
+            if (ancestral != 3)
+            {
                 /* At most one site carries ancestral material in this sequence */
-                if (ancestral != 0) {
-                    if ((ancestral & subsumation) == 0) {
+                if (ancestral != 0)
+                {
+                    if ((ancestral & subsumation) == 0)
+                    {
                         /* Neither site is subsumed in the other */
                         index += 1;
                         return _GENE_INCOMPATIBLE;
@@ -2023,22 +2174,26 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
                     subsumation = ancestral;
                 }
             }
-            else {
+            else
+            {
                 /* Both sites carry ancestral material in this sequence */
-                if (((g->data[i].type[block] >> 1) ^ g->data[i].type[block])
-                        & pattern) {
+                if (((g->data[i].type[block] >> 1) ^ g->data[i].type[block]) & pattern)
+                {
                     /* One site carries a 0, the other a 1 */
-                    if (gene_knownancestor)
+                    if (g_gene_knownancestor)
                         /* The two sites are different */
                         return _GENE_INCOMPATIBLE;
                     /* Look for conjugate columns */
-                    for (i++; i < g->n; i++) {
+                    for (i++; i < g->n; i++)
+                    {
                         ancestral = (g->data[i].ancestral[block] >> index) & 3;
-                        if (ancestral != 3) {
+                        if (ancestral != 3)
+                        {
                             /* At most one site carries ancestral material in this
                              * sequence.
                              */
-                            if (ancestral != 0) {
+                            if (ancestral != 0)
+                            {
                                 /* Ancestral material in sites for sequence i */
                                 if ((ancestral & subsumation) == 0)
                                     /* Neither site is subsumed in the other */
@@ -2048,13 +2203,13 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
                             }
                         }
                         else /* Both sites carry ancestral material */
-                            if ((((g->data[i].type[block] >> 1) ^ g->data[i].type[block])
-                                    & pattern) == 0)
+                            if ((((g->data[i].type[block] >> 1) ^ g->data[i].type[block]) & pattern) == 0)
                                 /* Sites are not conjugate for sequence i */
                                 return _GENE_INCOMPATIBLE;
                     }
                     /* Found no counterexample to conjugate columns */
-                    switch(subsumation) {
+                    switch (subsumation)
+                    {
                     case 1:
                         /* Right column is subsumed in left column */
                         return _GENE_LEFTCONJUGATE;
@@ -2066,15 +2221,19 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
                         return _GENE_CONJUGATE;
                     }
                 }
-                else {
+                else
+                {
                     /* Sites carry identical type - look for identical columns */
-                    for (i++; i < g->n; i++) {
+                    for (i++; i < g->n; i++)
+                    {
                         ancestral = (g->data[i].ancestral[block] >> index) & 3;
-                        if (ancestral != 3) {
+                        if (ancestral != 3)
+                        {
                             /* At most one site carries ancestral material in this
                              * sequence.
                              */
-                            if (ancestral != 0) {
+                            if (ancestral != 0)
+                            {
                                 /* Ancestral material in sites for sequence i */
                                 if ((ancestral & subsumation) == 0)
                                     /* Neither site is subsumed in the other */
@@ -2083,13 +2242,13 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
                                 subsumation = ancestral;
                             }
                         }
-                        else if ((((g->data[i].type[block] >> 1) ^ g->data[i].type[block])
-                                  & pattern) != 0)
+                        else if ((((g->data[i].type[block] >> 1) ^ g->data[i].type[block]) & pattern) != 0)
                             /* Sites are not identical for sequence i */
                             return _GENE_INCOMPATIBLE;
                     }
                     /* Found no counterexample to identical columns */
-                    switch(subsumation) {
+                    switch (subsumation)
+                    {
                     case 1:
                         /* Right column is subsumed in left column */
                         return _GENE_LEFTIDENTICAL;
@@ -2106,7 +2265,8 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
         /* One column carries only non-ancestral material, or there are no
          * sequeces.
          */
-        switch(subsumation) {
+        switch (subsumation)
+        {
         case 1:
             /* Right column is subsumed in left column */
             return _GENE_LEFTIDENTICAL;
@@ -2117,20 +2277,25 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
             /* Sanity check - if there is at least one sequence in g we
              * should never reach this point.
              */
-            if (g->n > 0) {
+            if (g->n > 0)
+            {
                 fprintf(stderr, "ERROR: Something wrong in siamese_site function, please email error report\n");
                 exit(1);
             }
             return _GENE_IDENTICAL;
         }
     }
-    else {
+    else
+    {
         /* Sites span a block boundary */
-        for (i = 0; i < g->n; i++) {
+        for (i = 0; i < g->n; i++)
+        {
             ancestral = g->data[i].ancestral[block] >> (BLOCKSIZE - 1);
-            if ((ancestral & g->data[i].ancestral[block + 1] & 1) == 0) {
+            if ((ancestral & g->data[i].ancestral[block + 1] & 1) == 0)
+            {
                 /* Not ancestral material in both sites for sequence i */
-                if ((ancestral | (g->data[i].ancestral[block + 1] & 1)) != 0) {
+                if ((ancestral | (g->data[i].ancestral[block + 1] & 1)) != 0)
+                {
                     /* Ancestral material in one of the sites */
                     if ((subsumation != 3) && (subsumation != ancestral))
                         /* Neither site is subsumed in the other */
@@ -2140,19 +2305,23 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
                         subsumation = ancestral;
                 }
             }
-            else {
+            else
+            {
                 /* Ancestral material in both sites */
-                if ((g->data[i].type[block] >> (BLOCKSIZE - 1))
-                        ^ (g->data[i].type[block + 1] & 1)) {
-                    if (gene_knownancestor)
+                if ((g->data[i].type[block] >> (BLOCKSIZE - 1)) ^ (g->data[i].type[block + 1] & 1))
+                {
+                    if (g_gene_knownancestor)
                         /* The two sites are not identical */
                         return _GENE_INCOMPATIBLE;
                     /* Look for conjugate columns */
-                    for (i++; i < g->n; i++) {
+                    for (i++; i < g->n; i++)
+                    {
                         ancestral = g->data[i].ancestral[block] >> (BLOCKSIZE - 1);
-                        if ((ancestral & g->data[i].ancestral[block + 1] & 1) == 0) {
+                        if ((ancestral & g->data[i].ancestral[block + 1] & 1) == 0)
+                        {
                             /* Not ancestral material in both sites for sequence i */
-                            if ((ancestral | (g->data[i].ancestral[block + 1] & 1)) != 0) {
+                            if ((ancestral | (g->data[i].ancestral[block + 1] & 1)) != 0)
+                            {
                                 /* Ancestral material in one of the sites */
                                 if ((subsumation != 3) && (subsumation != ancestral))
                                     /* Neither site is subsumed in the other */
@@ -2162,16 +2331,17 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
                                     subsumation = ancestral;
                             }
                         }
-                        else {
+                        else
+                        {
                             /* Ancestral material in both sites for sequence i */
-                            if (!((g->data[i].type[block] >> (BLOCKSIZE - 1))
-                                    ^ (g->data[i].type[block + 1] & 1)))
+                            if (!((g->data[i].type[block] >> (BLOCKSIZE - 1)) ^ (g->data[i].type[block + 1] & 1)))
                                 /* The two sites are not conjugate */
                                 return _GENE_INCOMPATIBLE;
                         }
                     }
                     /* Found no counterexample to conjugate columns */
-                    switch(subsumation) {
+                    switch (subsumation)
+                    {
                     case 1:
                         /* Right column is subsumed in left column */
                         return _GENE_LEFTCONJUGATE;
@@ -2183,13 +2353,17 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
                         return _GENE_CONJUGATE;
                     }
                 }
-                else {
+                else
+                {
                     /* Look for identical columns */
-                    for (i++; i < g->n; i++) {
+                    for (i++; i < g->n; i++)
+                    {
                         ancestral = g->data[i].ancestral[block] >> (BLOCKSIZE - 1);
-                        if ((ancestral & g->data[i].ancestral[block + 1] & 1) == 0) {
+                        if ((ancestral & g->data[i].ancestral[block + 1] & 1) == 0)
+                        {
                             /* Not ancestral material in both sites for sequence i */
-                            if ((ancestral | (g->data[i].ancestral[block + 1] & 1)) != 0) {
+                            if ((ancestral | (g->data[i].ancestral[block + 1] & 1)) != 0)
+                            {
                                 /* Ancestral material in one of the sites */
                                 if ((subsumation != 3) && (subsumation != ancestral))
                                     /* Neither site is subsumed in the other */
@@ -2199,15 +2373,16 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
                                     subsumation = ancestral;
                             }
                         }
-                        else {
-                            if ((g->data[i].type[block] >> (BLOCKSIZE - 1))
-                                    ^ (g->data[i].type[block + 1] & 1))
+                        else
+                        {
+                            if ((g->data[i].type[block] >> (BLOCKSIZE - 1)) ^ (g->data[i].type[block + 1] & 1))
                                 /* The two sites are not identical */
                                 return _GENE_INCOMPATIBLE;
                         }
                     }
                     /* Found no counterexample to identical columns */
-                    switch(subsumation) {
+                    switch (subsumation)
+                    {
                     case 1:
                         /* Right column is subsumed in left column */
                         return _GENE_LEFTIDENTICAL;
@@ -2224,7 +2399,8 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
         /* One column carries only non-ancestral material, or there are no
          * sequeces.
          */
-        switch(subsumation) {
+        switch (subsumation)
+        {
         case 1:
             /* Right column is subsumed in left column */
             return _GENE_LEFTIDENTICAL;
@@ -2235,7 +2411,8 @@ static _Gene_TwinType siamese_site(int index, int block, Genes *g)
             /* Sanity check - if there is at least one sequence in g we
              * should never reach this point.
              */
-            if (g->n > 0) {
+            if (g->n > 0)
+            {
                 fprintf(stderr, "ERROR: Something wrong in siamese_site function, please email error report\n");
                 exit(1);
             }
@@ -2260,15 +2437,15 @@ static _Gene_TwinType siamese_sites(int nindex, int nblock, int index, int block
                   pattern = (unsigned long)1 << index,
                   ancestral,
                   subsumation = 3; /* Record subsumation with 3 for both ways, npattern
-		      * for nindex, nblock subsuming, and 0 for index, block
-		      * subsuming. */
+                                    * for nindex, nblock subsuming, and 0 for index, block
+                                    * subsuming. */
 
     for (i = 0; i < g->n; i++)
-        if (((ancestral = (g->data[i].ancestral[nblock] & npattern)) != 0)
-                || ((g->data[i].ancestral[block] & pattern) != 0)) {
+        if (((ancestral = (g->data[i].ancestral[nblock] & npattern)) != 0) || ((g->data[i].ancestral[block] & pattern) != 0))
+        {
             /* Sequence i has ancestral material in sites */
-            if ((ancestral == 0)
-                    || ((g->data[i].ancestral[block] & pattern) == 0)) {
+            if ((ancestral == 0) || ((g->data[i].ancestral[block] & pattern) == 0))
+            {
                 /* But only in one of the sites */
                 if ((subsumation != 3) && (subsumation != ancestral))
                     /* Neither site is subsumed in the other */
@@ -2278,18 +2455,18 @@ static _Gene_TwinType siamese_sites(int nindex, int nblock, int index, int block
             }
             else
                 /* Sequence i has ancestral material in both sites */
-                if (((g->data[i].type[nblock] >> nindex) & 1)
-                        != ((g->data[i].type[block] >> index) & 1)) {
-                    if (gene_knownancestor)
+                if (((g->data[i].type[nblock] >> nindex) & 1) != ((g->data[i].type[block] >> index) & 1))
+                {
+                    if (g_gene_knownancestor)
                         /* Sites are not identical */
                         return _GENE_INCOMPATIBLE;
                     /* Look for conjugate sites */
                     for (i++; i < g->n; i++)
-                        if (((ancestral =(g->data[i].ancestral[nblock] & npattern)) != 0)
-                                || ((g->data[i].ancestral[block] & pattern) != 0)) {
+                        if (((ancestral = (g->data[i].ancestral[nblock] & npattern)) != 0) || ((g->data[i].ancestral[block] & pattern) != 0))
+                        {
                             /* Sequence i has ancestral material in sites */
-                            if ((ancestral == 0)
-                                    || ((g->data[i].ancestral[block] & pattern) == 0)) {
+                            if ((ancestral == 0) || ((g->data[i].ancestral[block] & pattern) == 0))
+                            {
                                 /* But only in one of the sites */
                                 if ((subsumation != 3) && (subsumation != ancestral))
                                     /* Neither site is subsumed in the other */
@@ -2297,13 +2474,13 @@ static _Gene_TwinType siamese_sites(int nindex, int nblock, int index, int block
                                 /* Record subsumation */
                                 subsumation = ancestral;
                             }
-                            else if (!(((g->data[i].type[nblock] >> nindex) & 1)
-                                       ^ ((g->data[i].type[block] >> index) & 1)))
+                            else if (!(((g->data[i].type[nblock] >> nindex) & 1) ^ ((g->data[i].type[block] >> index) & 1)))
                                 /* Sites are not conjugate */
                                 return _GENE_INCOMPATIBLE;
                         }
                     /* No counterexample to conjugate columns found */
-                    switch(subsumation) {
+                    switch (subsumation)
+                    {
                     case 0:
                         /* Left column is subsumed in right column */
                         return _GENE_RIGHTCONJUGATE;
@@ -2315,14 +2492,15 @@ static _Gene_TwinType siamese_sites(int nindex, int nblock, int index, int block
                         return _GENE_LEFTCONJUGATE;
                     }
                 }
-                else {
+                else
+                {
                     /* Look for identical sites */
                     for (i++; i < g->n; i++)
-                        if (((ancestral =(g->data[i].ancestral[nblock] & npattern)) != 0)
-                                || ((g->data[i].ancestral[block] & pattern) != 0)) {
+                        if (((ancestral = (g->data[i].ancestral[nblock] & npattern)) != 0) || ((g->data[i].ancestral[block] & pattern) != 0))
+                        {
                             /* Sequence i has ancestral material in sites */
-                            if ((ancestral == 0)
-                                    || ((g->data[i].ancestral[block] & pattern) == 0)) {
+                            if ((ancestral == 0) || ((g->data[i].ancestral[block] & pattern) == 0))
+                            {
                                 /* But only in one of the sites */
                                 if ((subsumation != 3) && (subsumation != ancestral))
                                     /* Neither site is subsumed in the other */
@@ -2330,13 +2508,13 @@ static _Gene_TwinType siamese_sites(int nindex, int nblock, int index, int block
                                 /* Record subsumation */
                                 subsumation = ancestral;
                             }
-                            else if (((g->data[i].type[nblock] >> nindex) & 1)
-                                     ^ ((g->data[i].type[block] >> index) & 1))
+                            else if (((g->data[i].type[nblock] >> nindex) & 1) ^ ((g->data[i].type[block] >> index) & 1))
                                 /* Sites are not identical */
                                 return _GENE_INCOMPATIBLE;
                         }
                     /* No counterexample to identical columns found */
-                    switch(subsumation) {
+                    switch (subsumation)
+                    {
                     case 0:
                         /* Left column is subsumed in right column */
                         return _GENE_RIGHTIDENTICAL;
@@ -2352,7 +2530,8 @@ static _Gene_TwinType siamese_sites(int nindex, int nblock, int index, int block
     /* One column didn't contain ancestral material, or there are no
      * sequences in g.
      */
-    switch(subsumation) {
+    switch (subsumation)
+    {
     case 0:
         /* Left column is subsumed in right column */
         return _GENE_RIGHTIDENTICAL;
@@ -2360,7 +2539,8 @@ static _Gene_TwinType siamese_sites(int nindex, int nblock, int index, int block
         /* Sanity check - if there is at least one sequence in g we
          * should never reach this point.
          */
-        if (g->n > 0) {
+        if (g->n > 0)
+        {
             fprintf(stderr, "ERROR: Something wrong in siamese_site function, please email error report\n");
             exit(1);
         }
@@ -2391,14 +2571,15 @@ int remove_siamesetwins(Genes *g)
 
     /* Skip initial stretch of non-siamese sites */
     while ((index < g->length - 1) &&
-            !(types = siamese_site(modblocksize(index), divblocksize(index), g)))
+           !(types = siamese_site(modblocksize(index), divblocksize(index), g)))
         index++;
 
-    if (types) {
+    if (types)
+    {
         /* There are Siamese twins in g */
-        state = (_SiameseBlock *)xmalloc((1 + g->length / 2)
-                                         * sizeof(_SiameseBlock));
-        for (;;) {
+        state = (_SiameseBlock *)xmalloc((1 + g->length / 2) * sizeof(_SiameseBlock));
+        for (;;)
+        {
             state[n].start = index;
             if (types & _GENE_RIGHT)
                 /* Left site strictly subsumed in right site */
@@ -2412,10 +2593,12 @@ int remove_siamesetwins(Genes *g)
             mblock = divblocksize(state[n].master);
             index += 2;
             while ((index < g->length) &&
-                    (types = siamese_sites(mindex, mblock, modblocksize(index),
-                                           divblocksize(index), g))) {
+                   (types = siamese_sites(mindex, mblock, modblocksize(index),
+                                          divblocksize(index), g)))
+            {
                 oldtypes = types;
-                if (types & _GENE_RIGHT) {
+                if (types & _GENE_RIGHT)
+                {
                     /* Previous master site strictly subsumed in this site */
                     state[n].master = index;
                     mindex = modblocksize(index);
@@ -2429,7 +2612,8 @@ int remove_siamesetwins(Genes *g)
             /* If leftmost site is not master site, then there may be more
              * Siamese sites to the left.
              */
-            if (state[n].master !=  state[n].start) {
+            if (state[n].master != state[n].start)
+            {
                 /* We prefer master site at first or last site of block, since
                  * it cannot be first let's start by checking if it can be last.
                  */
@@ -2444,20 +2628,23 @@ int remove_siamesetwins(Genes *g)
                 /* Now check for extra Siamese sites to the left */
                 index = state[n].start - 1;
                 while ((index >= 0) &&
-                        siamese_sites(mindex, mblock, modblocksize(index),
-                                      divblocksize(index), g)) {
+                       siamese_sites(mindex, mblock, modblocksize(index),
+                                     divblocksize(index), g))
+                {
                     /* We do not need to check for subsumation direction, as any
                      * site to the left of where we first identified Siameseness
                      * cannot be a master site.
                      */
-                    if ((n > 0) && (index == state[n - 1].end)) {
+                    if ((n > 0) && (index == state[n - 1].end))
+                    {
                         /* This block includes previous block - if master site of
                          * current block is a Siamese twin with master site of
                          * previous block we can incorporate the previous block
                          * into the current block.
                          */
                         if (siamese_sites(mindex, mblock, modblocksize(state[n - 1].master),
-                                          divblocksize(state[n - 1].master), g)) {
+                                          divblocksize(state[n - 1].master), g))
+                        {
                             index = state[n - 1].start - 1;
                             state[n - 1].end = state[n].end;
                             /* As before, we do not need to check subsumation direction */
@@ -2489,8 +2676,8 @@ int remove_siamesetwins(Genes *g)
 
             /* Continue scanning for next Siamese block */
             while ((index < g->length - 1) &&
-                    !(types =
-                          siamese_site(modblocksize(index), divblocksize(index), g)))
+                   !(types =
+                         siamese_site(modblocksize(index), divblocksize(index), g)))
                 index++;
             if (index >= g->length - 1)
                 /* Reached end of sequences */
@@ -2515,28 +2702,26 @@ int remove_siamesetwins(Genes *g)
             /* Transfer part of block prior to Siamese sites to tmp */
             transfer_data(g, mblock, 0, index - 1, tmp, &mindex, &mblock);
         if ((state[0].start != state[0].master) &&
-                (state[0].end != state[0].master))
+            (state[0].end != state[0].master))
             /* Also transfer master site to tmp */
             transfer_data(g, divblocksize(state[0].master),
                           modblocksize(state[0].master),
                           modblocksize(state[0].master), tmp, &mindex, &mblock);
 
         /* Now transfer all the sites between blocks of Siamese sites */
-        for (i = 1; i < n; i++) {
+        for (i = 1; i < n; i++)
+        {
             /* Block and index of first site to transfer */
-            pblock = divblocksize(state[i - 1].end
-                                  + (state[i - 1].master != state[i - 1].end));
-            pindex = modblocksize(state[i - 1].end
-                                  + (state[i - 1].master != state[i - 1].end));
+            pblock = divblocksize(state[i - 1].end + (state[i - 1].master != state[i - 1].end));
+            pindex = modblocksize(state[i - 1].end + (state[i - 1].master != state[i - 1].end));
             /* Block and index of last site to transfer */
-            cblock = divblocksize(state[i].start
-                                  - (state[i].master != state[i].start));
-            cindex = modblocksize(state[i].start
-                                  - (state[i].master != state[i].start));
+            cblock = divblocksize(state[i].start - (state[i].master != state[i].start));
+            cindex = modblocksize(state[i].start - (state[i].master != state[i].start));
             if ((pblock == cblock) && (pindex <= cindex))
                 /* All sites to be transferred in same block */
                 transfer_data(g, cblock, pindex, cindex, tmp, &mindex, &mblock);
-            else if (state[i].start > state[i - 1].end + 1) {
+            else if (state[i].start > state[i - 1].end + 1)
+            {
                 /* Sites to be transferred span multiple blocks */
                 /* First transfer initial block */
                 transfer_data(g, pblock, pindex, BLOCKSIZE - 1, tmp, &mindex, &mblock);
@@ -2546,22 +2731,22 @@ int remove_siamesetwins(Genes *g)
                 /* Finally transfer last block */
                 transfer_data(g, cblock, 0, cindex, tmp, &mindex, &mblock);
             }
-		// WARNING bug fix (AI) 
-		// start
-		else if (state[i-1].end + 1 == state[i].master) {
-		// Master sites are straddling two sides of a block split
-		// Need to transfer both
-        // First transfer initial block 
+            // WARNING bug fix (AI)
+            // start
+            else if (state[i - 1].end + 1 == state[i].master)
+            {
+                // Master sites are straddling two sides of a block split
+                // Need to transfer both
+                // First transfer initial block
                 transfer_data(g, pblock, pindex, BLOCKSIZE - 1, tmp, &mindex, &mblock);
                 /* Then transfer full blocks */
                 for (j = pblock + 1; j < cblock; j++)
                     transfer_data(g, j, 0, BLOCKSIZE - 1, tmp, &mindex, &mblock);
                 /* Finally transfer last block */
                 transfer_data(g, cblock, 0, cindex, tmp, &mindex, &mblock);
-		}
-		// end
-            if ((state[i].master != state[i].start)
-                    && (state[i].master != state[i].end))
+            }
+            // end
+            if ((state[i].master != state[i].start) && (state[i].master != state[i].end))
                 /* We need to transfer master site from this Siamese block */
                 transfer_data(g, divblocksize(state[i].master),
                               modblocksize(state[i].master),
@@ -2571,9 +2756,11 @@ int remove_siamesetwins(Genes *g)
         n--;
 
         /* Update g to reflect changes */
-        if (mindex > 0) {
+        if (mindex > 0)
+        {
             /* Copy data in tmp back into g */
-            for (i = 0; i < g->n; i++) {
+            for (i = 0; i < g->n; i++)
+            {
                 g->data[i].type[mblock] = tmp[0][i];
                 g->data[i].ancestral[mblock] = tmp[1][i];
             }
@@ -2584,48 +2771,62 @@ int remove_siamesetwins(Genes *g)
 
         if (eventlist != NULL)
             /* Insert collapse of Siamese twins into list of events */
-            for (i = n - 1; i >= 0; i--) {
+            for (i = n - 1; i >= 0; i--)
+            {
                 /* Collapse into master */
-                for (j = state[i].master; j < state[i].end; j++) {
+                for (j = state[i].master; j < state[i].end; j++)
+                {
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = COLLAPSE;
                     e->event.collapse = state[i].master;
                     Enqueue(eventlist, e);
                 }
-                for (j = state[i].master - 1; j >= state[i].start; j--) {
+                for (j = state[i].master - 1; j >= state[i].start; j--)
+                {
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = COLLAPSE;
                     e->event.collapse = j;
                     Enqueue(eventlist, e);
                 }
             }
-        
+
         // Updated list of sites, labelling the master sites with -(number of columns collapsed).
-        if(sites != NULL) {    
+        if (sites != NULL)
+        {
             k = 0;
-            for (i = 0; i < n ; i++) {
+            for (i = 0; i < n; i++)
+            {
                 s = -(int)elist_get(sites, state[i].master);
-                if(s <= 0) {
+                if (s <= 0)
+                {
                     s = 1;
                 }
-                for (j = state[i].start; j < state[i].master; j++) {
-//                     printf("Merging Siamese twin columns %d -> %d\n", j, state[i].master);
+                for (j = state[i].start; j < state[i].master; j++)
+                {
+                    //                     printf("Merging Siamese twin columns %d -> %d\n", j, state[i].master);
                     p = (int)elist_get(sites, j - k);
-                    if(p < 0) {
+                    if (p < 0)
+                    {
                         s = s - p;
-                    } else {
+                    }
+                    else
+                    {
                         s++;
                     }
                     elist_remove(sites, j - k);
                     k++;
                 }
                 kk = k;
-                for (j = state[i].master + 1; j <= state[i].end; j++) {
-//                     printf("Merging Siamese twin columns %d <- %d\n", state[i].master, j);
+                for (j = state[i].master + 1; j <= state[i].end; j++)
+                {
+                    //                     printf("Merging Siamese twin columns %d <- %d\n", state[i].master, j);
                     p = (int)elist_get(sites, j - k);
-                    if(p < 0) {
+                    if (p < 0)
+                    {
                         s = s - p;
-                    } else {
+                    }
+                    else
+                    {
                         s++;
                     }
                     elist_remove(sites, j - k);
@@ -2633,15 +2834,16 @@ int remove_siamesetwins(Genes *g)
                 }
                 // Master site is now at position state[i].start
                 // Change this to be -(number of columns collapsed)
-//                 printf("%d %d\n", state[i].master-kk, -s);
-                elist_change(sites, state[i].master-kk, (void *)(-s));
+                //                 printf("%d %d\n", state[i].master-kk, -s);
+                elist_change(sites, state[i].master - kk, (void *)(-s));
             }
         }
 
 #ifdef ENABLE_VERBOSE
         if (verbose())
             /* Print information about Siamese columns collapsed */
-            for (i = 0; i < n ; i++) {
+            for (i = 0; i < n; i++)
+            {
                 for (j = state[i].start; j < state[i].master; j++)
                     printf("Merging Siamese twin columns %d and %d\n", j,
                            state[i].master);
@@ -2655,22 +2857,22 @@ int remove_siamesetwins(Genes *g)
             /* Update list of blocks of collapsed sites to reflect the
              * Siamese blocks just collapsed.
              */
-            for (i = n - 1; i >= 0; i--) {
+            for (i = n - 1; i >= 0; i--)
+            {
                 /* Find start position of this Siamese block in list of block
                  * of sites that have already been collapsed.
                  */
                 c = (SuperColumn *)SetCounter(representativeness_counter,
                                               state[i].start);
                 /* Merge with block for other sites in this Siamese block */
-                for (j = state[i].start; j < state[i].end; j++) {
+                for (j = state[i].start; j < state[i].end; j++)
+                {
                     d = (SuperColumn *)Next(representativeness_counter);
                     c->right = d->right;
                     RemoveMoveLeft(representativeness, representativeness_counter);
                 }
             }
 #endif
-
-
 
         /* Clean up */
         free(tmp[0]);
@@ -2699,13 +2901,15 @@ int remove_uninformative(Genes *g)
 #ifdef HAPLOTYPE_BLOCKS
     int m = 0;
 #endif
-    
-    for (i = 0; i < blocks; i++) {
+
+    for (i = 0; i < blocks; i++)
+    {
         /* Compile type information from all genes for block i */
         one1 = g->data[0].type[i];
         one0 = ~g->data[0].type[i] & g->data[0].ancestral[i];
         two0 = two1 = 0;
-        for (j = 1; j < g->n; j++) {
+        for (j = 1; j < g->n; j++)
+        {
             two1 |= one1 & g->data[j].type[i];
             one1 |= g->data[j].type[i];
             current = ~g->data[j].type[i] & g->data[j].ancestral[i];
@@ -2715,7 +2919,7 @@ int remove_uninformative(Genes *g)
         /* two1 (two0) now has a 1 in all positions where there are at
          * least two 1s (0s) in the data.
          */
-        if (gene_knownancestor)
+        if (g_gene_knownancestor)
             /* When wild type is known we only care about mutant count */
             current = two1;
         else
@@ -2725,11 +2929,11 @@ int remove_uninformative(Genes *g)
             current = two0 & two1;
 
         /* Remove uninformative columns in block i */
-        if (((i < blocks - 1) && ~current)
-                || ((i >= blocks - 1)
-                    && (current != ((unsigned long)2 << modblocksize(g->length - 1)) - 1))) {
+        if (((i < blocks - 1) && ~current) || ((i >= blocks - 1) && (current != ((unsigned long)2 << modblocksize(g->length - 1)) - 1)))
+        {
             /* Of which there are some */
-            if (nindex < 0) {
+            if (nindex < 0)
+            {
                 /* But this is the first block containing uninformative columns */
                 nblock = i;
                 nindex = 0;
@@ -2739,43 +2943,50 @@ int remove_uninformative(Genes *g)
             }
             j = 0;
             index = 1;
-            while (j < BLOCKSIZE) {
+            while (j < BLOCKSIZE)
+            {
                 /* Skip uninformative columns */
-                while (~current & index) {
+                while (~current & index)
+                {
 #ifdef ENABLE_VERBOSE
-                    if (verbose()) {
+                    if (verbose())
+                    {
                         if (mulblocksize(i) + j < g->length)
                             printf("Removing uninformative column %d\n",
                                    mulblocksize(i) + j);
-                        else {
+                        else
+                        {
                             j = BLOCKSIZE;
                             index = 0;
                         }
                     }
 #endif
 
-                    if ((eventlist != NULL)
-                            && ((gene_knownancestor ? one1 : one0 & one1) & index)) {
+                    if ((eventlist != NULL) && ((g_gene_knownancestor ? one1 : one0 & one1) & index))
+                    {
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = SUBSTITUTION;
                         e->event.s.seq = -1;
                         e->event.s.site = mulblocksize(i) + j - n;
                         Enqueue(eventlist, e);
                     }
-                    if(sites != NULL) {
-                        if (mulblocksize(i) + j < g->length) {
-//                             printf("Removing site labelled %d by deleting element number %d\n", mulblocksize(i) + j, mulblocksize(i) + j - n);
+                    if (sites != NULL)
+                    {
+                        if (mulblocksize(i) + j < g->length)
+                        {
+                            //                             printf("Removing site labelled %d by deleting element number %d\n", mulblocksize(i) + j, mulblocksize(i) + j - n);
                             elist_remove(sites, mulblocksize(i) + j - n);
                         }
-                        else {
-                                j = BLOCKSIZE;
-                                index = 0;
+                        else
+                        {
+                            j = BLOCKSIZE;
+                            index = 0;
                         }
                     }
                     n++;
 #ifdef HAPLOTYPE_BLOCKS
-                    if ((representativeness != NULL)
-                            && (mulblocksize(i) + j < g->length)) {
+                    if ((representativeness != NULL) && (mulblocksize(i) + j < g->length))
+                    {
                         /* Remove uninformative sites */
                         SetCounter(representativeness_counter, mulblocksize(i) + j - m);
                         free(RemoveMoveLeft(representativeness,
@@ -2787,12 +2998,14 @@ int remove_uninformative(Genes *g)
                     index <<= 1;
                 }
 
-                if (index) {
+                if (index)
+                {
                     /* We haven't reached end of block */
                     first = j;
 
                     /* Find block of informative columns */
-                    while (current & index) {
+                    while (current & index)
+                    {
                         j++;
                         index <<= 1;
                     }
@@ -2802,7 +3015,8 @@ int remove_uninformative(Genes *g)
                 }
             }
         }
-        else if (nindex >= 0) {
+        else if (nindex >= 0)
+        {
             /* No uninformative columns in block i; but we have started
              * copying - continue this process.
              */
@@ -2815,11 +3029,14 @@ int remove_uninformative(Genes *g)
     }
 
     /* Update gene */
-    if (nindex >= 0) {
+    if (nindex >= 0)
+    {
         /* The data contained at least one uninformative column */
-        if (nindex > 0) {
+        if (nindex > 0)
+        {
             /* Copy data in tmp back into g */
-            for (i = 0; i < g->n; i++) {
+            for (i = 0; i < g->n; i++)
+            {
                 g->data[i].type[nblock] = tmp[0][i];
                 g->data[i].ancestral[nblock] = tmp[1][i];
             }
@@ -2828,17 +3045,20 @@ int remove_uninformative(Genes *g)
         else
             g->length = mulblocksize(nblock);
 
-        if (g->length == 0) {
+        if (g->length == 0)
+        {
             /* Everything was removed */
             if (eventlist != NULL)
-                for (i = 1; i < g->n; i++) {
+                for (i = 1; i < g->n; i++)
+                {
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = COALESCENCE;
                     e->event.c.s1 = 0;
                     e->event.c.s2 = 1;
                     Enqueue(eventlist, e);
                 }
-            for (i = 0; i < g->n; i++) {
+            for (i = 0; i < g->n; i++)
+            {
                 free(g->data[i].type);
                 free(g->data[i].ancestral);
             }
@@ -2854,7 +3074,6 @@ int remove_uninformative(Genes *g)
         return 0;
 }
 
-
 /* Remove all non-segregating sites, i.e. sites where none of the
  * sequences with ancestral material differs. Return value tells
  * whether any columns were non-segregating.
@@ -2869,18 +3088,20 @@ int remove_nonsegregating(Genes *g)
     int m = 0;
 #endif
 
-    for (i = 0; i < blocks; i++) {
+    for (i = 0; i < blocks; i++)
+    {
         /* Compile type information from all genes for block i */
         one1 = g->data[0].type[i];
         one0 = ~g->data[0].type[i] & g->data[0].ancestral[i];
-        for (j = 1; j < g->n; j++) {
+        for (j = 1; j < g->n; j++)
+        {
             one1 |= g->data[j].type[i];
             one0 |= ~g->data[j].type[i] & g->data[j].ancestral[i];
         }
         /* one1 (one0) now has a 1 in all positions where there are at
          * least one 1 (0) in the data.
          */
-        if (gene_knownancestor)
+        if (g_gene_knownancestor)
             /* When wild type is known we only care about mutant count */
             current = one1;
         else
@@ -2890,11 +3111,11 @@ int remove_nonsegregating(Genes *g)
             current = one0 & one1;
 
         /* Remove non-segregating columns in block i */
-        if (((i < blocks - 1) && ~current)
-                || ((i >= blocks - 1)
-                    && (current != ((unsigned long)2 << modblocksize(g->length - 1)) - 1))) {
+        if (((i < blocks - 1) && ~current) || ((i >= blocks - 1) && (current != ((unsigned long)2 << modblocksize(g->length - 1)) - 1)))
+        {
             /* Of which there are some */
-            if (nindex < 0) {
+            if (nindex < 0)
+            {
                 /* But this is the first block containing uninformative columns */
                 nblock = i;
                 nindex = 0;
@@ -2904,23 +3125,27 @@ int remove_nonsegregating(Genes *g)
             }
             j = 0;
             index = 1;
-            while (j < BLOCKSIZE) {
+            while (j < BLOCKSIZE)
+            {
                 /* Skip non-segregating columns */
-                while (~current & index) {
+                while (~current & index)
+                {
 #ifdef ENABLE_VERBOSE
-                    if (verbose()) {
+                    if (verbose())
+                    {
                         if (mulblocksize(i) + j < g->length)
                             printf("Removing non-segregating column %d\n",
                                    mulblocksize(i) + j);
-                        else {
+                        else
+                        {
                             j = BLOCKSIZE;
                             index = 0;
                         }
                     }
 #endif
 #ifdef HAPLOTYPE_BLOCKS
-                    if ((representativeness != NULL)
-                            && (mulblocksize(i) + j < g->length)) {
+                    if ((representativeness != NULL) && (mulblocksize(i) + j < g->length))
+                    {
                         /* Remove non-segregating sites */
                         SetCounter(representativeness_counter, mulblocksize(i) + j - m);
                         free(RemoveMoveLeft(representativeness,
@@ -2932,12 +3157,14 @@ int remove_nonsegregating(Genes *g)
                     index <<= 1;
                 }
 
-                if (index) {
+                if (index)
+                {
                     /* We haven't reached end of block */
                     first = j;
 
                     /* Find block of segregating columns */
-                    while (current & index) {
+                    while (current & index)
+                    {
                         j++;
                         index <<= 1;
                     }
@@ -2947,7 +3174,8 @@ int remove_nonsegregating(Genes *g)
                 }
             }
         }
-        else if (nindex >= 0) {
+        else if (nindex >= 0)
+        {
             /* We have started copying - continue this process */
             if (i < blocks - 1)
                 transfer_data(g, i, 0, BLOCKSIZE - 1, tmp, &nindex, &nblock);
@@ -2958,11 +3186,14 @@ int remove_nonsegregating(Genes *g)
     }
 
     /* Update gene */
-    if (nindex >= 0) {
+    if (nindex >= 0)
+    {
         /* The data contained at least one non-segregating column */
-        if (nindex > 0) {
+        if (nindex > 0)
+        {
             /* Copy data in tmp back into g */
-            for (i = 0; i < g->n; i++) {
+            for (i = 0; i < g->n; i++)
+            {
                 g->data[i].type[nblock] = tmp[0][i];
                 g->data[i].ancestral[nblock] = tmp[1][i];
             }
@@ -2971,17 +3202,20 @@ int remove_nonsegregating(Genes *g)
         else
             g->length = mulblocksize(nblock);
 
-        if (g->length == 0) {
+        if (g->length == 0)
+        {
             /* Everything was removed */
             if (eventlist != NULL)
-                for (i = 1; i < g->n; i++) {
+                for (i = 1; i < g->n; i++)
+                {
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = COALESCENCE;
                     e->event.c.s1 = 0;
                     e->event.c.s2 = 1;
                     Enqueue(eventlist, e);
                 }
-            for (i = 0; i < g->n; i++) {
+            for (i = 0; i < g->n; i++)
+            {
                 free(g->data[i].type);
                 free(g->data[i].ancestral);
             }
@@ -3006,31 +3240,36 @@ int coalesce_subsumed(Genes *g)
     int i, j, k, changes = 0, conflicts, blocks = divblocksize(g->length - 1) + 1;
     Event *e;
 
-//     printf("=====================================\n");
-//     printf("coalesce_subsumed on data:\n");
-//     output_genes(g, NULL, NULL);
-//     printf("=====================================\n");
+    //     printf("=====================================\n");
+    //     printf("coalesce_subsumed on data:\n");
+    //     output_genes(g, NULL, NULL);
+    //     printf("=====================================\n");
 
     /* Look for coalescences */
     for (i = 0; i < g->n; i++)
-        if (g->data[i].type != NULL) {
+        if (g->data[i].type != NULL)
+        {
             for (j = i + 1; j < g->n; j++)
-                if (g->data[j].type != NULL) {
+                if (g->data[j].type != NULL)
+                {
                     /* Check whether sequence j is subsumed in sequence i, or
                      * sequence i is subsumed in sequence j.
                      */
                     conflicts = 0;
                     /* Check types */
                     for (k = 0; k < blocks; k++)
-                        if ((g->data[i].type[k] ^ g->data[j].type[k])
-                                & (g->data[i].ancestral[k] & g->data[j].ancestral[k])) {
+                        if ((g->data[i].type[k] ^ g->data[j].type[k]) & (g->data[i].ancestral[k] & g->data[j].ancestral[k]))
+                        {
                             /* We found a conflict */
                             break;
                         }
-                    if (!(k < blocks)) {
+                    if (!(k < blocks))
+                    {
                         /* Check ancestral material */
-                        for (k = 0; k < blocks; k++) {
-                            if (~g->data[i].ancestral[k] & g->data[j].ancestral[k]) {
+                        for (k = 0; k < blocks; k++)
+                        {
+                            if (~g->data[i].ancestral[k] & g->data[j].ancestral[k])
+                            {
                                 /* Sequence j has ancestral material in a place where
                                  * sequence i doesn't
                                  */
@@ -3044,7 +3283,8 @@ int coalesce_subsumed(Genes *g)
                                     /* Record event */
                                     conflicts = -1;
                             }
-                            if (~g->data[j].ancestral[k] & g->data[i].ancestral[k]) {
+                            if (~g->data[j].ancestral[k] & g->data[i].ancestral[k])
+                            {
                                 /* Sequence i has ancestral material in a place where
                                  * sequence j doesn't
                                  */
@@ -3059,20 +3299,23 @@ int coalesce_subsumed(Genes *g)
                                     conflicts = 1;
                             }
                         }
-                        if (!(k < blocks)) {
+                        if (!(k < blocks))
+                        {
                             /* We can assimilate one sequence into the other */
                             changes++;
-                            #ifdef ENABLE_VERBOSE
+#ifdef ENABLE_VERBOSE
                             if (verbose())
                                 printf("Coalescing sequences %d and %d\n", i, j);
-                            #endif
-//                             printf("Coalescing sequences %d and %d\n", i, j);
-                            if(elements != NULL) {
+#endif
+                            //                             printf("Coalescing sequences %d and %d\n", i, j);
+                            if (elements != NULL)
+                            {
                                 elist_change(elements, i, (void *)(-1));
                                 elist_change(elements, j, (void *)(-1));
                             }
-                            
-                            if (conflicts == -1) {
+
+                            if (conflicts == -1)
+                            {
                                 /* Sequence j cannot be assimilated into sequence i,
                                  * so it must be the other way round.
                                  */
@@ -3085,7 +3328,8 @@ int coalesce_subsumed(Genes *g)
                                  */
                                 break;
                             }
-                            else {
+                            else
+                            {
                                 /* Sequence j can be assimilated into sequence i */
                                 free(g->data[j].type);
                                 free(g->data[j].ancestral);
@@ -3096,40 +3340,48 @@ int coalesce_subsumed(Genes *g)
                 }
         }
 
-    if (changes > 0) {
-        
+    if (changes > 0)
+    {
+
         /* We did coalesce some sequences - compact list of sequences */
-        for (i = 0; g->data[i].type != NULL; i++);
-        if(elements != NULL) {
+        for (i = 0; g->data[i].type != NULL; i++)
+            ;
+        if (elements != NULL)
+        {
             elist_remove(elements, i);
         }
-        if (eventlist != NULL) {
+        if (eventlist != NULL)
+        {
             e = (Event *)xmalloc(sizeof(Event));
             e->type = REMOVE;
             e->event.remove = i;
             Enqueue(eventlist, e);
         }
         for (j = i + 1; j < g->n; j++)
-            if (g->data[j].type != NULL) {
+            if (g->data[j].type != NULL)
+            {
                 /* This sequence was not assimilated - move it to its new position */
                 memcpy(&(g->data[i]), &(g->data[j]), sizeof(Gene));
                 i++;
             }
-            else  {
-                if(elements != NULL) {
+            else
+            {
+                if (elements != NULL)
+                {
                     elist_remove(elements, i);
                 }
-                if (eventlist != NULL) {
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = REMOVE;
-                e->event.remove = i;
-                Enqueue(eventlist, e);
+                if (eventlist != NULL)
+                {
+                    e = (Event *)xmalloc(sizeof(Event));
+                    e->type = REMOVE;
+                    e->event.remove = i;
+                    Enqueue(eventlist, e);
                 }
             }
         /* Update g */
         g->n = i;
     }
-    
+
     return changes;
 }
 
@@ -3143,18 +3395,20 @@ int implode_genes(Genes *g)
     int n = g->n, m = g->length, change = 1, tmp;
 
 #ifdef ENABLE_VERBOSE
-//     if (verbe())
-        printf("Imploding genes:\n");
+    //     if (verbe())
+    printf("Imploding genes:\n");
 #endif
 
-    while (change) {
+    while (change)
+    {
 #ifdef ENABLE_VERBOSE
         if (verbose())
             output_genes_indexed(g, NULL);
 #endif
         /* Look for uninformative sites */
         change = remove_uninformative(g);
-        if (g->n == 0) break;
+        if (g->n == 0)
+            break;
         /* Look for removable Siamese twins */
         /* Collapsing Siamese twins should not allow new mutations, and
          * coalesces are handled presently.
@@ -3171,16 +3425,20 @@ int implode_genes(Genes *g)
 /* Simple, fast checks for whether recombinations may be required to
  * explain g. This is not an exhaustive check, so even if it returns
  * False, g may be explained without recombinations.
+ * Saves history to eventlist
  */
 int no_recombinations_required(Genes *g)
 {
     int i;
     Event *e;
-    if (g->n < (gene_knownancestor ? 3 : 4)) {
-        if (eventlist != NULL) {
+    if (g->n < (g_gene_knownancestor ? 3 : 4))
+    {
+        if (eventlist != NULL)
+        {
             if (g->length > 0)
                 remove_uninformative(g);
-            for (i = 1; i < g->n; i++) {
+            for (i = 1; i < g->n; i++)
+            {
                 e = (Event *)xmalloc(sizeof(Event));
                 e->type = COALESCENCE;
                 e->event.c.s1 = 0;
@@ -3192,9 +3450,11 @@ int no_recombinations_required(Genes *g)
         return 1;
     }
 
-    if (!ancestral_material_overlap(g)) {
+    if (!ancestral_material_overlap(g))
+    {
         if (eventlist != NULL)
-            for (i = 1; i < g->n; i++) {
+            for (i = 1; i < g->n; i++)
+            {
                 e = (Event *)xmalloc(sizeof(Event));
                 e->type = COALESCENCE;
                 e->event.c.s1 = 0;
@@ -3217,9 +3477,11 @@ void force_safeevents(Genes *g)
     int change = 1, tmp;
 
 #ifdef ENABLE_VERBOSE
-    if (verbose()) printf("Forcing safe events:\n");
+    if (verbose())
+        printf("Forcing safe events:\n");
 #endif
-    while (change) {
+    while (change)
+    {
         /* Look for mutations */
         change = force_mutations(g);
         /* Look for safe coalesces */
@@ -3236,12 +3498,14 @@ int force_mutations(Genes *g)
     int i, j, n = 0, blocks = divblocksize(g->length - 1) + 1;
     unsigned long one0, two0, one1, two1, current;
 
-    for (i = 0; i <= blocks - 1; i++) {
+    for (i = 0; i <= blocks - 1; i++)
+    {
         /* Compile type information from all genes for block i */
         one1 = g->data[0].type[i];
         one0 = ~g->data[0].type[i] & g->data[0].ancestral[i];
         two0 = two1 = 0;
-        for (j = 1; j < g->n; j++) {
+        for (j = 1; j < g->n; j++)
+        {
             two1 |= one1 & g->data[j].type[i];
             one1 |= g->data[j].type[i];
             current = ~g->data[j].type[i] & g->data[j].ancestral[i];
@@ -3258,7 +3522,8 @@ int force_mutations(Genes *g)
         one0 &= ~two0 & two1;
 
         /* Force mutations */
-        if (one1) {
+        if (one1)
+        {
             for (j = 0; j < g->n; j++)
                 g->data[j].type[i] &= ~one1;
             n += weight(one1);
@@ -3267,10 +3532,10 @@ int force_mutations(Genes *g)
                 printf("Mutated %d 1s to 0s in block %d\n", weight(one1), i);
 #endif
         }
-        if (one0 && gene_knownancestor) {
+        if (one0 && g_gene_knownancestor)
+        {
             for (j = 0; j < g->n; j++)
-                g->data[j].type[i]
-                    = (g->data[j].type[i] | one0) & g->data[j].ancestral[i];
+                g->data[j].type[i] = (g->data[j].type[i] | one0) & g->data[j].ancestral[i];
             n += weight(one0);
 #ifdef ENABLE_VERBOSE
             if (verbose())
@@ -3298,24 +3563,29 @@ EList *force_mutation(Genes *g, EList *event)
     EList *forced = elist_make();
     Event *e;
 
-    for (i = 0; i < g->length; i++) {
+    for (i = 0; i < g->length; i++)
+    {
         /* Check whether we can force a mutation in site i */
         w1 = weight(s->data[i].type[0]);
         w0 = weight(~s->data[i].type[0] & s->data[i].ancestral[0]);
-        for (j = 1; j < blocks; j++) {
+        for (j = 1; j < blocks; j++)
+        {
             w1 += weight(s->data[i].type[j]);
             w0 += weight(~s->data[i].type[j] & s->data[i].ancestral[j]);
         }
-        if ((w1 == 1) && (gene_knownancestor || (w0 > 0))) {
+        if ((w1 == 1) && (g_gene_knownancestor || (w0 > 0)))
+        {
             /* Exactly one occurrence of 1 in this site - force its mutation */
             index = modblocksize(i);
             block = divblocksize(i);
             h = copy_genes(g);
             /* Find sequence containing the 1 */
-            for (j = 0; (k = lsb(s->data[i].type[j])) < 0; j++);
-            /* Now force the mutation */
+            for (j = 0; (k = lsb(s->data[i].type[j])) < 0; j++)
+                ;
+                /* Now force the mutation */
 #ifdef ENABLE_VERBOSE
-            if (verbose()) {
+            if (verbose())
+            {
                 printf("Mutating 1 in sequence %d, site %d to a 0\n",
                        k + mulblocksize(j), index + mulblocksize(block));
                 output_genes_indexed(g, NULL);
@@ -3323,7 +3593,8 @@ EList *force_mutation(Genes *g, EList *event)
 #endif
             h->data[k + mulblocksize(j)].type[block] &= ~((unsigned long)1 << index);
             elist_append(forced, h);
-            if (event != NULL) {
+            if (event != NULL)
+            {
                 /* Insert corresponding event in list of events */
                 e = (Event *)xmalloc(sizeof(Event));
                 e->type = SUBSTITUTION;
@@ -3332,17 +3603,20 @@ EList *force_mutation(Genes *g, EList *event)
                 elist_append(event, e);
             }
         }
-        if (!gene_knownancestor && (w0 == 1) && (w1 > 0)) {
+        if (!g_gene_knownancestor && (w0 == 1) && (w1 > 0))
+        {
             /* Exactly one occurrence of 1 in this site - force its mutation */
             index = modblocksize(i);
             block = divblocksize(i);
             h = copy_genes(g);
             /* Find sequence containing the 0 */
             for (j = 0; (k = lsb(~s->data[i].type[j] & s->data[i].ancestral[j])) < 0;
-                    j++);
-            /* Now force the mutation */
+                 j++)
+                ;
+                /* Now force the mutation */
 #ifdef ENABLE_VERBOSE
-            if (verbose()) {
+            if (verbose())
+            {
                 printf("Mutating 0 in sequence %d, site %d to a 1\n",
                        k + mulblocksize(j), index + mulblocksize(block));
                 output_genes_indexed(g, NULL);
@@ -3350,7 +3624,8 @@ EList *force_mutation(Genes *g, EList *event)
 #endif
             h->data[k + mulblocksize(j)].type[block] |= ((unsigned long)1 << index);
             elist_append(forced, h);
-            if (event != NULL) {
+            if (event != NULL)
+            {
                 /* Insert corresponding event in list of events */
                 e = (Event *)xmalloc(sizeof(Event));
                 e->type = SUBSTITUTION;
@@ -3381,17 +3656,20 @@ int mutate(Genes *g, int pos, int mutant)
     int i, block = divblocksize(pos), zero = -1, one = -1;
     unsigned long index = (unsigned long)1 << modblocksize(pos);
 
-    if (gene_knownancestor)
+    if (g_gene_knownancestor)
         /* We know the mutant type */
         mutant = 1;
 
     /* Find substitution */
     for (i = 0; i < g->n; i++)
-        if ((g->data[i].ancestral[block] & index) != 0) {
+        if ((g->data[i].ancestral[block] & index) != 0)
+        {
             /* Sequence i carries ancestral material in this position */
-            if ((g->data[i].type[block] & index) != 0) {
+            if ((g->data[i].type[block] & index) != 0)
+            {
                 /* Sequence i has type 1 in this position */
-                if (mutant != 0) {
+                if (mutant != 0)
+                {
                     /* And 1s can be mutated */
                     if (one != -1)
                         one = -2;
@@ -3399,7 +3677,8 @@ int mutate(Genes *g, int pos, int mutant)
                         one = i;
                 }
             }
-            else if (mutant != 1) {
+            else if (mutant != 1)
+            {
                 /* Sequence i has type 0 in this position, and 0s can be mutated */
                 if (zero != -1)
                     zero = -2;
@@ -3409,11 +3688,13 @@ int mutate(Genes *g, int pos, int mutant)
         }
 
     /* Perform substitution */
-    if (one >= 0) {
+    if (one >= 0)
+    {
         g->data[one].type[block] &= ~index;
         return one;
     }
-    else if (zero >= 0) {
+    else if (zero >= 0)
+    {
         g->data[zero].type[block] |= index;
         return zero;
     }
@@ -3428,18 +3709,19 @@ int segregating_site(Genes *g, int i)
     unsigned long index = (unsigned long)1 << modblocksize(i);
     int k;
 
-    if (!gene_knownancestor) {
+    if (!g_gene_knownancestor)
+    {
         for (j = 0; j < g->n; j++)
             /* Find first occurrence of sequence carrying ancestral material
              * in this site.
              */
-            if ((g->data[j].ancestral[block] & index) != 0) {
+            if ((g->data[j].ancestral[block] & index) != 0)
+            {
                 /* Check whether all other sequences carrying ancestral material
                  * in this site agrees.
                  */
                 for (k = j + 1; k < g->n; k++)
-                    if (((g->data[j].type[block] ^ g->data[k].type[block])
-                            & g->data[k].ancestral[block] & index) != 0)
+                    if (((g->data[j].type[block] ^ g->data[k].type[block]) & g->data[k].ancestral[block] & index) != 0)
                         /* Sequence k doesn't */
                         return 1;
             }
@@ -3461,20 +3743,24 @@ int conflicting_sites(Genes *g)
     unsigned long type00, type01, type10, type11, filter;
     int i, j, k;
 
-    for (i = 0; i < s->length - 1; i++) {
+    for (i = 0; i < s->length - 1; i++)
+    {
         /* Find conflicting sites with site i as first site */
-        for (j = i + 1; j < s->length; j++) {
+        for (j = i + 1; j < s->length; j++)
+        {
             /* Compare sites i and j */
             type01 = type10 = type11 = 0;
-            type00 = gene_knownancestor;
-            for (k = 0; k < divblocksize(s->n - 1) + 1; k++) {
+            type00 = g_gene_knownancestor;
+            for (k = 0; k < divblocksize(s->n - 1) + 1; k++)
+            {
                 filter = s->data[i].ancestral[k] & s->data[j].ancestral[k];
                 type00 |= ~s->data[i].type[k] & ~s->data[j].type[k] & filter;
                 type01 |= ~s->data[i].type[k] & s->data[j].type[k] & filter;
                 type10 |= s->data[i].type[k] & ~s->data[j].type[k] & filter;
                 type11 |= s->data[i].type[k] & s->data[j].type[k] & filter;
             }
-            if (type00 && type01 && type10 && type11) {
+            if (type00 && type01 && type10 && type11)
+            {
                 /* Sites are in conflict */
                 free_sites(s);
                 return 1;
@@ -3498,11 +3784,13 @@ int next_ancestral(Genes *g, int a, int i)
 
     if (i >= g->length - 1)
         return -1;
-    else if (i < 0) {
+    else if (i < 0)
+    {
         pattern = g->data[a].ancestral[0];
         block = 0;
     }
-    else {
+    else
+    {
         block = divblocksize(i + 1);
         i = modblocksize(i + 1);
         if (i == 0)
@@ -3528,8 +3816,7 @@ int identical(Genes *g, int a, int b)
 
     /* Check for identity */
     for (i = 0; i < blocks; i++)
-        if (((g->data[a].ancestral[i] ^ g->data[b].ancestral[i]) != 0)
-                || ((g->data[a].type[i] ^ g->data[b].type[i]) != 0))
+        if (((g->data[a].ancestral[i] ^ g->data[b].ancestral[i]) != 0) || ((g->data[a].type[i] ^ g->data[b].type[i]) != 0))
             /* Conflict */
             return 0;
 
@@ -3544,8 +3831,7 @@ int compatible(Genes *g, int a, int b)
 
     /* Check for compatibility */
     for (i = 0; i < blocks; i++)
-        if ((g->data[a].ancestral[i] & g->data[b].ancestral[i]
-                & (g->data[a].type[i] ^ g->data[b].type[i])) != 0)
+        if ((g->data[a].ancestral[i] & g->data[b].ancestral[i] & (g->data[a].type[i] ^ g->data[b].type[i])) != 0)
             /* Conflict in site where both sequences have ancestral material */
             return 0;
 
@@ -3562,8 +3848,8 @@ EList *incompatible_sites(Genes *g, int a, int b)
 
     for (i = 0; i < blocks; i++)
         /* Compute bit vector representation of incompatibilities in block i */
-        if ((incomp = g->data[a].ancestral[i] & g->data[b].ancestral[i]
-                      & (g->data[a].type[i] ^ g->data[b].type[i])) != 0) {
+        if ((incomp = g->data[a].ancestral[i] & g->data[b].ancestral[i] & (g->data[a].type[i] ^ g->data[b].type[i])) != 0)
+        {
             /* Convert these positions to indeces and insert in list */
             /* First position is found in logarithmic time, then we do a linear
              * scan.
@@ -3573,7 +3859,8 @@ EList *incompatible_sites(Genes *g, int a, int b)
             elist_append(l, (void *)(k + j));
             incomp ^= (unsigned long)1 << j;
             for (j++; incomp != 0; j++)
-                if ((((unsigned long)1 << j) & incomp) != 0) {
+                if ((((unsigned long)1 << j) & incomp) != 0)
+                {
                     elist_append(l, (void *)(k + j));
                     incomp ^= (unsigned long)1 << j;
                 }
@@ -3589,8 +3876,7 @@ int subsumed_sequence(Genes *g, int a, int b)
 
     /* Check for subsumation */
     for (i = 0; i < blocks; i++)
-        if (((~g->data[b].ancestral[i] | (g->data[a].type[i] ^ g->data[b].type[i]))
-                & g->data[a].ancestral[i]) != 0)
+        if (((~g->data[b].ancestral[i] | (g->data[a].type[i] ^ g->data[b].type[i])) & g->data[a].ancestral[i]) != 0)
             /* Either b does not carry ancestral material or there is a
              * conflict in a site where a carries ancestral material.
              */
@@ -3607,8 +3893,7 @@ int subsumed_site(Sites *s, int a, int b)
 
     /* Check for subsumation */
     for (i = 0; i < blocks; i++)
-        if (((~s->data[b].ancestral[i] | (s->data[a].type[i] ^ s->data[b].type[i]))
-                & s->data[a].ancestral[i]) != 0)
+        if (((~s->data[b].ancestral[i] | (s->data[a].type[i] ^ s->data[b].type[i])) & s->data[a].ancestral[i]) != 0)
             /* Either b does not carry ancestral material or there is a
              * conflict in a sequence where a carries ancestral material.
              */
@@ -3625,10 +3910,12 @@ EList *ancestral_sites(Genes *g, int a)
     unsigned long index = 1;
     EList *sites = elist_make();
 
-    for (i = 0; i < g->length; i++) {
+    for (i = 0; i < g->length; i++)
+    {
         if (g->data[a].ancestral[block] & index)
             elist_append(sites, (void *)i);
-        if ((index <<= 1) == 0) {
+        if ((index <<= 1) == 0)
+        {
             /* End of block - continue with next block */
             block++;
             index = 1;
@@ -3647,7 +3934,8 @@ EList *zero_sequences(Sites *s, int i)
 
     for (h = 0; h < blocks; h++)
         /* Compute bit vector representation of sequences carrying 0 in block i */
-        if ((zeros = ~s->data[i].type[h] & s->data[i].ancestral[h]) != 0) {
+        if ((zeros = ~s->data[i].type[h] & s->data[i].ancestral[h]) != 0)
+        {
             /* Convert these positions to indeces and insert in list */
             /* First position is found in logarithmic time, then we do a linear
              * scan.
@@ -3657,7 +3945,8 @@ EList *zero_sequences(Sites *s, int i)
             elist_append(l, (void *)(k + j));
             zeros ^= (unsigned long)1 << j;
             for (j++; zeros != 0; j++)
-                if ((((unsigned long)1 << j) & zeros) != 0) {
+                if ((((unsigned long)1 << j) & zeros) != 0)
+                {
                     elist_append(l, (void *)(k + j));
                     zeros ^= (unsigned long)1 << j;
                 }
@@ -3675,7 +3964,8 @@ EList *one_sequences(Sites *s, int i)
 
     for (h = 0; h < blocks; h++)
         /* Copy bit vector representation of sequences carrying 1 in block i */
-        if ((ones = s->data[i].type[h]) != 0) {
+        if ((ones = s->data[i].type[h]) != 0)
+        {
             /* Convert these positions to indeces and insert in list */
             /* First position is found in logarithmic time, then we do a linear
              * scan.
@@ -3685,7 +3975,8 @@ EList *one_sequences(Sites *s, int i)
             elist_append(l, (void *)(k + j));
             ones ^= (unsigned long)1 << j;
             for (j++; ones != 0; j++)
-                if ((((unsigned long)1 << j) & ones) != 0) {
+                if ((((unsigned long)1 << j) & ones) != 0)
+                {
                     elist_append(l, (void *)(k + j));
                     ones ^= (unsigned long)1 << j;
                 }
@@ -3706,8 +3997,7 @@ static int subsumed_segregating(unsigned long *atype,
     int i;
 
     for (i = 0; i < n; i++)
-        if ((segregating[i] & aancestral[i]
-                & (~bancestral[i] | (atype[i] ^ btype[i]))) != 0)
+        if ((segregating[i] & aancestral[i] & (~bancestral[i] | (atype[i] ^ btype[i]))) != 0)
             /* Non-subsumation detected */
             return 0;
 
@@ -3720,23 +4010,27 @@ static int subsumed_segregating(unsigned long *atype,
 int find_safe_coalescence(Genes *g, int a)
 {
     int i, j, blocks = divblocksize(g->length - 1) + 1;
-    unsigned long type, ancestral, *segregating
-        = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
+    unsigned long type, ancestral, *segregating = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
 
     /* Determine set of segregating sites */
-    for (i = 0; i < blocks; i++) {
-        if(!gene_knownancestor) {
+    for (i = 0; i < blocks; i++)
+    {
+        if (!g_gene_knownancestor)
+        {
             ancestral = g->data[0].ancestral[i];
             type = g->data[0].type[i];
-            for (j = 1; j < g->n; j++) {
+            for (j = 1; j < g->n; j++)
+            {
                 segregating[i] |= ancestral & g->data[j].ancestral[i] & (type ^ g->data[j].type[i]);
                 type |= g->data[j].type[i];
                 ancestral |= g->data[j].ancestral[i];
             }
         }
-        else {
+        else
+        {
             // If know root state then just looking for sites that have at least one 1
-            for(j = 0; j < g->n; j++) {
+            for (j = 0; j < g->n; j++)
+            {
                 segregating[i] |= g->data[j].ancestral[i] & g->data[j].type[i];
             }
         }
@@ -3745,9 +4039,10 @@ int find_safe_coalescence(Genes *g, int a)
     /* Find sequence subsuming a in all segregating sites */
     for (j = 0; j < g->n; j++)
         if ((j != a) &&
-                (subsumed_segregating(g->data[a].type, g->data[a].ancestral,
-                                      g->data[j].type, g->data[j].ancestral,
-                                      segregating, blocks))) {
+            (subsumed_segregating(g->data[a].type, g->data[a].ancestral,
+                                  g->data[j].type, g->data[j].ancestral,
+                                  segregating, blocks)))
+        {
             free(segregating);
             return j;
         }
@@ -3767,16 +4062,20 @@ int entangled(Genes *g, int a, int b)
     /* Determine leftmost occurrence of ancestral material in
      * sequences a and b.
      */
-    for (i = 0; i < blocks; i++) {
+    for (i = 0; i < blocks; i++)
+    {
         aflank = lsb(g->data[a].ancestral[i]);
-        if (aflank >= 0) {
+        if (aflank >= 0)
+        {
             aflank += mulblocksize(i);
             break;
         }
     }
-    for (i = 0; i < blocks; i++) {
+    for (i = 0; i < blocks; i++)
+    {
         bflank = lsb(g->data[b].ancestral[i]);
-        if (bflank >= 0) {
+        if (bflank >= 0)
+        {
             bflank += mulblocksize(i);
             break;
         }
@@ -3784,14 +4083,17 @@ int entangled(Genes *g, int a, int b)
     if (aflank == bflank)
         /* Entanglement */
         return 1;
-    else if (aflank < bflank) {
+    else if (aflank < bflank)
+    {
         /* Leftmost occurrence of ancestral material in a is to the left
          * of leftmost occurrence of ancestral material in b; determine
          * rightmost occurrence of ancestral material in a.
          */
-        for (i = blocks - 1; i >= 0; i--) {
+        for (i = blocks - 1; i >= 0; i--)
+        {
             aflank = msb(g->data[a].ancestral[i]);
-            if (aflank >= 0) {
+            if (aflank >= 0)
+            {
                 aflank += mulblocksize(i);
                 break;
             }
@@ -3803,14 +4105,17 @@ int entangled(Genes *g, int a, int b)
             /* Entanglement */
             return 1;
     }
-    else {
+    else
+    {
         /* Leftmost occurrence of ancestral material in b is to the left
          * of leftmost occurrence of ancestral material in a; determine
          * rightmost occurrence of ancestral material in b.
          */
-        for (i = blocks - 1; i >= 0; i--) {
+        for (i = blocks - 1; i >= 0; i--)
+        {
             bflank = msb(g->data[b].ancestral[i]);
-            if (bflank >= 0) {
+            if (bflank >= 0)
+            {
                 bflank += mulblocksize(i);
                 break;
             }
@@ -3831,13 +4136,15 @@ int entangled(Genes *g, int a, int b)
 void coalesce(Genes *g, int a, int b)
 {
     int i, blocks = divblocksize(g->length - 1) + 1, j;
-    
-    if(elements != NULL) {
+
+    if (elements != NULL)
+    {
         elist_swap(elements, b, elements->count - 1);
         elist_removelast(elements);
     }
 
-    for (i = 0; i < blocks; i++) {
+    for (i = 0; i < blocks; i++)
+    {
         /* Copy all type information from b to a */
         g->data[a].type[i] |= g->data[b].type[i];
         /* Coalescent will have ancestral material anywhere either a or b
@@ -3855,10 +4162,7 @@ void coalesce(Genes *g, int a, int b)
     if (b != g->n)
         /* Copy last sequence to b */
         memcpy(&(g->data[b]), &(g->data[g->n]), sizeof(Gene));
-
 }
-
-
 
 /* For each pair of compatible sequences of g, coalesce them and
  * insert the resulting set of sequences in an EList that is returned.
@@ -3875,9 +4179,11 @@ EList *force_coalesce(Genes *g, EList *event)
 
     for (i = 0; i < g->n - 1; i++)
         for (j = i + 1; j < g->n; j++)
-            if (compatible(g, i, j)) {
+            if (compatible(g, i, j))
+            {
 #ifdef ENABLE_VERBOSE
-                if (verbose()) {
+                if (verbose())
+                {
                     printf("Coalescing sequences %d and %d\n", i, j);
                     output_genes_indexed(g, NULL);
                 }
@@ -3885,7 +4191,8 @@ EList *force_coalesce(Genes *g, EList *event)
                 h = copy_genes(g);
                 coalesce(h, i, j);
                 elist_append(forced, h);
-                if (event != NULL) {
+                if (event != NULL)
+                {
                     /* Insert corresponding event in list of events */
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = COALESCENCE;
@@ -3913,7 +4220,7 @@ int coalescence_amleft(Genes *g, int a, int b)
 
     coalesce(h, a, b);
     implode_genes(h);
-    n = ancestral_material(h);
+    n = count_ancestral_material(h);
 
     /* Clean up */
     free_genes(h);
@@ -3931,12 +4238,11 @@ static void _split(Genes *g, int a, int index, int block)
     unsigned long filter;
 
     g->data = (Gene *)xrealloc(g->data, (g->n + 1) * sizeof(Gene));
-    g->data[g->n].type
-        = (unsigned long*)xcalloc(blocks, sizeof(unsigned long));
-    g->data[g->n].ancestral
-        = (unsigned long*)xcalloc(blocks, sizeof(unsigned long));
+    g->data[g->n].type = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
+    g->data[g->n].ancestral = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
 
-    if (index != 0) {
+    if (index != 0)
+    {
         /* Split happens inside block */
         filter = ((unsigned long)1 << index) - 1;
         g->data[g->n].type[block] = g->data[a].type[block] & ~filter;
@@ -3950,7 +4256,8 @@ static void _split(Genes *g, int a, int index, int block)
         /* We need to copy block to the new sequence */
         j = block;
 
-    for (; j < blocks; j++) {
+    for (; j < blocks; j++)
+    {
         /* Split happened before this block */
         g->data[g->n].ancestral[j] = g->data[a].ancestral[j];
         g->data[g->n].type[j] = g->data[a].type[j];
@@ -3959,13 +4266,16 @@ static void _split(Genes *g, int a, int index, int block)
 
     /* Update gene to contain one more sequence */
     g->n += 1;
-    
-    if(elements != NULL) {
-        if((int)(elist_get(elements, a)) != -1) {
+
+    if (elements != NULL)
+    {
+        if ((int)(elist_get(elements, a)) != -1)
+        {
             elist_append(elements, (void *)seq_numbering);
             seq_numbering++;
         }
-        else {
+        else
+        {
             elist_append(elements, (void *)(-1));
             seq_numbering++;
         }
@@ -3994,10 +4304,12 @@ EList *force_split(Genes *g, int a, EList *event)
     Event *e;
 
     /* No point in splitting before the first site carrying ancestral material */
-    for (i = 1; i < g->length; i++) {
+    for (i = 1; i < g->length; i++)
+    {
         if ((g->data[a].ancestral[block] & ((unsigned long)1 << index)) != 0)
             break;
-        if (index == BLOCKSIZE - 1) {
+        if (index == BLOCKSIZE - 1)
+        {
             index = 0;
             block++;
         }
@@ -4005,18 +4317,22 @@ EList *force_split(Genes *g, int a, EList *event)
             index++;
     }
 
-    for (; i < g->length; i++) {
+    for (; i < g->length; i++)
+    {
         /* Update split point */
-        if (index == BLOCKSIZE - 1) {
+        if (index == BLOCKSIZE - 1)
+        {
             index = 0;
             block++;
         }
         else
             index++;
         /* We only split before site carrying ancestral material */
-        if ((g->data[a].ancestral[block] & ((unsigned long)1 << index)) != 0) {
+        if ((g->data[a].ancestral[block] & ((unsigned long)1 << index)) != 0)
+        {
 #ifdef ENABLE_VERBOSE
-            if (verbose()) {
+            if (verbose())
+            {
                 printf("Splitting sequence %d before site %d\n",
                        a, index + mulblocksize(block));
                 output_genes_indexed(g, NULL);
@@ -4025,7 +4341,8 @@ EList *force_split(Genes *g, int a, EList *event)
             h = copy_genes(g);
             _split(h, a, index, block);
             elist_append(forced, h);
-            if (event != NULL) {
+            if (event != NULL)
+            {
                 /* Insert corresponding event in list of events */
                 e = (Event *)xmalloc(sizeof(Event));
                 e->type = RECOMBINATION;
@@ -4047,7 +4364,8 @@ void split_coalesceprefix(Genes *g, int a, int index, int block, int b)
 {
     unsigned long filter;
 
-    if (index != 0) {
+    if (index != 0)
+    {
         /* Merge in block that is split */
         filter = ((unsigned long)1 << index) - 1;
         g->data[b].type[block] |= g->data[a].type[block] & filter;
@@ -4057,13 +4375,15 @@ void split_coalesceprefix(Genes *g, int a, int index, int block, int b)
     }
 
     /* Merge complete blocks of prefix with sequence b */
-    for (block--; block >= 0; block--) {
+    for (block--; block >= 0; block--)
+    {
         g->data[b].type[block] |= g->data[a].type[block];
         g->data[b].ancestral[block] |= g->data[a].ancestral[block];
         g->data[a].type[block] = g->data[a].ancestral[block] = 0;
     }
-    
-    if(elements != NULL) {
+
+    if (elements != NULL)
+    {
         elist_change(elements, b, (void *)(-1));
     }
 }
@@ -4077,7 +4397,8 @@ void split_coalescepostfix(Genes *g, int a, int index, int block, int b)
     int blocks = divblocksize(g->length - 1) + 1;
     unsigned long filter;
 
-    if (index != 0) {
+    if (index != 0)
+    {
         /* Merge in block that is split */
         filter = ((unsigned long)1 << index) - 1;
         g->data[b].type[block] |= g->data[a].type[block] & ~filter;
@@ -4089,13 +4410,15 @@ void split_coalescepostfix(Genes *g, int a, int index, int block, int b)
     }
 
     /* Merge complete blocks of postfix with sequence b */
-    for (; block < blocks; block++) {
+    for (; block < blocks; block++)
+    {
         g->data[b].type[block] |= g->data[a].type[block];
         g->data[b].ancestral[block] |= g->data[a].ancestral[block];
         g->data[a].type[block] = g->data[a].ancestral[block] = 0;
     }
-    
-    if(elements != NULL) {
+
+    if (elements != NULL)
+    {
         elist_change(elements, b, (void *)(-1));
     }
 }
@@ -4109,7 +4432,8 @@ void splitafter_coalescepostfix(Genes *g, int a, int index, int block, int b)
     int blocks = divblocksize(g->length - 1) + 1;
     unsigned long filter;
 
-    if (index != BLOCKSIZE - 1) {
+    if (index != BLOCKSIZE - 1)
+    {
         /* Merge in block that is split */
         filter = ((unsigned long)2 << index) - 1;
         g->data[b].type[block] |= g->data[a].type[block] & ~filter;
@@ -4119,13 +4443,15 @@ void splitafter_coalescepostfix(Genes *g, int a, int index, int block, int b)
     }
 
     /* Merge complete blocks of postfix with sequence b */
-    for (block++; block < blocks; block++) {
+    for (block++; block < blocks; block++)
+    {
         g->data[b].type[block] |= g->data[a].type[block];
         g->data[b].ancestral[block] |= g->data[a].ancestral[block];
         g->data[a].type[block] = g->data[a].ancestral[block] = 0;
     }
-    
-    if(elements != NULL) {
+
+    if (elements != NULL)
+    {
         elist_change(elements, b, (void *)(-1));
     }
 }
@@ -4142,7 +4468,8 @@ int split_removeprefix(Genes *g, int a, int index, int block)
     int b;
     int block2 = block;
 
-    if (index != 0) {
+    if (index != 0)
+    {
         /* Remove prefix in block that is split */
         filter = ~(((unsigned long)1 << index) - 1);
         g->data[a].type[block] &= filter;
@@ -4152,9 +4479,10 @@ int split_removeprefix(Genes *g, int a, int index, int block)
     /* Remove complete blocks of prefix */
     for (block--; block >= 0; block--)
         g->data[a].type[block] = g->data[a].ancestral[block] = 0;
-    
+
     // Now get the coalescing sequence and find index of the sequence into which it coalesces
-    if (index != 0) {
+    if (index != 0)
+    {
         /* Remove postfix in block that is split */
         filter = ((unsigned long)1 << index) - 1;
         h->data[a].type[block2] &= filter;
@@ -4162,20 +4490,20 @@ int split_removeprefix(Genes *g, int a, int index, int block)
         /* The block of the split has now been handled */
         block2++;
     }
-    
+
     /* Remove complete blocks of postfix */
     for (; block2 < blocks; block2++)
         h->data[a].type[block2] = h->data[a].ancestral[block2] = 0;
-    
+
     b = find_safe_coalescence(h, a);
-    if(elements != NULL) {
+    if (elements != NULL)
+    {
         elist_change(elements, b, (void *)(-1));
     }
-    
+
     free_genes(h);
-    
+
     return b;
-    
 }
 
 /* Split sequence a before site given by index and block and remove
@@ -4190,7 +4518,8 @@ int split_removepostfix(Genes *g, int a, int index, int block)
     int b;
     int block2 = block;
 
-    if (index != 0) {
+    if (index != 0)
+    {
         /* Remove postfix in block that is split */
         filter = ((unsigned long)1 << index) - 1;
         g->data[a].type[block] &= filter;
@@ -4202,25 +4531,27 @@ int split_removepostfix(Genes *g, int a, int index, int block)
     /* Remove complete blocks of postfix */
     for (; block < blocks; block++)
         g->data[a].type[block] = g->data[a].ancestral[block] = 0;
-    
-    if (index != 0) {
+
+    if (index != 0)
+    {
         /* Remove prefix in block that is split */
         filter = ~(((unsigned long)1 << index) - 1);
         h->data[a].type[block2] &= filter;
         h->data[a].ancestral[block2] &= filter;
     }
-    
+
     /* Remove complete blocks of prefix */
     for (block2--; block2 >= 0; block2--)
         h->data[a].type[block2] = h->data[a].ancestral[block2] = 0;
-    
+
     b = find_safe_coalescence(h, a);
-    if(elements != NULL) {
+    if (elements != NULL)
+    {
         elist_change(elements, b, (void *)(-1));
     }
-    
+
     free_genes(h);
-    
+
     return b;
 }
 
@@ -4240,7 +4571,7 @@ int individual_ancestral_material(Genes *g, int i)
 /* Count the number of sites carrying ancestral material in the
  * sequences of g.
  */
-int ancestral_material(Genes *g)
+int count_ancestral_material(Genes *g)
 {
     int i, j, am = 0, blocks = divblocksize(g->length - 1) + 1;
 
@@ -4260,8 +4591,7 @@ int individual_all_ancestral(Genes *g, int i)
         if (g->data[i].ancestral[j] != ~0)
             return 0;
 
-    return (g->data[i].ancestral[blocks - 1] + 1
-            == (unsigned long)1 << (modblocksize(g->length - 1) + 1));
+    return (g->data[i].ancestral[blocks - 1] + 1 == (unsigned long)1 << (modblocksize(g->length - 1) + 1));
 }
 
 /* Determine whether all sequences contain ancestral material in all sites */
@@ -4283,12 +4613,14 @@ int informative_ancestral_material(Genes *g)
     int i, j, am = 0, blocks = divblocksize(g->length - 1) + 1;
     unsigned long one0, two0, one1, two1, filter;
 
-    for (i = 0; i <= blocks - 1; i++) {
+    for (i = 0; i <= blocks - 1; i++)
+    {
         /* Compile type information from all genes for block i */
         one1 = g->data[0].type[i];
         one0 = ~g->data[0].type[i] & g->data[0].ancestral[i];
         two0 = two1 = 0;
-        for (j = 1; j < g->n; j++) {
+        for (j = 1; j < g->n; j++)
+        {
             two1 |= one1 & g->data[j].type[i];
             one1 |= g->data[j].type[i];
             filter = ~g->data[j].type[i] & g->data[j].ancestral[i];
@@ -4298,7 +4630,7 @@ int informative_ancestral_material(Genes *g)
         /* two1 (two0) now has a 1 in all positions where there are at
          * least two 1s (0s) in the data.
          */
-        if (gene_knownancestor)
+        if (g_gene_knownancestor)
             filter = two1;
         else
             filter = two0 & two1;
@@ -4320,10 +4652,12 @@ int ancestral_material_overlap(Genes *g)
     unsigned long pattern;
 
     /* Check block by block */
-    for (i = 0; i < blocks; i++) {
+    for (i = 0; i < blocks; i++)
+    {
         pattern = 0;
         /* ...and sequence by sequence */
-        for (j = 0; j < g->n; j++) {
+        for (j = 0; j < g->n; j++)
+        {
             if ((pattern & g->data[j].ancestral[i]) != 0)
                 /* Overlap detected */
                 return 1;
@@ -4372,21 +4706,22 @@ int minimum_compatiblechops(Genes *g, int a)
     unsigned long filter, tmp;
     int i, j, k, chops = 0, blockmatched, blockswitch = 0,
                  *out = (int *)xcalloc(g->n, sizeof(int)),
-                  blocks = divblocksize(g->length - 1) + 1;
+                 blocks = divblocksize(g->length - 1) + 1;
 
     out[a] = -1;
     /* Run through the entire sequence */
-    for (i = 0; i < blocks; i++) {
+    for (i = 0; i < blocks; i++)
+    {
         /* Handle block i */
         filter = ~0;
-        while (filter) {
+        while (filter)
+        {
             blockmatched = 0;
             for (j = 0; j < g->n; j++)
-                if (!out[j]) {
+                if (!out[j])
+                {
                     /* Sequence j is still a contender */
-                    k = lsb((g->data[a].type[i] ^ g->data[j].type[i])
-                            & (g->data[a].ancestral[i] & g->data[j].ancestral[i])
-                            & filter);
+                    k = lsb((g->data[a].type[i] ^ g->data[j].type[i]) & (g->data[a].ancestral[i] & g->data[j].ancestral[i]) & filter);
                     if (k >= 0)
                         /* But not anymore */
                         out[j] = k + 1;
@@ -4398,19 +4733,22 @@ int minimum_compatiblechops(Genes *g, int a)
                     out[j] = -1;
             if (blockmatched)
                 filter = 0;
-            else {
+            else
+            {
                 /* We could not match a with a compatible sequence to the end
                  * of the block.
                  */
                 /* Update filter */
                 tmp = ~(((unsigned long)1 << (max(g->n, out) - 1)) - 1);
-                if (tmp == filter) {
+                if (tmp == filter)
+                {
                     /* We need to be a bit careful as the site that causes a
                      * chop can be the first site in a block. This means that
                      * even though tmp = filter, the current incompatibility
                      * does not match the previous incompatibility.
                      */
-                    if (!blockswitch) {
+                    if (!blockswitch)
+                    {
                         /* We found a site that cannot be coalesced */
                         free(out);
                         return -1;
@@ -4447,22 +4785,22 @@ int minimum_subsumedchops(Genes *g, int a)
     unsigned long filter, tmp;
     int i, j, k, chops = 0, blockmatched, blockswitch = 0,
                  *out = (int *)xcalloc(g->n, sizeof(int)),
-                  blocks = divblocksize(g->length - 1) + 1;
+                 blocks = divblocksize(g->length - 1) + 1;
 
     out[a] = -1;
     /* Run through the entire sequence */
-    for (i = 0; i < blocks; i++) {
+    for (i = 0; i < blocks; i++)
+    {
         /* Handle block i */
         filter = ~0;
-        while (filter) {
+        while (filter)
+        {
             blockmatched = 0;
             for (j = 0; j < g->n; j++)
-                if (!out[j]) {
+                if (!out[j])
+                {
                     /* Sequence j is still a contender */
-                    k = lsb((((g->data[a].type[i] ^ g->data[j].type[i])
-                              & g->data[a].ancestral[i])
-                             | (g->data[a].ancestral[i] & ~g->data[j].ancestral[i]))
-                            & filter);
+                    k = lsb((((g->data[a].type[i] ^ g->data[j].type[i]) & g->data[a].ancestral[i]) | (g->data[a].ancestral[i] & ~g->data[j].ancestral[i])) & filter);
                     if (k >= 0)
                         /* But not anymore */
                         out[j] = k + 1;
@@ -4476,19 +4814,22 @@ int minimum_subsumedchops(Genes *g, int a)
                     out[j] = -1;
             if (blockmatched)
                 filter = 0;
-            else {
+            else
+            {
                 /* We could not match a with a compatible sequence to the end
                  * of the block.
                  */
                 /* Update filter */
                 tmp = ~(((unsigned long)1 << (max(g->n, out) - 1)) - 1);
-                if (tmp == filter) {
+                if (tmp == filter)
+                {
                     /* We need to be a bit careful as the site that causes a
                      * chop can be the first site in a block. This means that
                      * even though tmp = filter, the current incompatibility
                      * does not match the previous incompatibility.
                      */
-                    if (!blockswitch) {
+                    if (!blockswitch)
+                    {
                         /* We found a site that cannot be coalesced */
                         free(out);
                         return -1;
@@ -4525,22 +4866,24 @@ Index *maximumsubsumedprefixs(Genes *g)
 {
     Index *prefixs = (Index *)xmalloc(g->n * sizeof(Index));
     int a, i, j, k, prefixends, *out = (int *)xmalloc(g->n * sizeof(int)),
-                                 blocks = divblocksize(g->length - 1) + 1;
+                                blocks = divblocksize(g->length - 1) + 1;
 
-    for (a = 0; a < g->n; a++) {
+    for (a = 0; a < g->n; a++)
+    {
         /* Find prefix for sequence a */
         for (i = 0; i < g->n; i++)
             out[i] = -1;
         out[a] = -2;
         /* Run through the sequence from left to right */
-        for (i = 0; i < blocks; i++) {
+        for (i = 0; i < blocks; i++)
+        {
             /* Handle block i */
             prefixends = 1;
             for (j = 0; j < g->n; j++)
-                if (out[j] == -1) {
+                if (out[j] == -1)
+                {
                     /* Sequence j is still a contender */
-                    k = lsb(((g->data[a].type[i] ^ g->data[j].type[i]) & g->data[a].ancestral[i])
-                            | (g->data[a].ancestral[i] & ~g->data[j].ancestral[i]));
+                    k = lsb(((g->data[a].type[i] ^ g->data[j].type[i]) & g->data[a].ancestral[i]) | (g->data[a].ancestral[i] & ~g->data[j].ancestral[i]));
                     if (k >= 0)
                         /* But not anymore */
                         out[j] = k;
@@ -4555,7 +4898,8 @@ Index *maximumsubsumedprefixs(Genes *g)
                      * the way up to this block.
                      */
                     out[j] = -2;
-            if (prefixends) {
+            if (prefixends)
+            {
                 /* The last sequences subsuming a prefix have to give up in
                  * this block.
                  */
@@ -4597,23 +4941,24 @@ Index *maximumsubsumedpostfixs(Genes *g)
 {
     Index *postfixs = (Index *)xmalloc(g->n * sizeof(Index));
     int a, i, j, k, postfixends, *out = (int *)xmalloc(g->n * sizeof(int)),
-                                  blocks = divblocksize(g->length - 1) + 1;
+                                 blocks = divblocksize(g->length - 1) + 1;
 
-    for (a = 0; a < g->n; a++) {
+    for (a = 0; a < g->n; a++)
+    {
         /* Find postfix for sequence a */
         for (i = 0; i < g->n; i++)
             out[i] = 0;
         out[a] = INT_MAX;
         /* Run through the sequence from right to left */
-        for (i = blocks - 1; i >= 0; i--) {
+        for (i = blocks - 1; i >= 0; i--)
+        {
             /* Handle block i */
             postfixends = 1;
             for (j = 0; j < g->n; j++)
-                if (!out[j]) {
+                if (!out[j])
+                {
                     /* Sequence j is still a contender */
-                    k = msb(((g->data[a].type[i] ^ g->data[j].type[i])
-                             & g->data[a].ancestral[i])
-                            | (g->data[a].ancestral[i] & ~g->data[j].ancestral[i]));
+                    k = msb(((g->data[a].type[i] ^ g->data[j].type[i]) & g->data[a].ancestral[i]) | (g->data[a].ancestral[i] & ~g->data[j].ancestral[i]));
                     if (k >= 0)
                         /* But not anymore */
                         out[j] = k + 1;
@@ -4625,12 +4970,14 @@ Index *maximumsubsumedpostfixs(Genes *g)
                 }
                 else
                     out[j] = INT_MAX;
-            if (postfixends) {
+            if (postfixends)
+            {
                 /* The last sequences subsuming a prefix have to give up in
                  * this block.
                  */
                 postfixs[a].index = min(g->n, out);
-                if (postfixs[a].index == BLOCKSIZE) {
+                if (postfixs[a].index == BLOCKSIZE)
+                {
                     /* The subsumed postfix does not extend into this block */
                     postfixs[a].index = 0;
                     postfixs[a].block = i + 1;
@@ -4660,16 +5007,18 @@ Index *maximumsubsumedprefix(Genes *g, int s)
     int i, j, blocks = divblocksize(g->n - 1) + 1;
 
     /* Run through all sequences */
-    for (i = 0; i < g->n; i++) {
+    for (i = 0; i < g->n; i++)
+    {
         /* Use -1 block to mark full compatibility */
         prefixs[i].block = -1;
         if (i != s)
             /* Look for leftmost insubsumation */
             for (j = 0; j < blocks; j++)
                 if ((prefixs[i].index =
-                            lsb(((g->data[s].type[j] ^ g->data[i].type[j]) &
-                                 g->data[i].ancestral[j]) |
-                                (g->data[i].ancestral[j] & ~g->data[s].ancestral[j]))) >= 0) {
+                         lsb(((g->data[s].type[j] ^ g->data[i].type[j]) &
+                              g->data[i].ancestral[j]) |
+                             (g->data[i].ancestral[j] & ~g->data[s].ancestral[j]))) >= 0)
+                {
                     prefixs[i].block = j;
                     break;
                 }
@@ -4687,21 +5036,25 @@ Index *maximumsubsumedpostfix(Genes *g, int s)
     int i, j, blocks = divblocksize(g->n - 1) + 1;
 
     /* Run through all sequences */
-    for (i = 0; i < g->n; i++) {
+    for (i = 0; i < g->n; i++)
+    {
         /* Use -1 block to mark full compatibility */
         postfixs[i].block = -1;
         if (i != s)
             /* Look for rightmost insubsumation */
             for (j = blocks - 1; j >= 0; j--)
                 if ((postfixs[i].index =
-                            msb(((g->data[s].type[j] ^ g->data[i].type[j]) &
-                                 g->data[i].ancestral[j]) |
-                                (g->data[i].ancestral[j] & ~g->data[s].ancestral[j]))) >= 0) {
-                    if (postfixs[i].index == BLOCKSIZE - 1) {
+                         msb(((g->data[s].type[j] ^ g->data[i].type[j]) &
+                              g->data[i].ancestral[j]) |
+                             (g->data[i].ancestral[j] & ~g->data[s].ancestral[j]))) >= 0)
+                {
+                    if (postfixs[i].index == BLOCKSIZE - 1)
+                    {
                         postfixs[i].index = 0;
                         postfixs[i].block = j + 1;
                     }
-                    else {
+                    else
+                    {
                         postfixs[i].index++;
                         postfixs[i].block = j;
                     }
@@ -4728,7 +5081,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
 {
     int i, j, s, index, block, sindex, sblock,
         *ancestral = xmalloc(g->n * sizeof(int)),
-         *out = xmalloc(g->n * sizeof(int));
+        *out = xmalloc(g->n * sizeof(int));
     Genes *h;
     Event *e;
     LList *tmp = eventlist;
@@ -4738,27 +5091,34 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
     int v = verbose();
 
     set_verbose(0);
-    if (v) {
+    if (v)
+    {
         printf("Splitting off maximal compatible prefixes in:\n");
         output_genes_indexed(g, NULL);
     }
 #endif
 
     /* Run through all sequences of g */
-    for (s = 0; s < g->n; s++) {
-        if (a[s].index + mulblocksize(a[s].block) > 0){
+    for (s = 0; s < g->n; s++)
+    {
+        if (a[s].index + mulblocksize(a[s].block) > 0)
+        {
             /* Start by splitting off maximum subsumed prefix */
             h = copy_genes(g);
-            if(elements != NULL) {
+            if (elements != NULL)
+            {
                 elements = elist_make();
                 elist_safeextend(elements, tmp_elements);
             }
-            if(sites != NULL) {
+            if (sites != NULL)
+            {
                 sites = elist_make();
                 elist_safeextend(sites, tmp_sites);
             }
-            if(split_removeprefix(h, s, a[s].index, a[s].block) != -1){
-                if (eventlist != NULL) {
+            if (split_removeprefix(h, s, a[s].index, a[s].block) != -1)
+            {
+                if (eventlist != NULL)
+                {
                     eventlist = MakeLList();
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = RECOMBINATION;
@@ -4779,44 +5139,45 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                 implode_genes(h);
                 f(h);
             }
-            else {
+            else
+            {
                 free_genes(h);
             }
 
-    #ifdef ENABLE_VERBOSE
-            if (v) {
+#ifdef ENABLE_VERBOSE
+            if (v)
+            {
                 printf("Splitting maximum subsumed prefix off sequence %d at %d\n", s,
-                    mulblocksize(a[s].block) + a[s].index);
+                       mulblocksize(a[s].block) + a[s].index);
                 output_genes_indexed(h, NULL);
             }
-    #endif
+#endif
             /* Only consider splitting sequences where maximum subsumed prefix
-            * and maximum subsumed postfix do not overlap.
-            */
+             * and maximum subsumed postfix do not overlap.
+             */
             if ((a[s].block < b[s].block) ||
-                    ((a[s].block == b[s].block) && a[s].index < b[s].index)) {
+                ((a[s].block == b[s].block) && a[s].index < b[s].index))
+            {
                 /* Determine remaining contenders */
-                for (i = 0; i < g->n; i++) {
+                for (i = 0; i < g->n; i++)
+                {
                     if ((i == s) ||
-                            (((g->data[s].type[a[s].block] ^ g->data[i].type[a[s].block])
-                            & g->data[s].ancestral[a[s].block]
-                            & g->data[i].ancestral[a[s].block]
-                            & (((unsigned long)2 << a[s].index) - 1))
-                            != 0)) {
+                        (((g->data[s].type[a[s].block] ^ g->data[i].type[a[s].block]) & g->data[s].ancestral[a[s].block] & g->data[i].ancestral[a[s].block] & (((unsigned long)2 << a[s].index) - 1)) != 0))
+                    {
                         /* We will not consider prefixes between s and itself, nor
-                        * between s and a sequence that has a conflict with s no
-                        * later than a in the block containing a.
-                        */
+                         * between s and a sequence that has a conflict with s no
+                         * later than a in the block containing a.
+                         */
                         out[i] = 1;
                         continue;
                     }
                     out[i] = 0;
                     /* Nor will we consider prefixes between s and a sequence that
-                    * has a conflict with s anywhere else before a.
-                    */
+                     * has a conflict with s anywhere else before a.
+                     */
                     for (j = 0; j < a[s].block; j++)
-                        if (((g->data[s].type[j] ^ g->data[i].type[j])
-                                & g->data[s].ancestral[j] & g->data[i].ancestral[j]) != 0) {
+                        if (((g->data[s].type[j] ^ g->data[i].type[j]) & g->data[s].ancestral[j] & g->data[i].ancestral[j]) != 0)
+                        {
                             /* Conflict detected */
                             out[i] = 1;
                             break;
@@ -4832,40 +5193,41 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                     continue;
 
                 /* Determine for which of the contenders we have already
-                * encountered some ancestral material.
-                */
+                 * encountered some ancestral material.
+                 */
                 /* First determine rightmost occurrence of ancestral material in s */
                 sindex = -1;
                 for (sblock = 0; sblock < a[s].block; sblock++)
                     if ((sindex = lsb(g->data[s].ancestral[sblock])) >= 0)
                         /* Found it */
                         break;
-                if (sindex < 0) {
+                if (sindex < 0)
+                {
                     /* Haven't found it yet */
                     sindex = lsb(g->data[s].ancestral[sblock]);
                     /* We know that there is some ancestral before a (to end
-                    * subsumation), so we can rest assured that sindex is well
-                    * defined.
-                    */
+                     * subsumation), so we can rest assured that sindex is well
+                     * defined.
+                     */
                     for (i = 0; i < j; i++)
-                        ancestral[i] = g->data[out[i]].ancestral[sblock]
-                                    & (((unsigned long)2 << a[s].index) - 1)
-                                    & ~(((unsigned long)1 << sindex) - 1);
+                        ancestral[i] = g->data[out[i]].ancestral[sblock] & (((unsigned long)2 << a[s].index) - 1) & ~(((unsigned long)1 << sindex) - 1);
                 }
-                else {
+                else
+                {
                     /* Found it - first check block where maximum subsumed prefix
-                    * of s is split off and block where s has leftmost ancestral
-                    * material.
-                    */
-                    for (i = 0; i < j; i++) {
-                        if ((g->data[out[i]].ancestral[a[s].block]
-                                & (((unsigned long)2 << a[s].index) - 1)) != 0) {
+                     * of s is split off and block where s has leftmost ancestral
+                     * material.
+                     */
+                    for (i = 0; i < j; i++)
+                    {
+                        if ((g->data[out[i]].ancestral[a[s].block] & (((unsigned long)2 << a[s].index) - 1)) != 0)
+                        {
                             /* Ancestral material encountered no later than a */
                             ancestral[i] = 1;
                             continue;
                         }
-                        if ((g->data[out[i]].ancestral[sblock]
-                                & ~(((unsigned long)1 << sindex) - 1)) != 0) {
+                        if ((g->data[out[i]].ancestral[sblock] & ~(((unsigned long)1 << sindex) - 1)) != 0)
+                        {
                             /* Ancestral material encountered no sooner than sindex */
                             ancestral[i] = 1;
                             continue;
@@ -4873,7 +5235,8 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                         /* Then check blocks in between */
                         ancestral[i] = 0;
                         for (block = sblock + 1; block < a[s].block; block++)
-                            if (g->data[out[i]].ancestral[block] != 0) {
+                            if (g->data[out[i]].ancestral[block] != 0)
+                            {
                                 /* Ancestral material encountered */
                                 ancestral[i] = 1;
                                 break;
@@ -4884,9 +5247,11 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                 /* Now determine all prefixes it makes sense to split off from s */
                 index = a[s].index;
                 block = a[s].block;
-                do {
+                do
+                {
                     /* Update index */
-                    if (index == BLOCKSIZE - 1) {
+                    if (index == BLOCKSIZE - 1)
+                    {
                         index = 0;
                         block++;
                     }
@@ -4898,27 +5263,34 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                         break;
 
                     /* If s does not carry ancestral material at current index, we
-                    * might as well postpone the split.
-                    */
-                    if ((((unsigned long)1 << index) & (g->data[s].ancestral[block])) != 0) {
+                     * might as well postpone the split.
+                     */
+                    if ((((unsigned long)1 << index) & (g->data[s].ancestral[block])) != 0)
+                    {
                         /* Check remaining contenders for compatibility and maximal prefix */
-                        for (i = 0; i < j;) {
-                            if ((((unsigned long)1 << index) & (g->data[out[i]].ancestral[block])) == 0) {
+                        for (i = 0; i < j;)
+                        {
+                            if ((((unsigned long)1 << index) & (g->data[out[i]].ancestral[block])) == 0)
+                            {
                                 /* Sequence i does not contain ancestral material in this
-                                * site; split s before this site and coalesce with i.
-                                */
-                                if (ancestral[i]) {
+                                 * site; split s before this site and coalesce with i.
+                                 */
+                                if (ancestral[i])
+                                {
                                     h = copy_genes(g);
-                                    if(elements != NULL) {
+                                    if (elements != NULL)
+                                    {
                                         elements = elist_make();
                                         elist_safeextend(elements, tmp_elements);
                                     }
-                                    if(sites != NULL) {
+                                    if (sites != NULL)
+                                    {
                                         sites = elist_make();
                                         elist_safeextend(sites, tmp_sites);
                                     }
                                     split_coalesceprefix(h, s, index, block, out[i]);
-                                    if (eventlist != NULL) {
+                                    if (eventlist != NULL)
+                                    {
                                         eventlist = MakeLList();
                                         e = (Event *)xmalloc(sizeof(Event));
                                         e->type = RECOMBINATION;
@@ -4938,37 +5310,43 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                     }
                                     implode_genes(h);
                                     f(h);
-                                    
-    #ifdef ENABLE_VERBOSE
-                                    if (v) {
+
+#ifdef ENABLE_VERBOSE
+                                    if (v)
+                                    {
                                         printf("Splitting off prefix at %d and coalescing with sequence %d\n", mulblocksize(block) + index, out[i]);
                                         output_genes_indexed(h, NULL);
                                     }
-    #endif
+#endif
                                 }
                                 i++;
                             }
-                            else {
+                            else
+                            {
                                 /* We now know that both s and i have ancestral material at
-                                * this site.
-                                */
-                                if (((g->data[s].type[block] ^ g->data[out[i]].type[block])
-                                        & ((unsigned long)1 << index)) != 0) {
+                                 * this site.
+                                 */
+                                if (((g->data[s].type[block] ^ g->data[out[i]].type[block]) & ((unsigned long)1 << index)) != 0)
+                                {
                                     /* Sequence s and i are incompatible at this site; split
-                                    * s before this site and coalesce with i.
-                                    */
-                                    if (ancestral[i]) {
+                                     * s before this site and coalesce with i.
+                                     */
+                                    if (ancestral[i])
+                                    {
                                         h = copy_genes(g);
-                                        if(elements != NULL) {
+                                        if (elements != NULL)
+                                        {
                                             elements = elist_make();
                                             elist_safeextend(elements, tmp_elements);
                                         }
-                                        if(sites != NULL) {
+                                        if (sites != NULL)
+                                        {
                                             sites = elist_make();
                                             elist_safeextend(sites, tmp_sites);
                                         }
                                         split_coalesceprefix(h, s, index, block, out[i]);
-                                        if (eventlist != NULL) {
+                                        if (eventlist != NULL)
+                                        {
                                             eventlist = MakeLList();
                                             e = (Event *)xmalloc(sizeof(Event));
                                             e->type = RECOMBINATION;
@@ -4988,13 +5366,14 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                         }
                                         implode_genes(h);
                                         f(h);
-                                        
-    #ifdef ENABLE_VERBOSE
-                                        if (v) {
+
+#ifdef ENABLE_VERBOSE
+                                        if (v)
+                                        {
                                             printf("Splitting off prefix at %d and coalescing with sequence %d\n", mulblocksize(block) + index, out[i]);
                                             output_genes_indexed(h, NULL);
                                         }
-    #endif
+#endif
                                     }
                                     /* Sequence i is no longer a contender */
                                     out[i] = out[--j];
@@ -5002,9 +5381,9 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                     continue;
                                 }
                                 /* Sequences s and i carry the same ancestral character at
-                                * this site; postpone split but mark that ancestral
-                                * material was encountered.
-                                */
+                                 * this site; postpone split but mark that ancestral
+                                 * material was encountered.
+                                 */
                                 ancestral[i++] = 1;
                             }
                         }
@@ -5013,7 +5392,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                         /* Check for ancestral material in remaining contenders */
                         for (i = 0; i < j; i++)
                             ancestral[i] = ancestral[i] ||
-                                        (g->data[out[i]].ancestral[block] & (unsigned long)1 << index) != 0;
+                                           (g->data[out[i]].ancestral[block] & (unsigned long)1 << index) != 0;
                     /* Continue until we have eliminated all contenders */
                 } while (j > 0);
             }
@@ -5072,8 +5451,8 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
 {
     int i, j, k, s, index, block, sindex, sblock,
         *ancestral = xmalloc(g->n * sizeof(int)),
-         *out = xmalloc(g->n * sizeof(int)),
-          blocks = divblocksize(g->length - 1) + 1;
+        *out = xmalloc(g->n * sizeof(int)),
+        blocks = divblocksize(g->length - 1) + 1;
     Genes *h;
     Event *e;
     LList *tmp = eventlist;
@@ -5083,32 +5462,40 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
     int v = verbose();
 
     set_verbose(0);
-    if (v) {
+    if (v)
+    {
         printf("Splitting off maximal compatible postfixes in:\n");
         output_genes_indexed(g, NULL);
     }
 #endif
 
     /* Run through all sequences of g */
-    for (s = 0; s < g->n; s++) {
+    for (s = 0; s < g->n; s++)
+    {
         /* Only consider splitting sequences where maximum subsumed prefix
          * and maximum subsumed postfix do not meet or overlap.
          */
-        if (b[s].index + mulblocksize(b[s].block) < g->length) {
+        if (b[s].index + mulblocksize(b[s].block) < g->length)
+        {
             if ((a[s].block < b[s].block) ||
-                    ((a[s].block == b[s].block) && (a[s].index < b[s].index))) {
+                ((a[s].block == b[s].block) && (a[s].index < b[s].index)))
+            {
                 /* Start by splitting off maximum subsumed postfix */
                 h = copy_genes(g);
-                if(elements != NULL) {
+                if (elements != NULL)
+                {
                     elements = elist_make();
                     elist_safeextend(elements, tmp_elements);
                 }
-                if(sites != NULL) {
+                if (sites != NULL)
+                {
                     sites = elist_make();
                     elist_safeextend(sites, tmp_sites);
                 }
-                if(split_removepostfix(h, s, b[s].index, b[s].block) != -1) {
-                    if (eventlist != NULL) {
+                if (split_removepostfix(h, s, b[s].index, b[s].block) != -1)
+                {
+                    if (eventlist != NULL)
+                    {
                         eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = RECOMBINATION;
@@ -5124,55 +5511,59 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                     implode_genes(h);
                     f(h);
                 }
-                else {
+                else
+                {
                     free_genes(h);
                 }
-    #ifdef ENABLE_VERBOSE
-                if (v) {
+#ifdef ENABLE_VERBOSE
+                if (v)
+                {
                     printf("Splitting maximum subsumed postfix off sequence %d at %d\n", s,
-                        mulblocksize(a[s].block) + a[s].index);
+                           mulblocksize(a[s].block) + a[s].index);
                     output_genes_indexed(h, NULL);
                 }
-    #endif
+#endif
                 /* Determine index of site to the left of b, i.e. the first site
-                * not part of a subsumed postfix for s.
-                */
-                if (b[s].index == 0) {
+                 * not part of a subsumed postfix for s.
+                 */
+                if (b[s].index == 0)
+                {
                     index = BLOCKSIZE - 1;
                     block = b[s].block - 1;
                 }
-                else {
+                else
+                {
                     index = b[s].index - 1;
                     block = b[s].block;
                 }
                 /* Only consider splitting sequences where maximum subsumed prefix
-                * and maximum subsumed postfix are separated by at least two sites.
-                */
+                 * and maximum subsumed postfix are separated by at least two sites.
+                 */
                 if ((a[s].block < block) ||
-                        ((a[s].block == block) && a[s].index < index)) {
+                    ((a[s].block == block) && a[s].index < index))
+                {
 
                     /* Determine remaining contenders */
-                    for (i = 0; i < g->n; i++) {
-                        if ((i == s)
-                                || (((g->data[s].type[block] ^ g->data[i].type[block])
-                                    & g->data[s].ancestral[block] & g->data[i].ancestral[block]
-                                    & ~(((unsigned long)1 << index) - 1)) != 0)) {
+                    for (i = 0; i < g->n; i++)
+                    {
+                        if ((i == s) || (((g->data[s].type[block] ^ g->data[i].type[block]) & g->data[s].ancestral[block] & g->data[i].ancestral[block] & ~(((unsigned long)1 << index) - 1)) != 0))
+                        {
                             /* We will not consider postfixes between s and itself, nor
-                            * between s and a sequence that has a conflict with s to
-                            * the right of the left neighbour of b in the block
-                            * containing this neighbour.
-                            */
+                             * between s and a sequence that has a conflict with s to
+                             * the right of the left neighbour of b in the block
+                             * containing this neighbour.
+                             */
                             out[i] = 1;
                             continue;
                         }
                         out[i] = 0;
 
                         /* Nor will we consider prefixes between s and a sequence that
-                        * has a conflict with s anywhere else before a.
-                        */
+                         * has a conflict with s anywhere else before a.
+                         */
                         for (j = block + 1; j < blocks; j++)
-                            if (((g->data[s].type[j] ^ g->data[i].type[j])
-                                    & g->data[s].ancestral[j] & g->data[i].ancestral[j]) != 0) {
+                            if (((g->data[s].type[j] ^ g->data[i].type[j]) & g->data[s].ancestral[j] & g->data[i].ancestral[j]) != 0)
+                            {
                                 /* Conflict detected */
                                 out[i] = 1;
                                 break;
@@ -5188,45 +5579,47 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                         continue;
 
                     /* Determine for which of the contenders we have already
-                    * encountered some ancestral material.
-                    */
+                     * encountered some ancestral material.
+                     */
                     /* Start by finding rightmost occurrence of ancestral material in s */
                     sindex = -1;
                     for (sblock = blocks - 1; sblock > block; sblock--)
                         if ((sindex = msb(g->data[s].ancestral[sblock])) >= 0)
                             /* Found it */
                             break;
-                    if (sindex < 0) {
+                    if (sindex < 0)
+                    {
                         /* Haven't found it yet */
                         sindex = msb(g->data[s].ancestral[sblock]);
                         /* We know that there is some ancestral after b (to end
-                        * subsumation), so we can rest assured that sindex is well
-                        * defined.
-                        */
+                         * subsumation), so we can rest assured that sindex is well
+                         * defined.
+                         */
                         for (i = 0; i < j; i++)
-                            if ((g->data[out[i]].ancestral[sblock]
-                                    & ~(((unsigned long)1 << index) - 1) & (((unsigned long)2 << sindex) - 1)) != 0)
+                            if ((g->data[out[i]].ancestral[sblock] & ~(((unsigned long)1 << index) - 1) & (((unsigned long)2 << sindex) - 1)) != 0)
                                 /* Ancestral material encountered no sooner than b and no
-                                * later than sindex.
-                                */
+                                 * later than sindex.
+                                 */
                                 ancestral[i] = 1;
                             else
                                 ancestral[i] = 0;
                     }
-                    else {
+                    else
+                    {
                         /* Found it - first check block where maximum subsumed postfix
-                        * of s is split off and block where s has rightmost ancestral
-                        * material.
-                        */
-                        for (i = 0; i < j; i++) {
-                            if ((g->data[out[i]].ancestral[block]
-                                    & ~(((unsigned long)1 << index) - 1)) != 0) {
+                         * of s is split off and block where s has rightmost ancestral
+                         * material.
+                         */
+                        for (i = 0; i < j; i++)
+                        {
+                            if ((g->data[out[i]].ancestral[block] & ~(((unsigned long)1 << index) - 1)) != 0)
+                            {
                                 /* Ancestral material encountered no sooner than b */
                                 ancestral[i] = 1;
                                 continue;
                             }
-                            if ((g->data[out[i]].ancestral[sblock]
-                                    & (((unsigned long)2 << sindex) - 1)) != 0) {
+                            if ((g->data[out[i]].ancestral[sblock] & (((unsigned long)2 << sindex) - 1)) != 0)
+                            {
                                 /* Ancestral material encountered no later than sindex */
                                 ancestral[i] = 1;
                                 continue;
@@ -5234,7 +5627,8 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                             /* Then check blocks in between */
                             ancestral[i] = 0;
                             for (k = block + 1; k < sblock; k++)
-                                if (g->data[out[i]].ancestral[k] != 0) {
+                                if (g->data[out[i]].ancestral[k] != 0)
+                                {
                                     /* Ancestral material encountered */
                                     ancestral[i] = 1;
                                     break;
@@ -5243,9 +5637,11 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                     }
 
                     /* Now determine all prefixes it makes sense to split off from s */
-                    do {
+                    do
+                    {
                         /* Update index */
-                        if (index == 0) {
+                        if (index == 0)
+                        {
                             index = BLOCKSIZE - 1;
                             block--;
                         }
@@ -5256,29 +5652,36 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                             break;
 
                         /* If s does not carry ancestral material at current index, we
-                        * might as well postpone the split.
-                        */
-                        if ((((unsigned long)1 << index) & (g->data[s].ancestral[block])) != 0) {
+                         * might as well postpone the split.
+                         */
+                        if ((((unsigned long)1 << index) & (g->data[s].ancestral[block])) != 0)
+                        {
                             /* Check remaining contenders for compatibility and
-                            * maximal prefix.
-                            */
-                            for (i = 0; i < j;) {
-                                if ((((unsigned long)1 << index) & (~g->data[out[i]].ancestral[block])) != 0) {
+                             * maximal prefix.
+                             */
+                            for (i = 0; i < j;)
+                            {
+                                if ((((unsigned long)1 << index) & (~g->data[out[i]].ancestral[block])) != 0)
+                                {
                                     /* Sequence i does not contain ancestral material in this
-                                    * site; split s after this site and coalesce with i.
-                                    */
-                                    if (ancestral[i]) {
+                                     * site; split s after this site and coalesce with i.
+                                     */
+                                    if (ancestral[i])
+                                    {
                                         h = copy_genes(g);
-                                        if(elements != NULL) {
+                                        if (elements != NULL)
+                                        {
                                             elements = elist_make();
                                             elist_safeextend(elements, tmp_elements);
                                         }
-                                        if(sites != NULL) {
+                                        if (sites != NULL)
+                                        {
                                             sites = elist_make();
                                             elist_safeextend(sites, tmp_sites);
                                         }
                                         splitafter_coalescepostfix(h, s, index, block, out[i]);
-                                        if (eventlist != NULL) {
+                                        if (eventlist != NULL)
+                                        {
                                             eventlist = MakeLList();
                                             e = (Event *)xmalloc(sizeof(Event));
                                             e->type = RECOMBINATION;
@@ -5293,36 +5696,42 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                         }
                                         implode_genes(h);
                                         f(h);
-    #ifdef ENABLE_VERBOSE
-                                        if (v) {
+#ifdef ENABLE_VERBOSE
+                                        if (v)
+                                        {
                                             printf("Splitting off postfix at %d and coalescing with sequence %d\n", mulblocksize(block) + index, out[i]);
                                             output_genes_indexed(h, NULL);
                                         }
-    #endif
+#endif
                                     }
                                     i++;
                                 }
-                                else {
+                                else
+                                {
                                     /* We now know that both s and i have ancestral material at
-                                    * this site.
-                                    */
-                                    if (((g->data[s].type[block] ^ g->data[out[i]].type[block])
-                                            & ((unsigned long)1 << index)) != 0) {
+                                     * this site.
+                                     */
+                                    if (((g->data[s].type[block] ^ g->data[out[i]].type[block]) & ((unsigned long)1 << index)) != 0)
+                                    {
                                         /* Sequence s and i are incompatible at this site; split s
-                                        * after this site and coalesce with i.
-                                        */
-                                        if (ancestral[i]) {
+                                         * after this site and coalesce with i.
+                                         */
+                                        if (ancestral[i])
+                                        {
                                             h = copy_genes(g);
-                                            if(elements != NULL) {
+                                            if (elements != NULL)
+                                            {
                                                 elements = elist_make();
                                                 elist_safeextend(elements, tmp_elements);
                                             }
-                                            if(sites != NULL) {
+                                            if (sites != NULL)
+                                            {
                                                 sites = elist_make();
                                                 elist_safeextend(sites, tmp_sites);
                                             }
                                             splitafter_coalescepostfix(h, s, index, block, out[i]);
-                                            if (eventlist != NULL) {
+                                            if (eventlist != NULL)
+                                            {
                                                 eventlist = MakeLList();
                                                 e = (Event *)xmalloc(sizeof(Event));
                                                 e->type = RECOMBINATION;
@@ -5337,12 +5746,13 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                             }
                                             implode_genes(h);
                                             f(h);
-    #ifdef ENABLE_VERBOSE
-                                            if (v) {
+#ifdef ENABLE_VERBOSE
+                                            if (v)
+                                            {
                                                 printf("Splitting off postfix at %d and coalescing with sequence %d\n", mulblocksize(block) + index, out[i]);
                                                 output_genes_indexed(h, NULL);
                                             }
-    #endif
+#endif
                                         }
                                         /* Sequence i is no longer a contender */
                                         out[i] = out[--j];
@@ -5350,9 +5760,9 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                     }
                                     else
                                         /* Sequences s and i carry the same ancestral character at
-                                        * this site; postpone split but mark that ancestral
-                                        * material was encountered.
-                                        */
+                                         * this site; postpone split but mark that ancestral
+                                         * material was encountered.
+                                         */
                                         ancestral[i++] = 1;
                                 }
                             }
@@ -5361,7 +5771,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                             /* Check for ancestral material in remaining contenders */
                             for (i = 0; i < j; i++)
                                 ancestral[i] = ancestral[i] ||
-                                            (g->data[out[i]].ancestral[block] & (unsigned long)1 << index) != 0;
+                                               (g->data[out[i]].ancestral[block] & (unsigned long)1 << index) != 0;
                         /* Continue until we have eliminated all contenders */
                     } while (j > 0);
                 }
@@ -5443,18 +5853,21 @@ static int update_subsumed(int index, int block, int blocks,
 {
     int i, j;
 
-    if (ancestral[block] & (unsigned long)1 << index) {
+    if (ancestral[block] & (unsigned long)1 << index)
+    {
         /* Central sequence has ancestral material in current site */
         j = 0;
         if (type[block] & (unsigned long)1 << index)
             /* Central sequence has type 1 in current site */
-            for (i = 0; i < blocks; i++) {
+            for (i = 0; i < blocks; i++)
+            {
                 if (subsumed[i] &= type[i])
                     j = 1;
             }
         else
             /* Central sequence has type 0 in current site */
-            for (i = 0; i < blocks; i++) {
+            for (i = 0; i < blocks; i++)
+            {
                 if (subsumed[i] &= ~type[i] & ancestral[i])
                     j = 1;
             }
@@ -5482,13 +5895,15 @@ static void initialise_subsumedinterval(int index, int block, int blocks,
 
     if (type[block] & (unsigned long)1 << index)
         /* Central sequence has type 1 at this site */
-        for (i = 0; i < blocks; i++) {
+        for (i = 0; i < blocks; i++)
+        {
             subsumed[i] = type[i];
             compatible[i] = type[i] | ~ancestral[i];
         }
     else
         /* Central sequence has type 0 at this site */
-        for (i = 0; i < blocks; i++) {
+        for (i = 0; i < blocks; i++)
+        {
             subsumed[i] = ~type[i] & ancestral[i];
             compatible[i] = ~type[i];
         }
@@ -5522,10 +5937,12 @@ static int extend_subsumedinterval(int index, int block, int blocks,
 {
     int i, j;
 
-    if (ancestral[block] & (unsigned long)1 << index) {
+    if (ancestral[block] & (unsigned long)1 << index)
+    {
         /* Central sequence has ancestral material in this site */
         j = 0;
-        if (type[block] & (unsigned long)1 << index) {
+        if (type[block] & (unsigned long)1 << index)
+        {
             /* Central sequence has type 1 at this site */
             /* Check whether we can extend interval to include current site */
             for (i = 0; i < blocks; i++)
@@ -5533,12 +5950,14 @@ static int extend_subsumedinterval(int index, int block, int blocks,
                     j = 1;
             if (j)
                 /* We can extend interval to include current site */
-                for (i = 0; i < blocks; i++) {
+                for (i = 0; i < blocks; i++)
+                {
                     subsumed[i] = tmp[i];
                     compatible[i] &= type[i] | ~ancestral[i];
                 }
         }
-        else {
+        else
+        {
             /* Central sequence has type 0 at this site */
             /* Check whether we can extend interval to include current site */
             for (i = 0; i < blocks; i++)
@@ -5546,7 +5965,8 @@ static int extend_subsumedinterval(int index, int block, int blocks,
                     j = 1;
             if (j)
                 /* We can extend interval to include current site */
-                for (i = 0; i < blocks; i++) {
+                for (i = 0; i < blocks; i++)
+                {
                     subsumed[i] = tmp[i];
                     compatible[i] &= ~type[i];
                 }
@@ -5569,22 +5989,27 @@ static int extend_subsumedinterval2(int index, int block, int blocks,
 {
     int i, j;
 
-    if (ancestral[block] & (unsigned long)1 << index) {
+    if (ancestral[block] & (unsigned long)1 << index)
+    {
         /* Central sequence has ancestral material in this site */
         j = 0;
-        if (type[block] & (unsigned long)1 << index) {
+        if (type[block] & (unsigned long)1 << index)
+        {
             /* Central sequence has type 1 at this site */
             /* Extend interval to include current site */
-            for (i = 0; i < blocks; i++) {
+            for (i = 0; i < blocks; i++)
+            {
                 if (subsumed[i] &= type[i])
                     j = 1;
                 compatible[i] &= type[i] | ~ancestral[i];
             }
         }
-        else {
+        else
+        {
             /* Central sequence has type 0 at this site */
             /* Extend interval to include current site */
-            for (i = 0; i < blocks; i++) {
+            for (i = 0; i < blocks; i++)
+            {
                 if (subsumed[i] &= ~type[i] & ancestral[i])
                     j = 1;
                 compatible[i] &= ~type[i];
@@ -5605,20 +6030,22 @@ static int extend_subsumedinterval2(int index, int block, int blocks,
  * if compatible does not represent the empty set.
  */
 static int initialise_compatibleinterval(int index, int block, int blocks,
-        unsigned long *compatible,
-        unsigned long *compatible2,
-        unsigned long *type,
-        unsigned long *ancestral)
+                                         unsigned long *compatible,
+                                         unsigned long *compatible2,
+                                         unsigned long *type,
+                                         unsigned long *ancestral)
 {
     int i, j = 0;
 
-    if (type[block] & (unsigned long)1 << index) {
+    if (type[block] & (unsigned long)1 << index)
+    {
         /* Central sequence has type 1 at this site */
         for (i = 0; i < blocks; i++)
             if ((compatible2[i] = compatible[i] & (type[i] | ~ancestral[i])) != 0)
                 j = 1;
     }
-    else {
+    else
+    {
         /* Central sequence has type 0 at this site */
         for (i = 0; i < blocks; i++)
             if ((compatible2[i] = compatible[i] & ~type[i]) != 0)
@@ -5641,15 +6068,18 @@ static int check_maximality(int index, int block, int blocks,
 {
     int i, j = 0;
 
-    if (ancestral[block] & (unsigned long)1 << index) {
+    if (ancestral[block] & (unsigned long)1 << index)
+    {
         /* Central sequence has ancestral material in this site */
-        if (type[block] & (unsigned long)1 << index) {
+        if (type[block] & (unsigned long)1 << index)
+        {
             /* Central sequence has type 1 in this site */
             for (i = 0; i < blocks; i++)
                 if ((maximal[i] = compatible[i] & ~type[i]) != 0)
                     j = 1;
         }
-        else {
+        else
+        {
             /* Central sequence has type 0 in this site */
             for (i = 0; i < blocks; i++)
                 if ((maximal[i] = compatible[i] & (type[i] | ~ancestral[i])) != 0)
@@ -5670,12 +6100,13 @@ static int check_leftflank(int blocks, unsigned long *compatible,
     unsigned long u;
 
     for (i = 0; i < blocks; i++)
-        if ((k = lsb(u = compatible[i])) >= 0) {
+        if ((k = lsb(u = compatible[i])) >= 0)
+        {
             u = u >> k;
-            for (;;) {
+            for (;;)
+            {
                 if ((prefixs[k + mulblocksize(i)].block > block) ||
-                        ((prefixs[k + mulblocksize(i)].block == block)
-                         && (prefixs[k + mulblocksize(i)].index >= index)))
+                    ((prefixs[k + mulblocksize(i)].block == block) && (prefixs[k + mulblocksize(i)].index >= index)))
                     /* Sequence k is subsumed - remove it from compatible */
                     compatible[i] &= ~((unsigned long)1 << k);
                 else
@@ -5688,7 +6119,8 @@ static int check_leftflank(int blocks, unsigned long *compatible,
                 if (u == 0)
                     break;
                 k++;
-                while ((u & 1) == 0) {
+                while ((u & 1) == 0)
+                {
                     u = u >> 1;
                     k++;
                 }
@@ -5708,12 +6140,13 @@ static int check_rightflank(int blocks, unsigned long *compatible,
     unsigned long u;
 
     for (i = 0; i < blocks; i++)
-        if ((k = lsb(u = compatible[i])) >= 0) {
+        if ((k = lsb(u = compatible[i])) >= 0)
+        {
             u = u >> k;
-            for (;;) {
+            for (;;)
+            {
                 if ((postfixs[k + mulblocksize(i)].block < block) ||
-                        ((postfixs[k + mulblocksize(i)].block == block)
-                         && (postfixs[k + mulblocksize(i)].index <= index)))
+                    ((postfixs[k + mulblocksize(i)].block == block) && (postfixs[k + mulblocksize(i)].index <= index)))
                     /* Sequence k is subsumed - remove it from compatible */
                     compatible[i] &= ~((unsigned long)1 << k);
                 else
@@ -5726,7 +6159,8 @@ static int check_rightflank(int blocks, unsigned long *compatible,
                 if (u == 0)
                     break;
                 k++;
-                while ((u & 1) == 0) {
+                while ((u & 1) == 0)
+                {
                     u = u >> 1;
                     k++;
                 }
@@ -5760,20 +6194,22 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
     int v = verbose();
 
     set_verbose(0);
-    if (v) {
+    if (v)
+    {
         printf("Splitting off maximal compatible infixes in:\n");
         output_genes_indexed(g, NULL);
     }
 #endif
 
-
     /* Check whether there are any right maximal intervals ending
      * immediately before k.
      */
-    if (type[block] & ((unsigned long)1 << index)) {
+    if (type[block] & ((unsigned long)1 << index))
+    {
         /* Central sequence has type 1 in site k */
         for (i = 0; i < blocks; i++)
-            if ((pattern = maximal[i] & ~type[i]) != 0) {
+            if ((pattern = maximal[i] & ~type[i]) != 0)
+            {
                 /* The sequences in this block we need to merge the current
                  * segment of the central sequence into are specified by pattern.
                  */
@@ -5782,20 +6218,24 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                 j = lsb(pattern);
                 pattern >>= j;
                 j += mulblocksize(i);
-                for (;;) {
+                for (;;)
+                {
                     /* Perform splits and coalesces with sequence j */
                     h = copy_genes(g);
-                    if(elements != NULL) {
+                    if (elements != NULL)
+                    {
                         elements = elist_make();
                         elist_safeextend(elements, tmp_elements);
                     }
-                    if(sites != NULL) {
+                    if (sites != NULL)
+                    {
                         sites = elist_make();
                         elist_safeextend(sites, tmp_sites);
                     }
                     _split(h, s, sindex, sblock);
                     split_coalesceprefix(h, g->n, eindex, eblock, j);
-                    if (eventlist != NULL) {
+                    if (eventlist != NULL)
+                    {
                         eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = RECOMBINATION;
@@ -5816,7 +6256,8 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                     implode_genes(h);
                     f(h);
 #ifdef ENABLE_VERBOSE
-                    if (v) {
+                    if (v)
+                    {
                         printf("Splitting maximal compatible infix off of sequence %d at %d and %d and\ncoalescing with sequence %d\n", s, mulblocksize(sblock) + sindex,
                                k, j);
                         output_genes_indexed(h, NULL);
@@ -5827,18 +6268,20 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                         /* We just handled last sequence in this block */
                         break;
                     j++;
-                    while ((pattern & 1) == 0) {
+                    while ((pattern & 1) == 0)
+                    {
                         pattern >>= 1;
                         j++;
                     }
                 }
             }
     }
-    else {
+    else
+    {
         /* Central sequence has type 0 in site k */
         for (i = 0; i < blocks; i++)
-            if ((pattern = maximal[i] & (type[i] | ~ancestral[i]))
-                    != 0) {
+            if ((pattern = maximal[i] & (type[i] | ~ancestral[i])) != 0)
+            {
                 /* The sequences in this block we need to merge the current
                  * segment of sequence i into is specified by pattern.
                  */
@@ -5847,20 +6290,24 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                 j = lsb(pattern);
                 pattern >>= j;
                 j += mulblocksize(i);
-                for (;;) {
+                for (;;)
+                {
                     /* Perform splits and coalesces with sequence j */
                     h = copy_genes(g);
-                    if(elements != NULL) {
+                    if (elements != NULL)
+                    {
                         elements = elist_make();
                         elist_safeextend(elements, tmp_elements);
                     }
-                    if(sites != NULL) {
+                    if (sites != NULL)
+                    {
                         sites = elist_make();
                         elist_safeextend(sites, tmp_sites);
                     }
                     _split(h, s, sindex, sblock);
                     split_coalesceprefix(h, g->n, eindex, eblock, j);
-                    if (eventlist != NULL) {
+                    if (eventlist != NULL)
+                    {
                         eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = RECOMBINATION;
@@ -5881,7 +6328,8 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                     implode_genes(h);
                     f(h);
 #ifdef ENABLE_VERBOSE
-                    if (v) {
+                    if (v)
+                    {
                         printf("Splitting maximal compatible infix off of sequence %d at %d and %d and\ncoalescing with sequence %d\n", s, mulblocksize(sblock) + sindex,
                                k, j);
                         output_genes_indexed(h, NULL);
@@ -5892,7 +6340,8 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                         /* We just handled last sequence in this block */
                         break;
                     j++;
-                    while ((pattern & 1) == 0) {
+                    while ((pattern & 1) == 0)
+                    {
                         pattern >>= 1;
                         j++;
                     }
@@ -5902,10 +6351,9 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
 #ifdef ENABLE_VERBOSE
     set_verbose(v);
 #endif
-    
+
     elements = tmp_elements;
     sites = tmp_sites;
-
 }
 
 /* Update compatible to include the site type and ancestral are taken
@@ -5927,13 +6375,15 @@ static int extend_compatibleinterval(int index, int block, int blocks,
      * with the sequence given by index and block in the current interval.
      */
     j = 0;
-    if (type[block] & ((unsigned long)1 << index)) {
+    if (type[block] & ((unsigned long)1 << index))
+    {
         /* Central sequence has type 1 in current site */
         for (i = 0; i < blocks; i++)
             if (compatible[i] &= type[i] | ~ancestral[i])
                 j = 1;
     }
-    else {
+    else
+    {
         /* Central sequence has type 0 in current site */
         for (i = 0; i < blocks; i++)
             if (compatible[i] &= ~type[i])
@@ -5957,7 +6407,8 @@ static void find_compatibleintervals(int index, int block, int i, int blocks,
 {
     int c = 1;
 
-    while (c && (++start < end)) {
+    while (c && (++start < end))
+    {
         /* Check whether we have reached a point where the infix coalesce
          * is already handled by maximal_postfix_coalesces for any of the
          * sequences in compatible.
@@ -5965,7 +6416,8 @@ static void find_compatibleintervals(int index, int block, int i, int blocks,
         if (!check_rightflank(blocks, compatible, postfixs, modblocksize(start),
                               divblocksize(start)))
             break;
-        if (s->data[start].ancestral[block] & ((unsigned long)1 << index)) {
+        if (s->data[start].ancestral[block] & ((unsigned long)1 << index))
+        {
             /* Sequence i has ancestral material in site start */
             perform_maximal_splits(index, block, i, blocks, leftindex,
                                    leftblock, compatible,
@@ -5995,10 +6447,10 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
         leftblock, blocks = divblocksize(g->n - 1) + 1;
     Sites *s = genes2sites(g);
     unsigned long
-    *subsumed = (unsigned long *)xmalloc(blocks * sizeof(unsigned long)),
-     *compatible = (unsigned long *)xmalloc(blocks * sizeof(unsigned long)),
-      *compatible2 = (unsigned long *)xmalloc(blocks * sizeof(unsigned long)),
-       *leftmaximal = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
+        *subsumed = (unsigned long *)xmalloc(blocks * sizeof(unsigned long)),
+        *compatible = (unsigned long *)xmalloc(blocks * sizeof(unsigned long)),
+        *compatible2 = (unsigned long *)xmalloc(blocks * sizeof(unsigned long)),
+        *leftmaximal = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
     Genes *h;
     Index *prefixs = NULL, *postfixs = NULL;
     Event *e;
@@ -6009,14 +6461,16 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
     int v = verbose();
 
     set_verbose(0);
-    if (v) {
+    if (v)
+    {
         printf("Splitting off maximal compatible infixes in:\n");
         output_genes_indexed(g, NULL);
     }
 #endif
 
     /* Run through the sequences in turn */
-    for (i = 0; i < g->n; i++) {
+    for (i = 0; i < g->n; i++)
+    {
         /* Convert i to index, block notation */
         index = modblocksize(i);
         block = divblocksize(i);
@@ -6045,7 +6499,8 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
         /* The first interesting subsumed infix contains right - determine
          * this infix, and any following interesting infixes.
          */
-        while (right < end) {
+        while (right < end)
+        {
             /* Find maximal subsumed interval containing site right */
             /* The interval should contain the site immediately to the right
              * of the previous interval.
@@ -6055,12 +6510,13 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                                         s->data[left].type, s->data[left].ancestral,
                                         g);
             /* Start by finding left end point */
-            do {
+            do
+            {
                 left--;
                 c = extend_subsumedinterval(index, block, blocks, subsumed, compatible,
                                             leftmaximal, s->data[left].type,
                                             s->data[left].ancestral);
-            } while(c);
+            } while (c);
             /* left indicates the site immediately to the left of the
              * minimal subsumed interval that we are currently determining,
              * i.e. the first site not included in it.
@@ -6072,7 +6528,8 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
             c = initialise_compatibleinterval(index, block, blocks, compatible,
                                               compatible2, s->data[left].type,
                                               s->data[left].ancestral);
-            while (c && (j > start)) {
+            while (c && (j > start))
+            {
                 /* Only continue as long as there are still some sequences
                  * with compatible overlap. Intervals with first split no
                  * later than start have already been handled.
@@ -6095,7 +6552,8 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                     break;
                 /* Handle current site */
                 if (check_maximality(index, block, blocks, leftmaximal, compatible2,
-                                     s->data[j].type, s->data[j].ancestral)) {
+                                     s->data[j].type, s->data[j].ancestral))
+                {
                     /* There are some left maximal compatible intervals starting
                      * right after site j. Expand to the right to find all
                      * maximal intervals.
@@ -6127,22 +6585,27 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
              * subsumed postfix, we might as well split the sequence by
              * splitting off a maximum subsumed postfix twice.
              */
-            if (right < end) {
+            if (right < end)
+            {
                 /* Start by splitting out subsumed infix */
                 leftindex = modblocksize(left);
                 leftblock = divblocksize(left);
                 h = copy_genes(g);
-                if(elements != NULL) {
+                if (elements != NULL)
+                {
                     elements = elist_make();
                     elist_safeextend(elements, tmp_elements);
                 }
-                if(sites != NULL) {
+                if (sites != NULL)
+                {
                     sites = elist_make();
                     elist_safeextend(sites, tmp_sites);
                 }
                 _split(h, i, leftindex, leftblock);
-                if(split_removeprefix(h, g->n, modblocksize(right), divblocksize(right)) != -1){
-                    if (eventlist != NULL) {
+                if (split_removeprefix(h, g->n, modblocksize(right), divblocksize(right)) != -1)
+                {
+                    if (eventlist != NULL)
+                    {
                         eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = RECOMBINATION;
@@ -6163,11 +6626,13 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                     implode_genes(h);
                     f(h);
                 }
-                else{
+                else
+                {
                     free_genes(h);
                 }
 #ifdef ENABLE_VERBOSE
-                if (v > 1) {
+                if (v > 1)
+                {
                     printf("Splitting off maximum subsumed infix of sequence %d between %d and %d\n", i, left, right);
                     set_verbose(v);
                 }
@@ -6178,13 +6643,16 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                 elements = tmp_elements;
                 sites = tmp_sites;
                 for (k = 0; k < blocks; k++)
-                    if (compatible[k]) {
+                    if (compatible[k])
+                    {
                         if (postfixs == NULL)
                             postfixs = maximumsubsumedpostfix(g, i);
-                        if(elements != NULL) {
+                        if (elements != NULL)
+                        {
                             elements = tmp_elements;
                         }
-                        if(sites != NULL) {
+                        if (sites != NULL)
+                        {
                             sites = tmp_sites;
                         }
                         find_compatibleintervals(index, block, i, blocks, leftindex,
@@ -6204,11 +6672,13 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
 #endif
         }
         /* Clean up */
-        if (prefixs != NULL) {
+        if (prefixs != NULL)
+        {
             free(prefixs);
             prefixs = NULL;
         }
-        if (postfixs!= NULL) {
+        if (postfixs != NULL)
+        {
             free(postfixs);
             postfixs = NULL;
         }
@@ -6226,7 +6696,6 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
 #ifdef ENABLE_VERBOSE
     set_verbose(v);
 #endif
-    
 }
 
 /* Find all infixs of sequences in g that are maximally compatible
@@ -6282,28 +6751,23 @@ static int initialise_secondsplit(int s1, int index1, int block1, int s2,
         return -1;
 
     /* Check whether an overlap would be right maximal */
-    if ((((g->data[s1].type[block1] ^ g->data[s2].type[block1])
-            | ~g->data[s2].ancestral[block1]) & ((unsigned long)1 << index1)) == 0)
+    if ((((g->data[s1].type[block1] ^ g->data[s2].type[block1]) | ~g->data[s2].ancestral[block1]) & ((unsigned long)1 << index1)) == 0)
         /* s1 and s2 have the same type in the site given by index1 and
          * block1, so we can extend overlap to the right.
          */
         return 0;
 
     /* Check for compatibility */
-    if (b[s2].block < block1) {
-        if (((g->data[s1].type[block1] ^ g->data[s2].type[block1])
-                & (((unsigned long)1 << index1) - 1) & g->data[s1].ancestral[block1]
-                & g->data[s2].ancestral[block1]) != 0)
+    if (b[s2].block < block1)
+    {
+        if (((g->data[s1].type[block1] ^ g->data[s2].type[block1]) & (((unsigned long)1 << index1) - 1) & g->data[s1].ancestral[block1] & g->data[s2].ancestral[block1]) != 0)
             /* Incompatibility detected */
             return 0;
         for (i = block1 - 1; i > b[s2].block; i--)
-            if (((g->data[s1].type[i] ^ g->data[s2].type[i])
-                    & g->data[s1].ancestral[i] & g->data[s2].ancestral[i]) != 0)
+            if (((g->data[s1].type[i] ^ g->data[s2].type[i]) & g->data[s1].ancestral[i] & g->data[s2].ancestral[i]) != 0)
                 /* Incompatibility detected */
                 return 0;
-        if (((g->data[s1].type[b[s2].block] ^ g->data[s2].type[b[s2].block])
-                & ~(((unsigned long)1 << b[s2].index) - 1) & g->data[s1].ancestral[b[s2].block]
-                & g->data[s2].ancestral[b[s2].block]) != 0)
+        if (((g->data[s1].type[b[s2].block] ^ g->data[s2].type[b[s2].block]) & ~(((unsigned long)1 << b[s2].index) - 1) & g->data[s1].ancestral[b[s2].block] & g->data[s2].ancestral[b[s2].block]) != 0)
             /* Incompatibility detected */
             return 0;
         /* No incompatibilities - prepare to run through possible
@@ -6312,10 +6776,9 @@ static int initialise_secondsplit(int s1, int index1, int block1, int s2,
         *index2 = b[s2].index;
         *block2 = b[s2].block;
     }
-    else if ((b[s2].block == block1) && (b[s2].index < index1)) {
-        if (((g->data[s1].type[block1] ^ g->data[s2].type[block1])
-                & (((unsigned long)1 << index1) - 1) & ~(((unsigned long)1 << b[s2].index) - 1)
-                & g->data[s1].ancestral[block1] & g->data[s2].ancestral[block1]) != 0)
+    else if ((b[s2].block == block1) && (b[s2].index < index1))
+    {
+        if (((g->data[s1].type[block1] ^ g->data[s2].type[block1]) & (((unsigned long)1 << index1) - 1) & ~(((unsigned long)1 << b[s2].index) - 1) & g->data[s1].ancestral[block1] & g->data[s2].ancestral[block1]) != 0)
             /* Incompatibility detected */
             return 0;
         /* No incompatibilities - prepare to run through possible
@@ -6324,7 +6787,8 @@ static int initialise_secondsplit(int s1, int index1, int block1, int s2,
         *index2 = b[s2].index;
         *block2 = b[s2].block;
     }
-    else {
+    else
+    {
         /* Current split in s1 falls within the interval where it
          * makes sense to split s2, so start from here.
          */
@@ -6354,14 +6818,12 @@ static int initialise_secondsplit(int s1, int index1, int block1, int s2,
      * region where it makes sense to split s2.
      */
     if ((*block2 < a[s2].block) ||
-            ((*block2 == a[s2].block) && (*index2 < a[s2].index)))
+        ((*block2 == a[s2].block) && (*index2 < a[s2].index)))
         return -1;
     /* Both s1 and s2 may have ancestral material in this site - if so,
      * it should be compatible.
      */
-    if (((g->data[s1].type[*block2] ^ g->data[s2].type[*block2])
-            & g->data[s1].ancestral[*block2] & g->data[s2].ancestral[*block2]
-            & ((unsigned long)1 << *index2)) != 0)
+    if (((g->data[s1].type[*block2] ^ g->data[s2].type[*block2]) & g->data[s1].ancestral[*block2] & g->data[s2].ancestral[*block2] & ((unsigned long)1 << *index2)) != 0)
         /* But it isn't */
         return 0;
 
@@ -6392,7 +6854,8 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
     int v = verbose();
 
     set_verbose(0);
-    if (v) {
+    if (v)
+    {
         printf("Splitting and coalescing maximal overlaps in:\n");
         output_genes_indexed(g, NULL);
     }
@@ -6403,8 +6866,8 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
         /* Only consider splits in sequences where the maximum subsumed
          * prefix does not overlap the maximum subsumed postfix.
          */
-        if ((a[s1].block < b[s1].block)
-                || ((a[s1].block == b[s1].block) && (a[s1].index < b[s1].index))) {
+        if ((a[s1].block < b[s1].block) || ((a[s1].block == b[s1].block) && (a[s1].index < b[s1].index)))
+        {
             /* s1 is the sequence providing the overlapping prefix */
             index1 = b[s1].index;
             block1 = b[s1].block;
@@ -6413,19 +6876,21 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
             i = 0;
             for (s2 = 0; s2 < g->n; s2++)
                 if ((s1 != s2) &&
-                        /* s1 and s2 are not the same sequence */
-                        ((block1 > a[s2].block) ||
-                         ((block1 == a[s2].block) && (index1 > a[s2].index))) &&
-                        /* Rightmost split in s1 is to the right of leftmost split in s2 */
-                        ((b[s2].block > a[s2].block)
-                         || ((b[s2].block == a[s2].block) && (b[s2].index > a[s2].index)))) {
+                    /* s1 and s2 are not the same sequence */
+                    ((block1 > a[s2].block) ||
+                     ((block1 == a[s2].block) && (index1 > a[s2].index))) &&
+                    /* Rightmost split in s1 is to the right of leftmost split in s2 */
+                    ((b[s2].block > a[s2].block) || ((b[s2].block == a[s2].block) && (b[s2].index > a[s2].index))))
+                {
                     /* The interval of sensible splits for s2 is not empty */
                     in[i++] = s2;
                 }
             /* Run through possible split points for s1 */
-            for(;;) {
+            for (;;)
+            {
                 /* Update index1 */
-                if (index1 == 0) {
+                if (index1 == 0)
+                {
                     index1 = BLOCKSIZE - 1;
                     block1--;
                 }
@@ -6442,30 +6907,32 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
                 if ((g->data[s1].ancestral[block1] & ((unsigned long)1 << index1)) == 0)
                     continue;
                 /* Now iterate through the second sequence of the pair */
-                for (s2 = 0; s2 < i;) {
+                for (s2 = 0; s2 < i;)
+                {
                     /* s2 is the sequence providing the overlapping postfix */
                     j = initialise_secondsplit(s1, index1, block1, in[s2], &index2,
                                                &block2, a, b, g);
-                    if (j == -1) {
+                    if (j == -1)
+                    {
                         /* We can form no more sensible overlaps between s1 and s2 */
                         in[s2] = in[--i];
                         continue;
                     }
-                    if (j) {
+                    if (j)
+                    {
                         /* s1 and s2 are compatible in the region back to the
                          * interval where it makes sense to split s2.
                          */
                         /* Create bit pattern of identities in current block */
-                        pattern = (g->data[s1].type[block2] ^ g->data[in[s2]].type[block2])
-                                  | ~g->data[s1].ancestral[block2];
-                        for (;;) {
+                        pattern = (g->data[s1].type[block2] ^ g->data[in[s2]].type[block2]) | ~g->data[s1].ancestral[block2];
+                        for (;;)
+                        {
                             /* Update index2 */
-                            if (index2 == 0) {
+                            if (index2 == 0)
+                            {
                                 index2 = BLOCKSIZE - 1;
                                 block2--;
-                                pattern = (g->data[s1].type[block2]
-                                           ^ g->data[in[s2]].type[block2])
-                                          | ~g->data[s1].ancestral[block2];
+                                pattern = (g->data[s1].type[block2] ^ g->data[in[s2]].type[block2]) | ~g->data[s1].ancestral[block2];
                             }
                             else
                                 index2--;
@@ -6473,7 +6940,7 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
                              * where it makes sense to split s2.
                              */
                             if ((block2 < a[in[s2]].block) ||
-                                    ((block2 == a[in[s2]].block) && (index2 < a[in[s2]].index)))
+                                ((block2 == a[in[s2]].block) && (index2 < a[in[s2]].index)))
                                 break;
                             /* Check whether s2 has ancestral material in this site -
                              * we only split after sites carrying ancestral material.
@@ -6489,17 +6956,20 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
                              * overlapping region.
                              */
                             h = copy_genes(g);
-                            if(elements != NULL) {
+                            if (elements != NULL)
+                            {
                                 elements = elist_make();
                                 elist_safeextend(elements, tmp_elements);
                             }
-                            if(sites != NULL) {
+                            if (sites != NULL)
+                            {
                                 sites = elist_make();
                                 elist_safeextend(sites, tmp_sites);
                             }
                             _split(h, s1, index1, block1);
                             splitafter_coalescepostfix(h, in[s2], index2, block2, s1);
-                            if (eventlist != NULL) {
+                            if (eventlist != NULL)
+                            {
                                 eventlist = MakeLList();
                                 e = (Event *)xmalloc(sizeof(Event));
                                 e->type = RECOMBINATION;
@@ -6520,7 +6990,8 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
                             implode_genes(h);
                             f(h);
 #ifdef ENABLE_VERBOSE
-                            if (v) {
+                            if (v)
+                            {
                                 printf("Splitting sequence %d at %d and sequence %d at %d and coalescing overlaps\n", s1, mulblocksize(block1) + index1, in[s2],
                                        mulblocksize(block2) + index2);
                                 output_genes_indexed(h, NULL);
@@ -6578,7 +7049,8 @@ EList *maximal_overlap_coalesces(Genes *g, Index *a, Index *b)
     return _maximal_overlap_coalesces_list;
 }
 
-typedef struct _HashGenesParameters {
+typedef struct _HashGenesParameters
+{
     unsigned long m; /* Modulo */
     unsigned long a; /* Coefficient for number of sequences */
     unsigned long b; /* Coefficient for length of sequences */
@@ -6610,13 +7082,12 @@ static unsigned long hash_genes(Genes *g, HashGenesParameters *p)
 
     /* Start with contributions from sequence number and length */
     value = (g->n * p->a + g->length * p->b) % p->m;
-    for (i = 0; i < divblocksize(g->length - 1) + 1; i++) {
+    for (i = 0; i < divblocksize(g->length - 1) + 1; i++)
+    {
         /* Find contribution from block i */
         pattern = 0;
         for (j = 0; j < g->n; j++)
-            pattern ^= p->c * (g->data[j].type[i] % p->m)
-                       + p->d * (g->data[j].ancestral[i] % p->m)
-                       + (g->data[j].type[i] * g->data[j].ancestral[i]) % p->m;
+            pattern ^= p->c * (g->data[j].type[i] % p->m) + p->d * (g->data[j].ancestral[i] % p->m) + (g->data[j].type[i] * g->data[j].ancestral[i]) % p->m;
         value = (value * p->e + pattern) % p->m;
     }
 
@@ -6673,7 +7144,8 @@ static int compare_gene(int length, Gene *g, Gene *h)
     int i, blocks = divblocksize(length - 1) + 1;
 
     /* Check all blocks in turn */
-    for (i = 0; i < blocks; i++) {
+    for (i = 0; i < blocks; i++)
+    {
         if (g->type[i] ^ h->type[i])
             return 0;
         if (g->ancestral[i] ^ h->ancestral[i])
@@ -6704,20 +7176,25 @@ int compare_genes(Genes *g, Genes *h)
      */
     count = (int *)xcalloc(g->n, sizeof(int));
     companion = (int *)xcalloc(g->n, sizeof(int));
-    for (i = 0; i < g->n; i++) {
+    for (i = 0; i < g->n; i++)
+    {
         for (j = 0; j < g->n; j++)
-            if (compare_gene(g->length, g->data + i, h->data + j)) {
+            if (compare_gene(g->length, g->data + i, h->data + j))
+            {
                 /* Sequence i in g and sequence j in h are identical */
-                if (companion[j]) {
+                if (companion[j])
+                {
                     /* i is not the first occurrence of this sequence in g */
-                    if (--count[companion[j] - 1] == 0) {
+                    if (--count[companion[j] - 1] == 0)
+                    {
                         free(companion);
                         free(count);
                         return 0;
                     }
                     break;
                 }
-                else {
+                else
+                {
                     /* First time we encounter a sequence in g that is identical
                      * to sequence j in h.
                      */
@@ -6725,7 +7202,8 @@ int compare_genes(Genes *g, Genes *h)
                     count[i]++;
                 }
             }
-        if ((j >= g->n) && (count[i] == 0)) {
+        if ((j >= g->n) && (count[i] == 0))
+        {
             /* The i'th gene of g does not have a match in h */
             free(companion);
             free(count);
@@ -6744,7 +7222,8 @@ static int gene_less_than(Gene *a, Gene *b)
 {
     int i;
 
-    for (i = 0; i < gene_less_than_blocks; i++) {
+    for (i = 0; i < gene_less_than_blocks; i++)
+    {
         if (a->type[i] < b->type[i])
             return 1;
         if (a->type[i] > b->type[i])
@@ -6770,8 +7249,8 @@ PackedGenes *pack_genes(Genes *g)
     p->n = g->n;
     p->length = g->length;
     p->data = (unsigned int *)
-              xcalloc((g->n * g->length - 1) / TERNARY_BLOCKSIZE + 1,
-                      sizeof(unsigned int));
+        xcalloc((g->n * g->length - 1) / TERNARY_BLOCKSIZE + 1,
+                sizeof(unsigned int));
 
     /* Start by sorting the sequences */
     gene_less_than_blocks = divblocksize(g->length - 1) + 1;
@@ -6780,28 +7259,32 @@ PackedGenes *pack_genes(Genes *g)
     /* Now compact sequences one by one */
     pblock = pindex = 0;
     c = 1;
-    for (i = 0; i < p->n; i++) {
+    for (i = 0; i < p->n; i++)
+    {
         gblock = gindex = 0;
-        for (j = 0; j < p->length; j++) {
+        for (j = 0; j < p->length; j++)
+        {
             /* Convert type and ancestral values for site j in sequence i to
              * a ternary value.
              */
-            k = ((tmp->data[i].type[gblock] >> gindex) & 1)
-                + 2 - 2 * ((tmp->data[i].ancestral[gblock] >> gindex) & 1);
+            k = ((tmp->data[i].type[gblock] >> gindex) & 1) + 2 - 2 * ((tmp->data[i].ancestral[gblock] >> gindex) & 1);
             p->data[pblock] += k * c;
             /* Update indeces in tmp and in p */
-            if (gindex == BLOCKSIZE - 1) {
+            if (gindex == BLOCKSIZE - 1)
+            {
                 gindex = 0;
                 gblock += 1;
             }
             else
                 gindex += 1;
-            if (pindex == TERNARY_BLOCKSIZE - 1) {
+            if (pindex == TERNARY_BLOCKSIZE - 1)
+            {
                 pindex = 0;
                 pblock += 1;
                 c = 1;
             }
-            else {
+            else
+            {
                 pindex += 1;
                 c *= 3;
             }
@@ -6825,26 +7308,30 @@ Genes *unpack_genes(PackedGenes *p)
     g->n = p->n;
     g->length = p->length;
     g->data = (Gene *)xmalloc(g->n * sizeof(Gene));
-    for (i = 0; i < g->n; i++) {
+    for (i = 0; i < g->n; i++)
+    {
         g->data[i].type = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
-        g->data[i].ancestral
-            = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
+        g->data[i].ancestral = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
     }
 
     /* Unpack p into the newly allocated structure */
     pblock = -1;
     pindex = TERNARY_BLOCKSIZE - 1;
     k = p->data[0];
-    for (i = 0; i < g->n; i++) {
+    for (i = 0; i < g->n; i++)
+    {
         gblock = gindex = 0;
-        for (j = 0; j < g->length; j++) {
+        for (j = 0; j < g->length; j++)
+        {
             /* Update index in p */
-            if (pindex == TERNARY_BLOCKSIZE - 1) {
+            if (pindex == TERNARY_BLOCKSIZE - 1)
+            {
                 pblock += 1;
                 pindex = 0;
                 k = p->data[pblock];
             }
-            else {
+            else
+            {
                 pindex += 1;
                 k /= 3;
             }
@@ -6855,7 +7342,8 @@ Genes *unpack_genes(PackedGenes *p)
             if (l != 2)
                 g->data[i].ancestral[gblock] |= (unsigned long)1 << gindex;
             /* Update index in g */
-            if (gindex == BLOCKSIZE - 1) {
+            if (gindex == BLOCKSIZE - 1)
+            {
                 gindex = 0;
                 gblock += 1;
             }
@@ -6874,13 +7362,13 @@ void free_packedgenes(PackedGenes *p)
     free(p);
 }
 
-typedef struct _HashPackedGenesParameters {
+typedef struct _HashPackedGenesParameters
+{
     unsigned long m; /* Modulo */
     unsigned long a; /* Coefficient */
 } HashPackedGenesParameters;
 
-static HashPackedGenesParameters *initialise_hashpackedparameters
-(unsigned long m)
+static HashPackedGenesParameters *initialise_hashpackedparameters(unsigned long m)
 {
     static unsigned long i = 0;
 
@@ -6963,7 +7451,7 @@ HashTable *new_packedgeneshashtable(int bits)
                          (unsigned long (*)(void *, void *))hash_packedgenes,
                          (int (*)(void *, void *))compare_packedgenes,
                          (void *(*)(unsigned long))
-                         initialise_hashpackedparameters);
+                             initialise_hashpackedparameters);
 }
 
 void init_packedgeneshashtable(HashTable *table, int bits)
@@ -6976,13 +7464,13 @@ void init_packedgeneshashtable(HashTable *table, int bits)
                    (unsigned long (*)(void *, void *))hash_packedgenes,
                    (int (*)(void *, void *))compare_packedgenes,
                    (void *(*)(unsigned long))
-                   initialise_hashpackedparameters);
+                       initialise_hashpackedparameters);
 }
-
 
 /* Function to try all possible flips of sequencing errors
  */
-void seqerror_flips(Genes* g, void (*f)(Genes *)) {
+void seqerror_flips(Genes *g, void (*f)(Genes *))
+{
     int q, s, m;
     Genes *h;
     Event *e;
@@ -6990,36 +7478,47 @@ void seqerror_flips(Genes* g, void (*f)(Genes *)) {
     EList *tmp_elements = elements;
     EList *tmp_sites = sites;
     char c;
-    
-    for (q = 0; q < g->n; q++) {
+
+    for (q = 0; q < g->n; q++)
+    {
         // Check that the sequence has not previously coalesced with anything
-        if((int)(elist_get(tmp_elements, q)) != -1) {
-            for(s = 0; s < g->length; s++) {     
-                _recombinations = se_cost;
+        if ((int)(elist_get(tmp_elements, q)) != -1)
+        {
+            for (s = 0; s < g->length; s++)
+            {
+                _recombinations = g_se_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = (int)(elist_get(tmp_sites, s));
-                if(m < 0) {
-                    _recombinations = se_cost * (-m);
+                if (m < 0)
+                {
+                    _recombinations = g_se_cost * (-m);
                     no_events = -m;
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
-                if(c != 2) {
+                if (c != 2)
+                {
                     h = copy_genes(g);
-                    if(c == 0){
+                    if (c == 0)
+                    {
                         set_genes_character(h, q, s, 1);
-                    } else {
+                    }
+                    else
+                    {
                         set_genes_character(h, q, s, 0);
                     }
-                    if(elements != NULL) {
+                    if (elements != NULL)
+                    {
                         elements = elist_make();
                         elist_safeextend(elements, tmp_elements);
                     }
-                    if(sites != NULL) {
+                    if (sites != NULL)
+                    {
                         sites = elist_make();
                         elist_safeextend(sites, tmp_sites);
                     }
-                    if (eventlist != NULL) {
+                    if (eventlist != NULL)
+                    {
                         eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = SEFLIP;
@@ -7035,7 +7534,7 @@ void seqerror_flips(Genes* g, void (*f)(Genes *)) {
     }
 
     no_events = 1;
-    _recombinations = se_cost;
+    _recombinations = g_se_cost;
     eventlist = tmp;
     elements = tmp_elements;
     sites = tmp_sites;
@@ -7043,7 +7542,8 @@ void seqerror_flips(Genes* g, void (*f)(Genes *)) {
 
 /* Function to try all possible flips of recurrent mutations
  */
-void recmut_flips(Genes* g, void (*f)(Genes *)) {
+void recmut_flips(Genes *g, void (*f)(Genes *))
+{
     int q, s, m;
     Genes *h;
     Event *e;
@@ -7051,36 +7551,47 @@ void recmut_flips(Genes* g, void (*f)(Genes *)) {
     EList *tmp_elements = elements;
     EList *tmp_sites = sites;
     char c;
-    
-    for (q = 0; q < g->n; q++) {
+
+    for (q = 0; q < g->n; q++)
+    {
         // Check that the sequence has previously coalesced with something
-        if((int)(elist_get(tmp_elements, q)) == -1) {
-            for(s = 0; s < g->length; s++) {     
-                _recombinations = rm_cost;
+        if ((int)(elist_get(tmp_elements, q)) == -1)
+        {
+            for (s = 0; s < g->length; s++)
+            {
+                _recombinations = g_rm_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = (int)(elist_get(tmp_sites, s));
-                if(m < 0) {
-                    _recombinations = rm_cost * (-m);
+                if (m < 0)
+                {
+                    _recombinations = g_rm_cost * (-m);
                     no_events = -m;
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
-                if(c != 2) {
+                if (c != 2)
+                {
                     h = copy_genes(g);
-                    if(c == 0){
+                    if (c == 0)
+                    {
                         set_genes_character(h, q, s, 1);
-                    } else {
+                    }
+                    else
+                    {
                         set_genes_character(h, q, s, 0);
                     }
-                    if(elements != NULL) {
+                    if (elements != NULL)
+                    {
                         elements = elist_make();
                         elist_safeextend(elements, tmp_elements);
                     }
-                    if(sites != NULL) {
+                    if (sites != NULL)
+                    {
                         sites = elist_make();
                         elist_safeextend(sites, tmp_sites);
                     }
-                    if (eventlist != NULL) {
+                    if (eventlist != NULL)
+                    {
                         eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = RMFLIP;
@@ -7094,8 +7605,8 @@ void recmut_flips(Genes* g, void (*f)(Genes *)) {
             }
         }
     }
-    
-    _recombinations = rm_cost;
+
+    _recombinations = g_rm_cost;
     no_events = 1;
     eventlist = tmp;
     elements = tmp_elements;

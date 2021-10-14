@@ -1,11 +1,11 @@
 /***************************************************************************
- * 
+ *
  *    kwarg.c
- *  
+ *
  *    Implementation of front end for a greedy heuristic for finding plausible
  *    evolutionary histories, minimising number of recombinations and/or recurrent
  *    mutations (depending on selected cost of these events).
- * 
+ *
  ****************************************************************************/
 
 #include <stdio.h>
@@ -112,18 +112,18 @@ static int _minimum_select(double a)
  */
 static double _rs_w = -DBL_MAX + 1;
 static int _rs_n = 0;
-static int _random_select(double a)
+static int _random_select(double score)
 {
     /* Check for non-positive values */
-    if (a <= 0)
+    if (score <= 0)
     {
-        if (_rs_w < a)
+        if (_rs_w < score)
         {
-            _rs_w = a;
+            _rs_w = score;
             _rs_n = 1;
             return 1;
         }
-        else if (_rs_w == a)
+        else if (_rs_w == score)
             return (_unbiased_random(++_rs_n) == 0);
         else
             return 0;
@@ -131,11 +131,11 @@ static int _random_select(double a)
 
     /* Update _rs_w and perform random selection */
     if (_rs_w < 0)
-        _rs_w = a;
+        _rs_w = score;
     else
-        _rs_w += a;
+        _rs_w += score;
 
-    return (a * XRAND_MAX > _rs_w * x2random());
+    return (score * XRAND_MAX > _rs_w * x2random());
 }
 
 /* Determine whether to select a value according to a scheme where
@@ -283,7 +283,6 @@ int main(int argc, char **argv)
     char *token;
     //     int gc_ind = 0;
     double timer;
-    clock_t tic, toc;
     char *endptr;
     errno = 0;
     reference = -1;
@@ -461,8 +460,8 @@ int main(int argc, char **argv)
             break;
         case 'd':
             /* Output ancestral recombination graph of history leading to
-            * minimum number of recombinations in dot format.
-            */
+             * minimum number of recombinations in dot format.
+             */
             /* Was a file name specified? */
             if (optarg != 0)
             {
@@ -508,8 +507,8 @@ int main(int argc, char **argv)
             break;
         case 'g':
             /* Output ancestral recombination graph of history leading to
-            * minimum number of recombinations in gdl format.
-            */
+             * minimum number of recombinations in gdl format.
+             */
             /* Was a file name specified? */
             if (optarg != 0)
             {
@@ -532,8 +531,8 @@ int main(int argc, char **argv)
             break;
         case 'j':
             /* Output ancestral recombination graph of history leading to
-                 * minimum number of recombinations in gml format.
-                 */
+             * minimum number of recombinations in gml format.
+             */
             /* Was a file name specified? */
             if (optarg != 0)
             {
@@ -556,9 +555,9 @@ int main(int argc, char **argv)
             break;
         case 't':
             /* Output marginal trees in ancestral recombination graph of
-                 * history leading to minimum number of recombinations in
-                 * Newick's 8:45 format.
-                 */
+             * history leading to minimum number of recombinations in
+             * Newick's 8:45 format.
+             */
             /* Was a file name specified? */
             if (optarg != 0)
             {
@@ -581,9 +580,9 @@ int main(int argc, char **argv)
             break;
         case 'D':
             /* Output marginal trees in ancestral recombination graph of
-                 * history leading to minimum number of recombinations in
-                 * dot format.
-                 */
+             * history leading to minimum number of recombinations in
+             * dot format.
+             */
             /* Was a file name specified? */
             if (optarg != 0)
             {
@@ -606,9 +605,9 @@ int main(int argc, char **argv)
             break;
         case 'G':
             /* Output marginal trees in ancestral recombination graph of
-                 * history leading to minimum number of recombinations in
-                 * GDL format.
-                 */
+             * history leading to minimum number of recombinations in
+             * GDL format.
+             */
             /* Was a file name specified? */
             if (optarg != 0)
             {
@@ -631,9 +630,9 @@ int main(int argc, char **argv)
             break;
         case 'J':
             /* Output marginal trees in ancestral recombination graph of
-                 * history leading to minimum number of recombinations in
-                 * GML format.
-                 */
+             * history leading to minimum number of recombinations in
+             * GML format.
+             */
             /* Was a file name specified? */
             if (optarg != 0)
             {
@@ -682,7 +681,7 @@ int main(int argc, char **argv)
             edgelabel = 1;
             break;
         case 'k':
-            gene_knownancestor = 1;
+            g_gene_knownancestor = 1;
             break;
         case 'o':
             format = GENE_BEAGLE;
@@ -805,7 +804,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    if ((gene_knownancestor) && (seqtype != GENE_BINARY))
+    if ((g_gene_knownancestor) && (seqtype != GENE_BINARY))
         /* First sequnce only included to specify known common ancestor */
         remove_annotatedgene(annotated_genes, 0);
     genes = annotated_genes->g;
@@ -843,6 +842,7 @@ int main(int argc, char **argv)
         }
         for (t = 0; t < cost_in; t++)
         {
+            // Set default values
             se_costs[t] = (se_costs[t] != 0 ? se_costs[t] : 0.5);
             rm_costs[t] = (rm_costs[t] != 0 ? rm_costs[t] : 0.9);
             r_costs[t] = (r_costs[t] != 0 ? r_costs[t] : 1.0);
@@ -887,7 +887,7 @@ int main(int argc, char **argv)
     {
         if (rec_max == INT_MAX)
         {
-            rec_max = 1000; // TODO What should this be
+            rec_max = 1000; // TODO: What should this be
         }
         // Will store SE + RM in a lookup list with index = number of recombinations
         lookup = elist_make();
@@ -901,7 +901,6 @@ int main(int argc, char **argv)
 
     for (l = 0; l < T_in; l++)
     {
-
         Temp = T_array[l];
         if (Temp == -1)
         {
@@ -914,12 +913,11 @@ int main(int argc, char **argv)
 
         for (k = 0; k < cost_in; k++)
         {
-
-            se_cost = se_costs[k];
-            rm_cost = rm_costs[k];
-            r_cost = r_costs[k];
-            rr_cost = rr_costs[k];
-            if (se_cost == -1 && rm_cost == -1 && r_cost == -1 && rr_cost == -1)
+            g_se_cost = se_costs[k];
+            g_rm_cost = rm_costs[k];
+            g_r_cost = r_costs[k];
+            g_rr_cost = rr_costs[k];
+            if (g_se_cost == -1 && g_rm_cost == -1 && g_r_cost == -1 && g_rr_cost == -1)
             {
                 fprintf(stderr, "At least one type of event should be allowed (all event costs are -1).\n");
                 exit(1);
@@ -939,7 +937,7 @@ int main(int argc, char **argv)
                 elements = elist_make();
                 sites = elist_make();
                 // Initialise list of sequences
-                if ((gene_knownancestor) && (seqtype != GENE_BINARY))
+                if ((g_gene_knownancestor) && (seqtype != GENE_BINARY))
                 {
                     for (i = 0; i < genes_copy->n; i++)
                     {
@@ -960,6 +958,7 @@ int main(int argc, char **argv)
                 }
 
                 // Get a history
+                clock_t tic, toc;
                 tic = clock();
                 n = ggreedy(genes_copy, print_progress, select, _reset_selections, ontheflyselection);
                 toc = clock();
@@ -977,6 +976,13 @@ int main(int argc, char **argv)
             }
         }
     }
+
+    // fprintf(print_progress, elist_length(lookup));
+    // int lookup_i = 0;
+    // for (lookup_i = 0; lookup_i < elist_length(lookup); lookup_i++)
+    // {
+    //     fprintf(print_progress, elist_get(lookup, lookup_i));
+    // }
 
     /* Output inferred ARG */
     if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0) || (Length(dot_files) > 0) || (Length(tskit_files) > 0))
@@ -1009,7 +1015,7 @@ int main(int argc, char **argv)
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
                 arg_output(arg, annotated_genes, fp, YAML, nodelabel, edgelabel, generate_id);
-                
+
                 if (fp != stdout)
                     fclose(fp);
             }

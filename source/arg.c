@@ -1091,16 +1091,7 @@ void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
   }
 }
 
-/* Output arg to file fp (stdout if fp is NULL). Sequence and site
- * information is taken from a, graph description language (DOT, GDL
- * or GML) is specified by format, node labelling (see definition of
- * ARGLabels in arg.h) is specified by nodelabels; if annotate_edges
- * is true edges are labelled with mutations, and if generate_id is
- * true sample nodes with no label in a are assigned their index in a
- * as label. If format is one of the formats prefixed with TREE an
- * extra argument should be provided, specifying whether one tree
- * for every site (if argument is false) or one tree for every
- * recombination free interval (if argument is true) should be output.
+/* Output arg to yaml file
  */
 void arg_to_text(ARG *arg, AnnotatedGenes *a, FILE *fp)
 {

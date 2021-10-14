@@ -37,10 +37,10 @@ LList *representativeness = NULL;
 LListCounter *representativeness_counter;
 int **haploblocks = NULL;
 #endif
-double se_cost;
-double rm_cost;
-double r_cost;
-double rr_cost;
+double g_se_cost;
+double g_rm_cost;
+double g_r_cost;
+double g_rr_cost;
 LList *eventlist;
 EList *elements;
 EList *sites;

@@ -97,7 +97,7 @@ int yun(Genes *g, int best)
     int y;
     #endif
     
-    if (g->n < (gene_knownancestor ? 3 : 4))
+    if (g->n < (g_gene_knownancestor ? 3 : 4))
         /* Data sets with less than four sequences cannot contain
          * segregating sites.
          */
@@ -205,7 +205,7 @@ int **hudson_kaplan_local(Sites *s)
         B[i] = (int *)xcalloc(s->length - i - 1, sizeof(int));
         for (j = i + 1; j < s->length; j++){
             /* Compare sites i and j */
-            if (gene_knownancestor)
+            if (g_gene_knownancestor)
                 type00 = ~0;
             else
                 type00 = 0;
@@ -249,7 +249,7 @@ int hudson_kaplan(Sites *s)
         B[i] = B[i - 1];
         while ((j >= 0) && (B[j] == B[i - 1])){
             /* We can still improve on bound obtained simply by copying B[i - 1] */
-            if (gene_knownancestor)
+            if (g_gene_knownancestor)
                 type00 = ~0;
             else
                 type00 = 0;
@@ -445,7 +445,7 @@ int **haplotype_heuristic_local(Sites *s, int maxsetsize,
         /* Too few sites for recombinations to be detectable */
         return NULL;
     
-    if (gene_knownancestor){
+    if (g_gene_knownancestor){
         /* Add ancestral sequence to data */
         s = copy_sites(s);
         add_ancestral_sites(s);
@@ -1021,7 +1021,7 @@ int **haplotype_heuristic_local(Sites *s, int maxsetsize,
     free(partners);
     free(types);
     free(filter);
-    if (gene_knownancestor)
+    if (g_gene_knownancestor)
         free_sites(s);
     
     return B;
@@ -1788,7 +1788,7 @@ static void _miphaplotype_bound_local_recursion(Sites *s, LList *positions,
      * known) sequences or at most two sites, Hudson-Kaplan is as good
      * as the haplotype bound.
      */
-    if ((s->length <= 2) || (s->n <= (gene_knownancestor ? 3 : 4))){
+    if ((s->length <= 2) || (s->n <= (g_gene_knownancestor ? 3 : 4))){
         _hk_subregion(s, positions, B);
         return;
     }
@@ -1806,7 +1806,7 @@ static void _miphaplotype_bound_local_recursion(Sites *s, LList *positions,
     g = sites2genes(t);
     free_sites(t);
     implode_genes(g); /* No sites are removed by implosion */
-    if ((s->length <= 2) || (s->n <= (gene_knownancestor ? 3 : 4))){
+    if ((s->length <= 2) || (s->n <= (g_gene_knownancestor ? 3 : 4))){
         for (i = 0; i < g->length - 1; i++)
             for (j = i + 1; j < g->length; j++)
                 if (!compatible(g, i, j)){
