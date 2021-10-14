@@ -1,0 +1,6 @@
+*.o
+kwarg
+simplify
+flip
+beagle
+venv/
