@@ -1870,8 +1870,9 @@ void update_lookup(EList *_lookup, int index, int bd)
 
 /* Main function of kwarg implementing neighbourhood search.
  */
-double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
-                double se_cost, double rm_cost, double r_cost, double rr_cost, EList *lookup)
+KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
+               double se_cost, double rm_cost, double r_cost, double rr_cost,
+               EList *lookup, int recombinations_max)
 {
     int i, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
     double r = 0;
@@ -1892,11 +1893,6 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
     int v = verbose();
     set_verbose(0);
 #endif
-
-    if (rm_max < INT_MAX)
-    {
-        update_lookup(lookup, 0, rm_max);
-    }
 
     /* Create working copy of genes */
     genes = copy_genes(genes);
@@ -2291,5 +2287,6 @@ double ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (
 
     elist_destroy(_predecessors);
 
-    return r;
+    KwargRunResult result = {.r = r, .recombinations_max = recombinations_max};
+    return result;
 }

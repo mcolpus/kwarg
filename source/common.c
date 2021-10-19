@@ -47,7 +47,6 @@ double _recombinations;
 int gc_enabled = 0;
 double Temp = 1;
 double r_seed;
-int recombinations_max, rm_max;
 int counter = 0;
 int reference = 0;
 HashTable *_greedy_functioncalls = NULL, *_greedy_beaglereusable = NULL;
