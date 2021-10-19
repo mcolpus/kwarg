@@ -1806,16 +1806,16 @@ double score_renormalise(Genes *g, double score, double temp)
 static EList *_predecessors = NULL;
 static void _store(Genes *g)
 {
-    HistoryFragment *f;
+    HistoryFragment *history_fragment;
 
     /* Wrap configuration and events leading to it in a HistoryFragment */
-    f = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
-    f->event = eventlist;
-    f->g = g;
-    f->recombinations = _recombinations;
-    f->elements = elements;
-    f->sites = sites;
-    f->action = ac;
+    history_fragment = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
+    history_fragment->event = eventlist;
+    history_fragment->g = g;
+    history_fragment->recombinations = _recombinations;
+    history_fragment->elements = elements;
+    history_fragment->sites = sites;
+    history_fragment->action = ac;
     if (elements != NULL && g->n != 0 && g->n != elist_length(elements))
     {
         fprintf(stderr, "Error: number of sequence labels in elements [%d] not equal to current size of dataset [%d]. Event type: %.1f", elist_length(elements), g->n, _recombinations);
@@ -1833,7 +1833,7 @@ static void _store(Genes *g)
         //         _greedy_choice = f;
     }
 
-    elist_append(_predecessors, f);
+    elist_append(_predecessors, history_fragment);
     __update(g);
 }
 
@@ -1954,7 +1954,6 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
             fprintf(print_progress, "Searching possible predecessors:\n");
         }
-        no_events = 0;
         _recombinations = 0;
         ac = COAL;
         preds = 0;
@@ -1970,7 +1969,6 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
 
         if (se_cost != -1)
         {
-            no_events = 1;
             _recombinations = se_cost;
             ac = SE;
 
@@ -1985,7 +1983,6 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
 
         if (rm_cost != -1)
         {
-            no_events = 1;
             _recombinations = rm_cost;
             ac = RM;
 
@@ -2002,7 +1999,6 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         /* Try all sensible events with one split */
         if (r_cost != -1)
         {
-            no_events = 1;
             _recombinations = r_cost;
             ac = RECOMB1;
 
@@ -2026,7 +2022,6 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         /* Try all sensible events with two splits */
         if (rr_cost != -1)
         {
-            no_events = 2;
             _recombinations = rr_cost;
             ac = RECOMB2;
 
@@ -2237,7 +2232,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
     // If we exited the loop because of a sub-optimal solution, record this
     if (bad_soln)
     {
-        fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", print_reference, r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
+        fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", print_reference, g_x2random_seed, temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
     }
     else
     {
@@ -2249,7 +2244,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
             fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
                         "SE", "RM", "R", "N_states", "Time");
         }
-        fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", print_reference, r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
+        fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", print_reference, g_x2random_seed, temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
 
         if (lookup != NULL)
         {

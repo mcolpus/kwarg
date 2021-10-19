@@ -42,10 +42,9 @@ EList *elements;
 EList *sites;
 int seq_numbering;
 int g_howverbose = 0;
-int no_events = 0;
 double _recombinations;
-int gc_enabled = 0;
-double r_seed;
+int g_gene_conversions_enabled = 0;
+double g_x2random_seed;
 int counter = 0;
 HashTable *_greedy_functioncalls = NULL, *_greedy_beaglereusable = NULL;
 #ifdef DEBUG
@@ -124,18 +123,17 @@ void *xrealloc(void *oldadr, int n)
 /* initialise_xrandom(): Initialise random number generator, using the
  * current time.
  */
-long int x2seed;
 void initialise_x2random(double seed)
 {
 #ifndef DEBUG
     if(seed == 0) {
-        r_seed = (double)time(NULL) + (double)xrandom();
+        g_x2random_seed = (double)time(NULL) + (double)xrandom();
     }
     else {
-        r_seed = seed;
+        g_x2random_seed = seed;
     }
 
-  srandom(r_seed);
+  srandom(g_x2random_seed);
 #else
   /* Make sure random sequence is the same for every run */
   srandom(1);
@@ -143,32 +141,26 @@ void initialise_x2random(double seed)
     
 }
 
-long int xseed;
-void initialise_xrandom()
-{
-    xseed = (double)time(NULL) + counter;
-}
-
 /* xrandom(): Return (pseudo-)random number between 0 and XRAND_MAX 
  */
 long int x2random()
 {
     long int r = random();
-    counter++;
-//     printf("%li ", r);
-//     fflush(stdout);
-    return r;
-//     x2seed = (x2seed * 1664519 + 1013904229) % XRAND_MAX;
-//     return x2seed;
-    
+    return r;    
+}
+
+long int g_xrandom_seed;
+void initialise_xrandom()
+{
+    g_xrandom_seed = (double)time(NULL);
 }
 
 /* Simple LCG, only used for initialising hash tables.
  */
 long int xrandom()
 {
-    xseed = (xseed * 1664525 + 1013904223) % XRAND_MAX;
-    return xseed;
+    g_xrandom_seed = (g_xrandom_seed * 1664525 + 1013904223) % XRAND_MAX;
+    return g_xrandom_seed;
 }
 
 /* Convert n to string */

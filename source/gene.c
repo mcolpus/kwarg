@@ -7492,7 +7492,6 @@ void seqerror_flips(Genes *g, void (*f)(Genes *), double se_cost)
                 if (m < 0)
                 {
                     _recombinations = se_cost * (-m);
-                    no_events = -m;
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
@@ -7533,7 +7532,6 @@ void seqerror_flips(Genes *g, void (*f)(Genes *), double se_cost)
         }
     }
 
-    no_events = 1;
     _recombinations = se_cost;
     eventlist = tmp;
     elements = tmp_elements;
@@ -7565,7 +7563,6 @@ void recmut_flips(Genes *g, void (*f)(Genes *), double rm_cost)
                 if (m < 0)
                 {
                     _recombinations = rm_cost * (-m);
-                    no_events = -m;
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
@@ -7607,7 +7604,6 @@ void recmut_flips(Genes *g, void (*f)(Genes *), double rm_cost)
     }
 
     _recombinations = rm_cost;
-    no_events = 1;
     eventlist = tmp;
     elements = tmp_elements;
     sites = tmp_sites;

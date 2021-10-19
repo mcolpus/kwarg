@@ -1164,7 +1164,7 @@ int local2global(int n, int **B)
 {
     int i, j;
     
-    if(gc_enabled) {
+    if(g_gene_conversions_enabled) {
         if(B[0][0] > 0) {
             for(j = 0; j < n-1; j++) {
                 // Reduce local bound for all intervals starting with 1 (1->x) by 1.
@@ -1181,7 +1181,7 @@ int local2global(int n, int **B)
                 B[0][i] = B[0][j] + B[j + 1][i - j - 1];
             }
         }
-        if((B[0][i] > B[0][i-1]) && gc_enabled && (i < n-1)){
+        if((B[0][i] > B[0][i-1]) && g_gene_conversions_enabled && (i < n-1)){
             // Using this to calculate the global bound if we are allowing one-site-long "gene conversions".
             // We have added at least one recombination point just before site i.
             // So, try turning these into one-site-long "gene conversions" to cover (once) the intervals starting at i.

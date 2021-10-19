@@ -31,12 +31,9 @@ extern EList *sites;
 extern int seq_numbering;
 extern int g_howverbose;
 extern double _recombinations;
-extern int no_events;
-extern int gc_enabled;
-extern double r_seed;
-extern long int x2seed;
-extern long int xseed;
-extern int counter;
+extern int g_gene_conversions_enabled;
+extern double g_x2random_seed;
+extern long int g_xrandom_seed;
 extern HashTable *_greedy_functioncalls, *_greedy_beaglereusable;
 #ifdef DEBUG
 extern HashTable *ancestral_state_trace;

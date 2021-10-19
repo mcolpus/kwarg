@@ -274,10 +274,10 @@ int main(int argc, char **argv)
     int edgelabel = 0;
     int generate_id = 0;
     int ontheflyselection = 0;
-    gc_enabled = 0;
+    g_gene_conversions_enabled = 0;
     Event *e;
     LList *tmp;
-    r_seed = 0;
+    g_x2random_seed = 0;
     int recombinations_max = INT_MAX;
     char *token;
     //     int gc_ind = 0;
@@ -696,13 +696,13 @@ int main(int argc, char **argv)
             seqtype = GENE_NUCLEIC;
             break;
         case 'Z':
-            r_seed = strtod(optarg, &endptr);
+            g_x2random_seed = strtod(optarg, &endptr);
             if (errno != 0 || *endptr != '\0')
             {
                 fprintf(stderr, "Seed input should be a positive integer.\n");
                 exit(1);
             }
-            if (r_seed <= 0)
+            if (g_x2random_seed <= 0)
             {
                 fprintf(stderr, "Seed input should be a positive integer.\n");
                 exit(1);
@@ -820,7 +820,7 @@ int main(int argc, char **argv)
 
     initialise_xrandom();
 
-    if (r_seed > 0)
+    if (g_x2random_seed > 0)
     {
         multruns = 0;
         T_in = 1;
@@ -924,8 +924,7 @@ int main(int argc, char **argv)
             {
 
                 /* Initialise random number generator */
-                initialise_x2random(r_seed);
-                counter = 0;
+                initialise_x2random(g_x2random_seed);
 
                 // Copy the data and set up the tracking lists
                 genes_copy = copy_genes(genes);
@@ -971,7 +970,7 @@ int main(int argc, char **argv)
                 elements = NULL;
                 elist_destroy(sites);
                 sites = NULL;
-                r_seed = 0;
+                g_x2random_seed = 0;
             }
         }
     }
