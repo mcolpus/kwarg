@@ -1872,7 +1872,7 @@ void update_lookup(EList *_lookup, int index, int bd)
  */
 KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
                double se_cost, double rm_cost, double r_cost, double rr_cost, double temp,
-               EList *lookup, int recombinations_max)
+               EList *lookup, int recombinations_max, int print_reference)
 {
     int i, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
     double r = 0;
@@ -2237,14 +2237,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
     // If we exited the loop because of a sub-optimal solution, record this
     if (bad_soln)
     {
-        if (reference > 0)
-        {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", reference, r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
-        }
-        else
-        {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
-        }
+        fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", print_reference, r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
     }
     else
     {
@@ -2253,24 +2246,11 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         {
             fprintf(print_progress, "\nTotal number of states considered: %d\n", total_nbdsize);
             fprintf(print_progress, "Total event cost: %.1f\n", r);
-            if (reference > 0)
-            {
-                fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
+            fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
                         "SE", "RM", "R", "N_states", "Time");
-            }
-            else
-            {
-                fprintf(print_progress, "%13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost", "SE", "RM", "R", "N_states", "Time");
-            }
         }
-        if (reference > 0)
-        {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", reference, r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
-        }
-        else
-        {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
-        }
+        fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", print_reference, r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
+
         if (lookup != NULL)
         {
             if (seflips + rmflips < (int)elist_get(lookup, recombs))

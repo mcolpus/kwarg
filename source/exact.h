@@ -35,5 +35,5 @@ double score_renormalise(Genes *g, double score, double temp);
 KwargRunResult ggreedy(Genes *g, FILE *print_progress, int (*select)(double),
                void (*reset)(void), int ontheflyselection,
                double se_cost, double rm_cost, double r_cost, double rr_cost, double temp,
-               EList *lookup, int recombinations_max);
+               EList *lookup, int recombinations_max, int print_reference);
 #endif

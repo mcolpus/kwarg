@@ -37,7 +37,6 @@ extern double r_seed;
 extern long int x2seed;
 extern long int xseed;
 extern int counter;
-extern int reference;
 extern HashTable *_greedy_functioncalls, *_greedy_beaglereusable;
 #ifdef DEBUG
 extern HashTable *ancestral_state_trace;

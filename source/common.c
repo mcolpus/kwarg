@@ -47,7 +47,6 @@ double _recombinations;
 int gc_enabled = 0;
 double r_seed;
 int counter = 0;
-int reference = 0;
 HashTable *_greedy_functioncalls = NULL, *_greedy_beaglereusable = NULL;
 #ifdef DEBUG
 /* Define structure for storing trace of ancestral states as we return

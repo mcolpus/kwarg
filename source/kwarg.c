@@ -284,7 +284,7 @@ int main(int argc, char **argv)
     double timer;
     char *endptr;
     errno = 0;
-    reference = -1;
+    int print_reference = 0;
     int rm_max = INT_MAX;
     KwargRunResult runResult;
 
@@ -741,13 +741,13 @@ int main(int argc, char **argv)
             head = 0;
             break;
         case 'L':
-            reference = strtol(optarg, &endptr, 10);
+            print_reference = strtol(optarg, &endptr, 10);
             if (errno != 0 || *endptr != '\0')
             {
                 fprintf(stderr, "Reference should be a positive integer.\n");
                 exit(1);
             }
-            if (reference < 0)
+            if (print_reference < 0)
             {
                 fprintf(stderr, "Reference should be a positive integer.\n");
                 exit(1);
@@ -870,16 +870,8 @@ int main(int argc, char **argv)
 
     if (head)
     {
-        if (reference > 0)
-        {
-            fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
+        fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
                     "SE", "RM", "R", "N_states", "Time");
-        }
-        else
-        {
-            fprintf(print_progress, "%13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
-                    "SE", "RM", "R", "N_states", "Time");
-        }
     }
 
     EList *lookup;
@@ -965,7 +957,7 @@ int main(int argc, char **argv)
                 clock_t tic, toc;
                 tic = clock();
                 runResult = ggreedy(genes_copy, print_progress, select, _reset_selections, ontheflyselection,
-                                    se_costs[k], rm_costs[k], r_costs[k], rr_costs[k], temp, lookup, recombinations_max);
+                                    se_costs[k], rm_costs[k], r_costs[k], rr_costs[k], temp, lookup, recombinations_max, print_reference);
                 toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
