@@ -909,8 +909,8 @@ int main(int argc, char **argv)
 
     for (l = 0; l < T_in; l++)
     {
-        Temp = T_array[l];
-        if (Temp == -1)
+        double temp = T_array[l];
+        if (temp == -1)
         {
             select = _minimum_select;
         }
@@ -964,7 +964,8 @@ int main(int argc, char **argv)
                 // Get a history
                 clock_t tic, toc;
                 tic = clock();
-                runResult = ggreedy(genes_copy, print_progress, select, _reset_selections, ontheflyselection, se_costs[k], rm_costs[k], r_costs[k], rr_costs[k], lookup, recombinations_max);
+                runResult = ggreedy(genes_copy, print_progress, select, _reset_selections, ontheflyselection,
+                                    se_costs[k], rm_costs[k], r_costs[k], rr_costs[k], temp, lookup, recombinations_max);
                 toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);

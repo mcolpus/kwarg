@@ -45,7 +45,6 @@ int g_howverbose = 0;
 int no_events = 0;
 double _recombinations;
 int gc_enabled = 0;
-double Temp = 1;
 double r_seed;
 int counter = 0;
 int reference = 0;

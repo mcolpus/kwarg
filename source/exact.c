@@ -1710,7 +1710,7 @@ static void _update(Genes *g)
 
 /* Score computation for each state in the neighbourhood */
 static double score_min = DBL_MAX, score_max = 0;
-double scoring_function(Genes *g)
+double scoring_function(Genes *g, double temp)
 {
     double score;
     double lower_bound;
@@ -1723,7 +1723,7 @@ double scoring_function(Genes *g)
     // pick the move with the least negative score in this case, as needed.
     if (_choice_fixed)
     {
-        sign = (Temp < 0) - (Temp > 0) - (Temp == 0);
+        sign = (temp < 0) - (temp > 0) - (temp == 0);
         if (no_recombinations_required(g))
         {
             score = sign * _recombinations;
@@ -1768,13 +1768,13 @@ double scoring_function(Genes *g)
 }
 
 /* Once scores have been computed, renormalise and apply annealing */
-double score_renormalise(Genes *g, double score)
+double score_renormalise(Genes *g, double score, double temp)
 {
     int sign;
 
     if (_choice_fixed)
     {
-        sign = (Temp < 0) - (Temp > 0) - (Temp == 0);
+        sign = (temp < 0) - (temp > 0) - (temp == 0);
         if (no_recombinations_required(g))
         {
             score = sign * _recombinations;
@@ -1788,9 +1788,9 @@ double score_renormalise(Genes *g, double score)
     {
         if (score_max != score_min)
         {
-            if (Temp != -1)
+            if (temp != -1)
             {
-                score = exp(Temp * (1 - (score - score_min) / (score_max - score_min)));
+                score = exp(temp * (1 - (score - score_min) / (score_max - score_min)));
             }
         }
         else
@@ -1871,7 +1871,7 @@ void update_lookup(EList *_lookup, int index, int bd)
 /* Main function of kwarg implementing neighbourhood search.
  */
 KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
-               double se_cost, double rm_cost, double r_cost, double rr_cost,
+               double se_cost, double rm_cost, double r_cost, double rr_cost, double temp,
                EList *lookup, int recombinations_max)
 {
     int i, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
@@ -2089,7 +2089,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
                     _reset_builtins(predecessor->g); // set predecessor to be _greedy_currentstate
                     _recombinations = predecessor->recombinations;
                     // Calculate all the scores and update the min and max
-                    score_array[i] = scoring_function(predecessor->g);
+                    score_array[i] = scoring_function(predecessor->g, temp);
                 }
             }
 
@@ -2100,7 +2100,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
                 _reset_builtins(predecessor->g); // set _greedy_currentstate to be predecessor->g
                 
                 _recombinations = predecessor->recombinations;
-                printscore = score_renormalise(predecessor->g, score_array[i]);
+                printscore = score_renormalise(predecessor->g, score_array[i], temp);
                 if (print_progress != NULL && g_howverbose == 2)
                 {
                     fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, predecessor->recombinations);
@@ -2239,11 +2239,11 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
     {
         if (reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", reference, r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", reference, r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
         }
     }
     else
@@ -2265,11 +2265,11 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         }
         if (reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", reference, r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", reference, r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", r_seed, temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
         if (lookup != NULL)
         {

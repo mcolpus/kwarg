@@ -33,7 +33,6 @@ extern int g_howverbose;
 extern double _recombinations;
 extern int no_events;
 extern int gc_enabled;
-extern double Temp;
 extern double r_seed;
 extern long int x2seed;
 extern long int xseed;
