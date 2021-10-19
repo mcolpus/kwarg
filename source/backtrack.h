@@ -76,7 +76,7 @@ typedef struct _HistoryFragment
     LList *event;          /* List of events leading from start
                             * configuration to end configuration.
                             */
-    double recombinations; /* Number of recombination events */
+    double step_cost; /* Number of recombination events */
     EList *elements;
     EList *sites;
     Action action;

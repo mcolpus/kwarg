@@ -37,12 +37,12 @@ LList *representativeness = NULL;
 LListCounter *representativeness_counter;
 int **haploblocks = NULL;
 #endif
-LList *eventlist;
-EList *elements;
-EList *sites;
-int seq_numbering;
+LList *g_eventlist;
+EList *g_elements;
+EList *g_sites;
+int g_seq_numbering;
 int g_howverbose = 0;
-double _recombinations;
+double g_step_cost;
 int g_gene_conversions_enabled = 0;
 double g_x2random_seed;
 int counter = 0;

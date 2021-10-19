@@ -25,12 +25,12 @@ extern LListCounter *representativeness_counter;
 extern int **haploblocks;
 void explode_local(int **local, LList *r, int n);
 #endif
-extern LList *eventlist;
-extern EList *elements;
-extern EList *sites;
-extern int seq_numbering;
+extern LList *g_eventlist;
+extern EList *g_elements;
+extern EList *g_sites;
+extern int g_seq_numbering;
 extern int g_howverbose;
-extern double _recombinations;
+extern double g_step_cost;
 extern int g_gene_conversions_enabled;
 extern double g_x2random_seed;
 extern long int g_xrandom_seed;

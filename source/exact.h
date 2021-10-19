@@ -13,7 +13,7 @@
 //   EList *lookup;
 //   int recombinations_max;
 //   int rm_max;
-//   double _recombinations;
+//   double g_step_cost;
 // } KwargData;
 
 typedef struct KwargRunResult {
@@ -30,8 +30,8 @@ int beagle_reusable_bounded(Genes *g, FILE *print_progress, int lower,
 LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t);
 HashTable *beagle_allocate_hashtable(Genes *g, int table_size);
 void beagle_deallocate_hashtable(HashTable *t);
-double scoring_function(Genes *g, double temp);
-double score_renormalise(Genes *g, double score, double temp);
+double scoring_function(Genes *g, double temp, double step_cost);
+double score_renormalise(Genes *g, double score, double temp, double step_cost);
 KwargRunResult ggreedy(Genes *g, FILE *print_progress, int (*select)(double),
                void (*reset)(void), int ontheflyselection,
                double se_cost, double rm_cost, double r_cost, double rr_cost, double temp,

@@ -151,13 +151,13 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                 if (!skip_lookup)
                 {
                     /* And we don't want to search histories */
-                    if (eventlist != NULL)
+                    if (g_eventlist != NULL)
                     {
-                        Append(eventlist, splits[*n].g->event);
+                        Append(g_eventlist, splits[*n].g->event);
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = LOOKUP;
                         e->event.lookup = -prevtarget - 1;
-                        Enqueue(eventlist, (void *)e);
+                        Enqueue(g_eventlist, (void *)e);
                     }
                     free(splits[*n].g);
                     /* We found a solution - eliminate all candidates */
@@ -165,7 +165,7 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                     for (i++; i < elist_length(genes); i++)
                     {
                         splits[*n].g = elist_get(genes, i);
-                        if (eventlist != NULL)
+                        if (g_eventlist != NULL)
                         {
                             while (Length(splits[*n].g->event) > 0)
                                 free(Pop(splits[*n].g->event));
@@ -177,7 +177,7 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                     for (i = 0; i < *n; i++)
                     {
                         free_genes(splits[i].g->g);
-                        if (eventlist != NULL)
+                        if (g_eventlist != NULL)
                         {
                             while (Length(splits[i].g->event) > 0)
                                 free(Pop(splits[i].g->event));
@@ -195,7 +195,7 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                 /* We know this set of sequences needs more recombinations
                  * than we have left.
                  */
-                if (eventlist != NULL)
+                if (g_eventlist != NULL)
                 {
                     while (Length(splits[*n].g->event) > 0)
                         free(Pop(splits[*n].g->event));
@@ -235,7 +235,7 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                 else
                     hashtable_update((void *)p, (void *)(bound - 1), t, NULL);
 #endif
-                if (eventlist != NULL)
+                if (g_eventlist != NULL)
                 {
                     while (Length(splits[*n].g->event) > 0)
                         free(Pop(splits[*n].g->event));
@@ -274,7 +274,7 @@ static void free_elist_elements(EList *elist)
     for (i = 0; i < elist_length(elist); i++)
     {
         s = (HistoryFragment *)elist_get(elist, i);
-        if ((eventlist != NULL) && (s->event != NULL))
+        if ((g_eventlist != NULL) && (s->event != NULL))
         {
             while (Length(s->event) > 0)
                 free(Pop(s->event));
@@ -312,9 +312,9 @@ static int check_for_bottom(EList *genes)
                 output_genes_indexed(g, NULL);
             }
 #endif
-            if (eventlist != NULL)
+            if (g_eventlist != NULL)
             {
-                Append(eventlist, s->event);
+                Append(g_eventlist, s->event);
                 s->event = NULL;
             }
             free_elist_elements(genes);
@@ -347,9 +347,9 @@ static void _coalesce_cande_recursion(LList *stack, EList *component, Genes *g,
     Genes *h = NULL;
     NodeClass *current, *tmp;
     Event *event;
-    LList *oldevents = eventlist;
-    EList *oldelements = elements;
-    EList *oldsites = sites;
+    LList *oldevents = g_eventlist;
+    EList *oldelements = g_elements;
+    EList *oldsites = g_sites;
 
     /* Check whether we have reached bottom of recursion */
     if (Length(stack) == 0)
@@ -369,27 +369,27 @@ static void _coalesce_cande_recursion(LList *stack, EList *component, Genes *g,
                      * carrying out the coalescences in.
                      */
                     h = copy_genes(g);
-                    if (eventlist != NULL)
-                        eventlist = MakeLList();
-                    if (elements != NULL)
+                    if (g_eventlist != NULL)
+                        g_eventlist = MakeLList();
+                    if (g_elements != NULL)
                     {
-                        elements = elist_make();
-                        elist_safeextend(elements, oldelements);
+                        g_elements = elist_make();
+                        elist_safeextend(g_elements, oldelements);
                     }
-                    if (sites != NULL)
+                    if (g_sites != NULL)
                     {
-                        sites = elist_make();
-                        elist_safeextend(sites, oldsites);
+                        g_sites = elist_make();
+                        elist_safeextend(g_sites, oldsites);
                     }
                 }
                 coalesce(h, components[i] - 1, i);
-                if (eventlist != NULL)
+                if (g_eventlist != NULL)
                 {
                     event = (Event *)xmalloc(sizeof(Event));
                     event->type = COALESCENCE;
                     event->event.c.s1 = components[i] - 1;
                     event->event.c.s2 = i;
-                    Enqueue(eventlist, event);
+                    Enqueue(g_eventlist, event);
                 }
             }
         }
@@ -400,9 +400,9 @@ static void _coalesce_cande_recursion(LList *stack, EList *component, Genes *g,
              */
             implode_genes(h);
             f(h);
-            eventlist = oldevents;
-            elements = oldelements;
-            sites = oldsites;
+            g_eventlist = oldevents;
+            g_elements = oldelements;
+            g_sites = oldsites;
         }
     }
     else
@@ -577,7 +577,7 @@ static void _coalesce_compatibleandentangled_f(Genes *g)
     HistoryFragment *f = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
 
     f->g = g;
-    f->event = eventlist;
+    f->event = g_eventlist;
     elist_append(_coalesce_compatibleandentangled_states, f);
 }
 static EList *_coalesce_compatibleandentangled(Genes *g)
@@ -955,15 +955,15 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                                      (void *)(splits[j].splits - target - 1), t, NULL);
                     free_packedgenes(p);
                 }
-                if (eventlist != NULL)
-                    Prepend(splits[j].g->event, eventlist);
+                if (g_eventlist != NULL)
+                    Prepend(splits[j].g->event, g_eventlist);
                 free_genes(splits[j].g->g);
                 free(splits[j].g);
                 j++;
                 for (; j < i; j++)
                 {
                     free_genes(splits[j].g->g);
-                    if (eventlist != NULL)
+                    if (g_eventlist != NULL)
                     {
                         while (Length(splits[j].g->event) > 0)
                             free(Pop(splits[j].g->event));
@@ -983,7 +983,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
             }
 
             free_genes(splits[j].g->g);
-            if (eventlist != NULL)
+            if (g_eventlist != NULL)
             {
                 while (Length(splits[j].g->event) > 0)
                     free(Pop(splits[j].g->event));
@@ -1018,8 +1018,8 @@ static int _intmax(int a, int b)
 
 /* Use branch&bound plus dynamic programming techniques to reconstruct
  * a history for g requiring a minimum number of recombinations. If
- * eventlist is not NULL, a list of the events leading to this number
- * of recombinations is compiled in eventlist. If haploblocks is not
+ * g_eventlist is not NULL, a list of the events leading to this number
+ * of recombinations is compiled in g_eventlist. If haploblocks is not
  * NULL, local minimum number of recombinations are stored in
  * haploblocks; haploblocks is assumed to be a table initialised to 0s
  * - entry i, j is set to the minimum number of recombinations
@@ -1038,7 +1038,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     Genes *h;
     int table_size, bound = 0, r1 = 0, r2 = 0;
     void *lookup;
-    LList *implode, *tmp = eventlist;
+    LList *implode, *tmp = g_eventlist;
     Event *e;
 #ifdef HAPLOTYPE_BLOCKS
     int i, j, n, localbound, oldreusable = reusable;
@@ -1074,7 +1074,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
                 if (!skip_lookup)
                 {
                     /* And we are going to use it */
-                    if ((eventlist != NULL) && (-bound <= upper))
+                    if ((g_eventlist != NULL) && (-bound <= upper))
                     {
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = LOOKUP;
@@ -1093,8 +1093,8 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     }
 
     /* Compute a good lower bound on the number of recombinations */
-    if (eventlist != NULL)
-        eventlist = MakeLList();
+    if (g_eventlist != NULL)
+        g_eventlist = MakeLList();
 #ifdef HAPLOTYPE_BLOCKS
     if (haploblocks != NULL)
     {
@@ -1122,8 +1122,8 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     }
 #endif
 
-    implode = eventlist;
-    eventlist = tmp;
+    implode = g_eventlist;
+    g_eventlist = tmp;
 #ifdef HAPLOTYPE_BLOCKS
     if (haploblocks != NULL)
     {
@@ -1185,7 +1185,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 
         if (!r1)
             free_packedgenes(p);
-        if ((eventlist != NULL) && (bound > upper))
+        if ((g_eventlist != NULL) && (bound > upper))
             /* We failed to find a valid history */
             while (Length(implode) > 0)
                 free(Pop(implode));
@@ -1212,7 +1212,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
              */
             haploblocks[0][g->length - 2] = bound;
             /* Do not remember events from local bound computations */
-            eventlist = NULL;
+            g_eventlist = NULL;
             /* Run through regions in order of increasing length */
             for (i = 2; i < g->length; i++)
                 for (j = 0; j <= g->length - i; j++)
@@ -1260,8 +1260,8 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
             while (Length(l) > 0)
                 free(Pop(l));
             DestroyLList(l);
-            /* Restore eventlist */
-            eventlist = tmp;
+            /* Restore g_eventlist */
+            g_eventlist = tmp;
             reusable = oldreusable;
         }
 #endif
@@ -1281,13 +1281,13 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     representativeness_counter = tmprepcount;
 #endif
 
-    if (eventlist != NULL)
+    if (g_eventlist != NULL)
     {
         if (bound <= upper)
-            Prepend(implode, eventlist);
+            Prepend(implode, g_eventlist);
         else
-            while (Length(eventlist) > 0)
-                free(Pop(eventlist));
+            while (Length(g_eventlist) > 0)
+                free(Pop(g_eventlist));
     }
 
     free_genes(g);
@@ -1357,10 +1357,10 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
 {
     int reuse = 1, i, j, *permutation;
     Genes *h;
-    LList *tmp = eventlist, *history;
+    LList *tmp = g_eventlist, *history;
     EList *configurations, *events;
     Event *e;
-    eventlist = NULL;
+    g_eventlist = NULL;
 
     /* Allocate hash table for ancestral configurations encountered if
      * none such was provided.
@@ -1374,7 +1374,7 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
     /* Determine number of recombinations required for data set */
     if (beagle_reusable_bounded(g, print_progress, 0, r, t) > r)
     {
-        eventlist = tmp;
+        g_eventlist = tmp;
         return NULL;
     }
 
@@ -1473,7 +1473,7 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
     /* Clean up */
     elist_destroy(events);
     free_genes(h);
-    eventlist = tmp;
+    g_eventlist = tmp;
 
     return history;
 }
@@ -1660,7 +1660,7 @@ static void _reset_builtins(Genes *g)
 }
 
 /* Update global quantities with contribution from g and free any
- * events that may be stored in eventlist.
+ * events that may be stored in g_eventlist.
  */
 static int _choice_fixed;
 HistoryFragment *_greedy_choice;
@@ -1676,41 +1676,9 @@ static void __update(Genes *g)
         _max_ancestral_material = ancestral_material;
 }
 
-static void _update(Genes *g)
-{
-    /* Check whether we have found a path to the MRCA */
-    if (!_choice_fixed && no_recombinations_required(g))
-    {
-        /* Found a path to the MRCA - choose it */
-        _choice_fixed = 1;
-        _greedy_choice = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
-        _greedy_choice->g = g;
-        _greedy_choice->event = eventlist;
-        _greedy_choice->recombinations = _recombinations;
-        _greedy_choice->elements = elements;
-        _greedy_choice->sites = sites;
-        _greedy_choice->action = ac;
-
-        return;
-    }
-
-    /* Update global quantities */
-    if (!_choice_fixed)
-        __update(g);
-
-    /* Free memory used for g and event leading to it */
-    if (eventlist != NULL)
-    {
-        while (Length(eventlist) != 0)
-            free(Pop(eventlist));
-        DestroyLList(eventlist);
-    }
-    free_genes(g);
-}
-
 /* Score computation for each state in the neighbourhood */
 static double score_min = DBL_MAX, score_max = 0;
-double scoring_function(Genes *g, double temp)
+double scoring_function(Genes *g, double temp, double step_cost)
 {
     double score;
     double lower_bound;
@@ -1726,7 +1694,7 @@ double scoring_function(Genes *g, double temp)
         sign = (temp < 0) - (temp > 0) - (temp == 0);
         if (no_recombinations_required(g))
         {
-            score = sign * _recombinations;
+            score = sign * step_cost;
         }
         else
         {
@@ -1753,7 +1721,7 @@ double scoring_function(Genes *g, double temp)
             lower_bound = hudson_kaplan_genes(g);
         }
 
-        score = (_recombinations + lower_bound) * _max_ancestral_material + _am;
+        score = (step_cost + lower_bound) * _max_ancestral_material + _am;
         if (score < score_min)
         {
             score_min = score;
@@ -1768,7 +1736,7 @@ double scoring_function(Genes *g, double temp)
 }
 
 /* Once scores have been computed, renormalise and apply annealing */
-double score_renormalise(Genes *g, double score, double temp)
+double score_renormalise(Genes *g, double score, double temp, double step_cost)
 {
     int sign;
 
@@ -1777,7 +1745,7 @@ double score_renormalise(Genes *g, double score, double temp)
         sign = (temp < 0) - (temp > 0) - (temp == 0);
         if (no_recombinations_required(g))
         {
-            score = sign * _recombinations;
+            score = sign * step_cost;
         }
         else
         {
@@ -1810,18 +1778,18 @@ static void _store(Genes *g)
 
     /* Wrap configuration and events leading to it in a HistoryFragment */
     history_fragment = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
-    history_fragment->event = eventlist;
+    history_fragment->event = g_eventlist;
     history_fragment->g = g;
-    history_fragment->recombinations = _recombinations;
-    history_fragment->elements = elements;
-    history_fragment->sites = sites;
+    history_fragment->step_cost = g_step_cost;
+    history_fragment->elements = g_elements;
+    history_fragment->sites = g_sites;
     history_fragment->action = ac;
-    if (elements != NULL && g->n != 0 && g->n != elist_length(elements))
+    if (g_elements != NULL && g->n != 0 && g->n != elist_length(g_elements))
     {
-        fprintf(stderr, "Error: number of sequence labels in elements [%d] not equal to current size of dataset [%d]. Event type: %.1f", elist_length(elements), g->n, _recombinations);
+        fprintf(stderr, "Error: number of sequence labels in elements [%d] not equal to current size of dataset [%d]. Event cost: %.1f", elist_length(g_elements), g->n, g_step_cost);
         exit(0);
     }
-    if (elements != NULL && g->length > 0 && g->length != elist_length(sites))
+    if (g_elements != NULL && g->length > 0 && g->length != elist_length(g_sites))
     {
         fprintf(stderr, "Error: number of site labels in sites not equal to current size of dataset.");
         exit(0);
@@ -1877,7 +1845,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
     int i, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
     double r = 0;
     Index *start, *end;
-    LList *tmp = eventlist;
+    LList *tmp = g_eventlist;
     double printscore = 0;
     HistoryFragment *predecessor;
     void (*action)(Genes *);
@@ -1954,7 +1922,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
             fprintf(print_progress, "Searching possible predecessors:\n");
         }
-        _recombinations = 0;
+        g_step_cost = 0;
         ac = COAL;
         preds = 0;
         nbdsize = 0;
@@ -1969,7 +1937,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
 
         if (se_cost != -1)
         {
-            _recombinations = se_cost;
+            g_step_cost = se_cost;
             ac = SE;
 
             seqerror_flips(genes, action, se_cost);
@@ -1983,7 +1951,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
 
         if (rm_cost != -1)
         {
-            _recombinations = rm_cost;
+            g_step_cost = rm_cost;
             ac = RM;
 
             recmut_flips(genes, action, rm_cost);
@@ -1999,7 +1967,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         /* Try all sensible events with one split */
         if (r_cost != -1)
         {
-            _recombinations = r_cost;
+            g_step_cost = r_cost;
             ac = RECOMB1;
 
             maximal_prefix_coalesces_map(genes, start, end, action);
@@ -2022,7 +1990,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         /* Try all sensible events with two splits */
         if (rr_cost != -1)
         {
-            _recombinations = rr_cost;
+            g_step_cost = rr_cost;
             ac = RECOMB2;
 
             maximal_infix_coalesces_map(genes, start, end, action);
@@ -2058,11 +2026,11 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
              */
 
             // Set the tracking lists to NULL for the score computation, and destroy the old elements/sites
-            eventlist = NULL;
-            elist_destroy(elements);
-            elements = NULL;
-            elist_destroy(sites);
-            sites = NULL;
+            g_eventlist = NULL;
+            elist_destroy(g_elements);
+            g_elements = NULL;
+            elist_destroy(g_sites);
+            g_sites = NULL;
             reset();
 
             nbdsize = elist_length(_predecessors); // number of predecessors we score
@@ -2082,9 +2050,9 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
                 {
                     predecessor = (HistoryFragment *)elist_get(_predecessors, i);
                     _reset_builtins(predecessor->g); // set predecessor to be _greedy_currentstate
-                    _recombinations = predecessor->recombinations;
+                    g_step_cost = predecessor->step_cost;
                     // Calculate all the scores and update the min and max
-                    score_array[i] = scoring_function(predecessor->g, temp);
+                    score_array[i] = scoring_function(predecessor->g, temp, predecessor->step_cost);
                 }
             }
 
@@ -2094,11 +2062,11 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
                 predecessor = (HistoryFragment *)elist_get(_predecessors, i);
                 _reset_builtins(predecessor->g); // set _greedy_currentstate to be predecessor->g
                 
-                _recombinations = predecessor->recombinations;
-                printscore = score_renormalise(predecessor->g, score_array[i], temp);
+                g_step_cost = predecessor->step_cost;
+                printscore = score_renormalise(predecessor->g, score_array[i], temp, predecessor->step_cost);
                 if (print_progress != NULL && g_howverbose == 2)
                 {
-                    fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, predecessor->recombinations);
+                    fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, predecessor->step_cost);
                     output_genes(predecessor->g, print_progress, NULL);
                     print_elist(predecessor->elements, "Sequences: ");
                     print_elist(predecessor->sites, "Sites: ");
@@ -2152,23 +2120,23 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
 
             free(score_array);
 
-            eventlist = tmp;
+            g_eventlist = tmp;
             elist_empty(_predecessors, NULL); // this should now be empty
         }
 
         genes = _greedy_choice->g;
-        elements = _greedy_choice->elements;
-        sites = _greedy_choice->sites;
+        g_elements = _greedy_choice->elements;
+        g_sites = _greedy_choice->sites;
 
         switch (_greedy_choice->action)
         {
         case COAL:
             break;
         case SE:
-            seflips = seflips + _greedy_choice->recombinations / se_cost;
+            seflips = seflips + _greedy_choice->step_cost / se_cost;
             break;
         case RM:
-            rmflips = rmflips + _greedy_choice->recombinations / rm_cost;
+            rmflips = rmflips + _greedy_choice->step_cost / rm_cost;
             break;
         case RECOMB1:
             recombs++;
@@ -2180,7 +2148,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
 
         if (print_progress != NULL && g_howverbose == 2)
         {
-            fprintf(print_progress, "%s completed at cost of %.3f.\n", names[_greedy_choice->action], _greedy_choice->recombinations);
+            fprintf(print_progress, "%s completed at cost of %.3f.\n", names[_greedy_choice->action], _greedy_choice->step_cost);
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
             fprintf(print_progress, "Current data:\n");
             output_genes(_greedy_choice->g, print_progress, NULL);
@@ -2188,18 +2156,18 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         }
         if (print_progress != NULL && g_howverbose == 1)
         {
-            fprintf(print_progress, "%s at cost %.3f \n", names[_greedy_choice->action], _greedy_choice->recombinations);
+            fprintf(print_progress, "%s at cost %.3f \n", names[_greedy_choice->action], _greedy_choice->step_cost);
             fflush(print_progress);
         }
         /* Predecessor and events leading to it are stored in _greedy_choice */
         //         }
 
-        if (eventlist != NULL)
+        if (g_eventlist != NULL)
         {
-            Append(eventlist, _greedy_choice->event);
+            Append(g_eventlist, _greedy_choice->event);
         }
 
-        r += _greedy_choice->recombinations;
+        r += _greedy_choice->step_cost;
 
         /* Clean up */
         free(_greedy_choice);

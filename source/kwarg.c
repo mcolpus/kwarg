@@ -812,7 +812,7 @@ int main(int argc, char **argv)
     /* Set up structures for computation */
     if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0) || (Length(tskit_files) > 0))
     {
-        eventlist = MakeLList();
+        g_eventlist = MakeLList();
         multruns = 0;
         cost_in = 1;
         T_in = 1;
@@ -928,28 +928,28 @@ int main(int argc, char **argv)
 
                 // Copy the data and set up the tracking lists
                 genes_copy = copy_genes(genes);
-                seq_numbering = genes_copy->n;
-                elements = elist_make();
-                sites = elist_make();
+                g_seq_numbering = genes_copy->n;
+                g_elements = elist_make();
+                g_sites = elist_make();
                 // Initialise list of sequences
                 if ((g_gene_knownancestor) && (seqtype != GENE_BINARY))
                 {
                     for (i = 0; i < genes_copy->n; i++)
                     {
-                        elist_append(elements, (void *)(i + 1));
+                        elist_append(g_elements, (void *)(i + 1));
                     }
                 }
                 else
                 {
                     for (i = 0; i < genes_copy->n; i++)
                     {
-                        elist_append(elements, (void *)i);
+                        elist_append(g_elements, (void *)i);
                     }
                 }
                 // Initialise the list of sites
                 for (i = 0; i < genes_copy->length; i++)
                 {
-                    elist_append(sites, (void *)i);
+                    elist_append(g_sites, (void *)i);
                 }
 
                 // Get a history
@@ -966,10 +966,10 @@ int main(int argc, char **argv)
 
                 // Tidy up for the next run
                 free_genes(genes_copy);
-                elist_destroy(elements);
-                elements = NULL;
-                elist_destroy(sites);
-                sites = NULL;
+                elist_destroy(g_elements);
+                g_elements = NULL;
+                elist_destroy(g_sites);
+                g_sites = NULL;
                 g_x2random_seed = 0;
             }
         }
@@ -1101,11 +1101,11 @@ int main(int argc, char **argv)
             arg_destroy(arg);
         }
 
-        if (eventlist != NULL)
+        if (g_eventlist != NULL)
         {
-            while (Length(eventlist) > 0)
-                free(Pop(eventlist));
-            DestroyLList(eventlist);
+            while (Length(g_eventlist) > 0)
+                free(Pop(g_eventlist));
+            DestroyLList(g_eventlist);
         }
     }
 

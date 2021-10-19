@@ -55,9 +55,9 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
     Genes *old;
     #endif
     
-    if ((eventlist != NULL) && (Length(eventlist) > 0)){
+    if ((g_eventlist != NULL) && (Length(g_eventlist) > 0)){
         /* Determine number of nodes in ARG */
-        lcounter = MakeCounter(eventlist, FIRST);
+        lcounter = MakeCounter(g_eventlist, FIRST);
         while ((e = (Event *)Next(lcounter)) != NULL)
             if (e->type == RECOMBINATION)
                 n++;
@@ -114,7 +114,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
             lpos = MakeCounter(positions, FIRST);
             lseq = MakeCounter(sequences, FIRST);
             lc = MakeCounter(positions, FIRST);
-            InitCounter(lcounter, eventlist, FIRST);
+            InitCounter(lcounter, g_eventlist, FIRST);
             
             /* Go through the events recorded */
             while ((e = (Event *)Next(lcounter)) != NULL){
@@ -329,8 +329,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                              * siamese twins may alter the picture.
                              */
                             g = copy_genes(h);
-                            tmp = eventlist;
-                            eventlist = NULL;
+                            tmp = g_eventlist;
+                            g_eventlist = NULL;
                             remove_nonsegregating(g);
                             if (g->length > 0){
                                 remove_siamesetwins(g);
@@ -343,7 +343,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                  * sequence and the next remaining sequence.
                                  */
                                 e->event.c.s1 = (e->event.c.s2 == 0 ? 1 : 0);
-                            eventlist = tmp;
+                            g_eventlist = tmp;
                             free_genes(g);
                             g = NULL;
                         }
@@ -425,8 +425,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                  * case no further reductions should be made.
                                  */
                                 g = copy_genes(h);
-                                tmp = eventlist;
-                                eventlist = NULL;
+                                tmp = g_eventlist;
+                                g_eventlist = NULL;
                                 remove_nonsegregating(g);
                                 if (g->length > 0)
                                     remove_siamesetwins(g);
@@ -441,7 +441,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                  * sequence and the next remaining sequence.
                                  */
                                 i = (e->event.remove == 0 ? 1 : 0);
-                            eventlist = tmp;
+                            g_eventlist = tmp;
                             j = (int)SetCounter(lseq, i);
                             k = (int)SetCounter(lseq, e->event.remove);
                             if (output != NULL){
@@ -597,11 +597,11 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 #ifdef DEBUG
                 /* Sanity check - did we see this ancestral state in the forward pass? */
                 if ((ancestral_state_trace != NULL) && (e->type != RECOMBINATION)){
-                    tmp = eventlist;
-                    eventlist = NULL;
+                    tmp = g_eventlist;
+                    g_eventlist = NULL;
                     g = copy_genes(h);
                     implode_genes(g);
-                    eventlist = tmp;
+                    g_eventlist = tmp;
                     if (!no_recombinations_required(g)){
                         p = pack_genes(g);
                         if (!hashtable_lookup(p, ancestral_state_trace, NULL)){
