@@ -33,7 +33,7 @@ void beagle_deallocate_hashtable(HashTable *t);
 double scoring_function(Genes *g, double temp, double step_cost);
 double score_renormalise(Genes *g, double score, double temp, double step_cost);
 KwargRunResult ggreedy(Genes *g, FILE *print_progress, int (*select)(double),
-               void (*reset)(void), int ontheflyselection,
+               void (*reset)(void),
                double se_cost, double rm_cost, double r_cost, double rr_cost, double temp,
                EList *lookup, int recombinations_max, int print_reference);
 #endif

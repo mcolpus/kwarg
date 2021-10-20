@@ -109,6 +109,7 @@ int remove_nonsegregating(Genes *g);
 int coalesce_subsumed(Genes *g);
 int reduce_coalesce(Genes *g, int *elements);
 int implode_genes(Genes *g);
+int implode_genes_from(Genes *genes, LList *event_list, EList *elements, EList *sites);
 int no_recombinations_required(Genes *g);
 void force_safeevents(Genes *g);
 int force_mutations(Genes *g);

@@ -59,6 +59,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset (solutions with more than x recombinations will be abandoned).", 70, -1);
     print_option(f, "-Y[x]", "Provide an upper bound x on the number of recurrent needed for the input dataset (solutions with more than x recurrent mutations will be abandoned).", 70, -1);
     print_option(f, "-s", "Turns off the header row of the results table.", 70, -1);
+    print_option(f, "-B", "Run multiple runs as a batch using tree search method.", 70, -1);
     print_option(f, "-h, -H -?", "Print this information and stop.", 70, -1);
 }
 
@@ -250,7 +251,7 @@ int main(int argc, char **argv)
     Genes *genes, *genes_copy;
     // AnnotatedGenes *annotated_genes;
     int i, j = 0, k = 0, l = 0, m = 0, t = 0,
-           head = 1,
+           print_header = 1,
            silent = 0,
            intervals = 0,
            multruns = 0,
@@ -258,7 +259,7 @@ int main(int argc, char **argv)
     Gene_Format format = GENE_ANY;
     Gene_SeqType seqtype = GENE_BINARY;
     FILE *print_progress = stdout;
-    int (*select)(double) = _random_select;
+    int (*select_function)(double) = _random_select;
     FILE *fp;
     LList *history_files = MakeLList(),
           *dot_files = MakeLList(),
@@ -273,14 +274,12 @@ int main(int argc, char **argv)
     ARGLabels nodelabel = ARGLABEL;
     int edgelabel = 0;
     int generate_id = 0;
-    int ontheflyselection = 0;
     g_gene_conversions_enabled = 0;
     Event *e;
     LList *tmp;
     g_x2random_seed = 0;
     int recombinations_max = INT_MAX;
     char *token;
-    //     int gc_ind = 0;
     double timer;
     char *endptr;
     errno = 0;
@@ -295,12 +294,14 @@ int main(int argc, char **argv)
     double r_costs[100] = {0};
     double rr_costs[100] = {0};
 
+    int use_tree_search = 0;
+
 #ifdef ENABLE_VERBOSE
     set_verbose(1);
 #endif
 
 /* Analyse command line options */
-#define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::K::Iv:iekofaZ:Q:sL:nhH?"
+#define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::K::Iv:iekofaZ:Q:sBL:nhH?"
 
     /* Parse command line options */
     while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0)
@@ -738,7 +739,10 @@ int main(int argc, char **argv)
             }
             break;
         case 's':
-            head = 0;
+            print_header = 0;
+            break;
+        case 'B':
+            use_tree_search = 1;
             break;
         case 'L':
             print_reference = strtol(optarg, &endptr, 10);
@@ -831,7 +835,7 @@ int main(int argc, char **argv)
         rr_costs[0] = (rr_costs[0] != 0 ? rr_costs[0] : 2.0);
         if (g_howverbose > 0)
         {
-            head = 0;
+            print_header = 0;
         }
     }
     else if (cost_in > 0)
@@ -868,10 +872,10 @@ int main(int argc, char **argv)
         T_in = 1;
     }
 
-    if (head)
+    if (print_header)
     {
         fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
-                    "SE", "RM", "R", "N_states", "Time");
+                "SE", "RM", "R", "N_states", "Time");
     }
 
     EList *lookup;
@@ -904,11 +908,11 @@ int main(int argc, char **argv)
         double temp = T_array[l];
         if (temp == -1)
         {
-            select = _minimum_select;
+            select_function = _minimum_select;
         }
         else
         {
-            select = _random_select;
+            select_function = _random_select;
         }
 
         for (k = 0; k < cost_in; k++)
@@ -919,9 +923,9 @@ int main(int argc, char **argv)
                 exit(1);
             }
 
-            /* Find a history for each iteration */
-            for (j = 0; j <= multruns; j++)
+            if (use_tree_search)
             {
+                fprintf(fp, "Using tree search!!");
 
                 /* Initialise random number generator */
                 initialise_x2random(g_x2random_seed);
@@ -955,14 +959,13 @@ int main(int argc, char **argv)
                 // Get a history
                 clock_t tic, toc;
                 tic = clock();
-                runResult = ggreedy(genes_copy, print_progress, select, _reset_selections, ontheflyselection,
+                runResult = ggreedy(genes_copy, print_progress, select_function, _reset_selections,
                                     se_costs[k], rm_costs[k], r_costs[k], rr_costs[k], temp, lookup, recombinations_max, print_reference);
                 toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
                 // The ggreedy function will update lookup array, but changes to recombinations_max is returned
                 recombinations_max = runResult.recombinations_max;
-
 
                 // Tidy up for the next run
                 free_genes(genes_copy);
@@ -972,15 +975,63 @@ int main(int argc, char **argv)
                 g_sites = NULL;
                 g_x2random_seed = 0;
             }
+            else
+            {
+                /* Find a history for each iteration */
+                for (j = 0; j <= multruns; j++)
+                {
+
+                    /* Initialise random number generator */
+                    initialise_x2random(g_x2random_seed);
+
+                    // Copy the data and set up the tracking lists
+                    genes_copy = copy_genes(genes);
+                    g_seq_numbering = genes_copy->n;
+                    g_elements = elist_make();
+                    g_sites = elist_make();
+                    // Initialise list of sequences
+                    if ((g_gene_knownancestor) && (seqtype != GENE_BINARY))
+                    {
+                        for (i = 0; i < genes_copy->n; i++)
+                        {
+                            elist_append(g_elements, (void *)(i + 1));
+                        }
+                    }
+                    else
+                    {
+                        for (i = 0; i < genes_copy->n; i++)
+                        {
+                            elist_append(g_elements, (void *)i);
+                        }
+                    }
+                    // Initialise the list of sites
+                    for (i = 0; i < genes_copy->length; i++)
+                    {
+                        elist_append(g_sites, (void *)i);
+                    }
+
+                    // Get a history
+                    clock_t tic, toc;
+                    tic = clock();
+                    runResult = ggreedy(genes_copy, print_progress, select_function, _reset_selections,
+                                        se_costs[k], rm_costs[k], r_costs[k], rr_costs[k], temp, lookup, recombinations_max, print_reference);
+                    toc = clock();
+                    timer = (double)(toc - tic) / CLOCKS_PER_SEC;
+                    printf("%15.8f\n", timer);
+                    // The ggreedy function will update lookup array, but changes to recombinations_max is returned
+                    recombinations_max = runResult.recombinations_max;
+
+                    // Tidy up for the next run
+                    free_genes(genes_copy);
+                    elist_destroy(g_elements);
+                    g_elements = NULL;
+                    elist_destroy(g_sites);
+                    g_sites = NULL;
+                    g_x2random_seed = 0;
+                }
+            }
         }
     }
-
-    // fprintf(print_progress, elist_length(lookup));
-    // int lookup_i = 0;
-    // for (lookup_i = 0; lookup_i < elist_length(lookup); lookup_i++)
-    // {
-    //     fprintf(print_progress, elist_get(lookup, lookup_i));
-    // }
 
     /* Output inferred ARG */
     if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0) || (Length(dot_files) > 0) || (Length(tskit_files) > 0))

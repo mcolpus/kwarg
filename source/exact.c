@@ -508,7 +508,7 @@ static void _coalesce_cande_recursion(LList *stack, EList *component, Genes *g,
  * HistoryFragment. It is the responsibility of the calling function
  * to free memory used for the HistoryFragment.
  */
-static void _coalesce_compatibleandentangled_map(Genes *g, void (*f)(Genes *))
+static void _coalesce_compatible_and_entangled_map(Genes *g, void (*f)(Genes *))
 {
     int i, j;
     EList *component = elist_make();
@@ -583,7 +583,7 @@ static void _coalesce_compatibleandentangled_f(Genes *g)
 static EList *_coalesce_compatibleandentangled(Genes *g)
 {
     _coalesce_compatibleandentangled_states = elist_make();
-    _coalesce_compatibleandentangled_map(g, _coalesce_compatibleandentangled_f);
+    _coalesce_compatible_and_entangled_map(g, _coalesce_compatibleandentangled_f);
     return _coalesce_compatibleandentangled_states;
 }
 
@@ -1663,7 +1663,6 @@ static void _reset_builtins(Genes *g)
  * events that may be stored in g_eventlist.
  */
 static int _choice_fixed;
-HistoryFragment *_greedy_choice;
 static double _min_ancestral_material, _max_ancestral_material;
 static Action ac;
 static void __update(Genes *g)
@@ -1798,14 +1797,11 @@ static void _store(Genes *g)
     {
         /* Found a path to the MRCA - choose it */
         _choice_fixed = 1;
-        //         _greedy_choice = f;
     }
 
     elist_append(_predecessors, history_fragment);
     __update(g);
 }
-
-static int (*_choice_function)(double);
 
 /* Update the lookup list of SE/RM and recombination numbers
  * This is of length recombinations_max, and keeps track of the maximum number of RM events seen
@@ -1838,16 +1834,14 @@ void update_lookup(EList *_lookup, int index, int bd)
 
 /* Main function of kwarg implementing neighbourhood search.
  */
-KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
+KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select_function)(double), void (*reset_select_function)(void),
                double se_cost, double rm_cost, double r_cost, double rr_cost, double temp,
                EList *lookup, int recombinations_max, int print_reference)
 {
-    int i, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
-    double r = 0;
+    int i, neighbourhood_size = 0, total_neighbourhood_size = 0, seflips = 0, rmflips = 0, recombs = 0, preds, is_bad_soln = 0;
+    double total_event_cost = 0;
     Index *start, *end;
     LList *tmp = g_eventlist;
-    double printscore = 0;
-    HistoryFragment *predecessor;
     void (*action)(Genes *);
     const char *names[5];
     names[0] = "Coalescence";
@@ -1891,10 +1885,10 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
     /* Repeatedly choose an event back in time, until data set has been
      * explained.
      */
-    _choice_function = select;
-    if (!ontheflyselection)
-        _predecessors = elist_make();
-    if ((_choice_fixed = no_recombinations_required(genes)) != 0)
+    _predecessors = elist_make();
+
+    _choice_fixed = no_recombinations_required(genes);
+    if (_choice_fixed)
         /* Data set can be explained without recombinations */
         free_genes(genes);
 
@@ -1903,8 +1897,8 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         /* Reset statistics of reachable configurations */
         _min_ancestral_material = INT_MAX;
         _max_ancestral_material = 0;
-        _greedy_choice = NULL;
-        nbdsize = 0;
+        HistoryFragment *greedy_choice = NULL;
+        neighbourhood_size = 0;
         preds = 0;
 
         /* Determine interesting recombination ranges */
@@ -1925,11 +1919,11 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         g_step_cost = 0;
         ac = COAL;
         preds = 0;
-        nbdsize = 0;
+        neighbourhood_size = 0;
 
-        _coalesce_compatibleandentangled_map(genes, action);
-        preds = elist_length(_predecessors) - nbdsize;
-        nbdsize = elist_length(_predecessors);
+        _coalesce_compatible_and_entangled_map(genes, action);
+        preds = elist_length(_predecessors) - neighbourhood_size;
+        neighbourhood_size = elist_length(_predecessors);
         if (g_howverbose > 0)
         {
             fprintf(print_progress, "%-40s %3d\n", "Coalescing entangled: ", preds);
@@ -1941,8 +1935,8 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
             ac = SE;
 
             seqerror_flips(genes, action, se_cost);
-            preds = elist_length(_predecessors) - nbdsize;
-            nbdsize = elist_length(_predecessors);
+            preds = elist_length(_predecessors) - neighbourhood_size;
+            neighbourhood_size = elist_length(_predecessors);
             if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Sequencing errors: ", preds);
@@ -1956,8 +1950,8 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
 
             recmut_flips(genes, action, rm_cost);
 
-            preds = elist_length(_predecessors) - nbdsize;
-            nbdsize = elist_length(_predecessors);
+            preds = elist_length(_predecessors) - neighbourhood_size;
+            neighbourhood_size = elist_length(_predecessors);
             if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Recurrent mutations: ", preds);
@@ -1971,16 +1965,16 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
             ac = RECOMB1;
 
             maximal_prefix_coalesces_map(genes, start, end, action);
-            preds = elist_length(_predecessors) - nbdsize;
-            nbdsize = elist_length(_predecessors);
+            preds = elist_length(_predecessors) - neighbourhood_size;
+            neighbourhood_size = elist_length(_predecessors);
             if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Prefix recombinations: ", preds);
             }
 
             maximal_postfix_coalesces_map(genes, start, end, action);
-            preds = elist_length(_predecessors) - nbdsize;
-            nbdsize = elist_length(_predecessors);
+            preds = elist_length(_predecessors) - neighbourhood_size;
+            neighbourhood_size = elist_length(_predecessors);
             if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Postfix recombinations: ", preds);
@@ -1994,16 +1988,16 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
             ac = RECOMB2;
 
             maximal_infix_coalesces_map(genes, start, end, action);
-            preds = elist_length(_predecessors) - nbdsize;
-            nbdsize = elist_length(_predecessors);
+            preds = elist_length(_predecessors) - neighbourhood_size;
+            neighbourhood_size = elist_length(_predecessors);
             if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Two recombinations (infix): ", preds);
             }
 
             maximal_overlap_coalesces_map(genes, start, end, action);
-            preds = elist_length(_predecessors) - nbdsize;
-            nbdsize = elist_length(_predecessors);
+            preds = elist_length(_predecessors) - neighbourhood_size;
+            neighbourhood_size = elist_length(_predecessors);
             if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Two recombinations (overlap): ", preds);
@@ -2019,124 +2013,123 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         /* Finalise choice and prepare for next iteration */
         free_genes(genes);
         /* Still looking for path to MRCA */
-        if (!ontheflyselection)
+        /* So far we have only enumerated putative predecessors -
+        * score these and choose one.
+        */
+
+        // Set the tracking lists to NULL for the score computation, and destroy the old elements/sites
+        g_eventlist = NULL;
+        elist_destroy(g_elements);
+        g_elements = NULL;
+        elist_destroy(g_sites);
+        g_sites = NULL;
+        reset_select_function();
+
+        neighbourhood_size = elist_length(_predecessors); // number of predecessors we score
+        if (neighbourhood_size == 0)
         {
-            /* So far we have only enumerated putative predecessors -
-             * score these and choose one.
-             */
+            fprintf(stderr, "No neighbours left to search but MRCA not reached.");
+        }
+        total_neighbourhood_size += neighbourhood_size;
 
-            // Set the tracking lists to NULL for the score computation, and destroy the old elements/sites
-            g_eventlist = NULL;
-            elist_destroy(g_elements);
-            g_elements = NULL;
-            elist_destroy(g_sites);
-            g_sites = NULL;
-            reset();
+        // Calculate all the scores and store in an array
+        // Update score_min and score_max for renormalising the score later
+        score_array = malloc(elist_length(_predecessors) * sizeof(double));
+        HistoryFragment *predecessor;
 
-            nbdsize = elist_length(_predecessors); // number of predecessors we score
-            if (nbdsize == 0)
-            {
-                fprintf(stderr, "No neighbours left to search but MRCA not reached.");
-            }
-            total_nbdsize += nbdsize;
-
-            // Calculate all the scores and store in an array
-            // Update score_min and score_max for renormalising the score later
-            score_array = malloc(elist_length(_predecessors) * sizeof(double));
-            if (!_choice_fixed)
-            {
-                score_min = DBL_MAX, score_max = 0;
-                for (i = 0; i < elist_length(_predecessors); i++)
-                {
-                    predecessor = (HistoryFragment *)elist_get(_predecessors, i);
-                    _reset_builtins(predecessor->g); // set predecessor to be _greedy_currentstate
-                    g_step_cost = predecessor->step_cost;
-                    // Calculate all the scores and update the min and max
-                    score_array[i] = scoring_function(predecessor->g, temp, predecessor->step_cost);
-                }
-            }
-
-            // Now consider each predecessor one by one, score, and set as the new choice if the score is lower
+        if (!_choice_fixed)
+        {
+            score_min = DBL_MAX, score_max = 0;
             for (i = 0; i < elist_length(_predecessors); i++)
             {
                 predecessor = (HistoryFragment *)elist_get(_predecessors, i);
-                _reset_builtins(predecessor->g); // set _greedy_currentstate to be predecessor->g
-                
+                _reset_builtins(predecessor->g); // set predecessor to be _greedy_currentstate
                 g_step_cost = predecessor->step_cost;
-                printscore = score_renormalise(predecessor->g, score_array[i], temp, predecessor->step_cost);
-                if (print_progress != NULL && g_howverbose == 2)
-                {
-                    fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, predecessor->step_cost);
-                    output_genes(predecessor->g, print_progress, NULL);
-                    print_elist(predecessor->elements, "Sequences: ");
-                    print_elist(predecessor->sites, "Sites: ");
-                    fprintf(print_progress, "Predecessor score: %.0f \n\n",
-                            (printscore == -DBL_MAX ? -INFINITY : (printscore == DBL_MAX ? INFINITY : printscore)));
-                    fflush(print_progress);
-                }
-                if (select(printscore))
-                {
-                    // compute score and check if better than that of _greedy_choice
-                    /* If so, discard old choice */
-                    if (_greedy_choice != NULL)
-                    {
-                        free_genes(_greedy_choice->g);
-                        if (_greedy_choice->event != NULL)
-                        {
-                            while (Length(_greedy_choice->event) != 0)
-                                free(Pop(_greedy_choice->event));
-                            DestroyLList(_greedy_choice->event);
-                        }
-                        if (_greedy_choice->elements != NULL)
-                            elist_destroy(_greedy_choice->elements);
-                        if (_greedy_choice->sites != NULL)
-                            elist_destroy(_greedy_choice->sites);
-                        free(_greedy_choice);
-                    }
-                    /* Set predecessor to be new choice */
-                    _greedy_choice = predecessor;
-                }
-                else
-                {
-                    /* Discard predecessor */
-                    free_genes(predecessor->g);
-                    if (predecessor->event != NULL)
-                    {
-                        while (Length(predecessor->event) != 0)
-                            free(Pop(predecessor->event));
-                        DestroyLList(predecessor->event);
-                    }
-                    if (predecessor->elements != NULL)
-                    {
-                        elist_destroy(predecessor->elements);
-                    }
-                    if (predecessor->sites != NULL)
-                    {
-                        elist_destroy(predecessor->sites);
-                    }
-                    free(predecessor);
-                }
+                // Calculate all the scores and update the min and max
+                score_array[i] = scoring_function(predecessor->g, temp, predecessor->step_cost);
             }
-
-            free(score_array);
-
-            g_eventlist = tmp;
-            elist_empty(_predecessors, NULL); // this should now be empty
         }
 
-        genes = _greedy_choice->g;
-        g_elements = _greedy_choice->elements;
-        g_sites = _greedy_choice->sites;
+        // Now consider each predecessor one by one, score, and set as the new choice if the score is lower
+        for (i = 0; i < elist_length(_predecessors); i++)
+        {
+            predecessor = (HistoryFragment *)elist_get(_predecessors, i);
+            _reset_builtins(predecessor->g); // set _greedy_currentstate to be predecessor->g
+            
+            g_step_cost = predecessor->step_cost;
+            double printscore = score_renormalise(predecessor->g, score_array[i], temp, predecessor->step_cost);
+            if (print_progress != NULL && g_howverbose == 2)
+            {
+                fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, predecessor->step_cost);
+                output_genes(predecessor->g, print_progress, NULL);
+                print_elist(predecessor->elements, "Sequences: ");
+                print_elist(predecessor->sites, "Sites: ");
+                fprintf(print_progress, "Predecessor score: %.0f \n\n",
+                        (printscore == -DBL_MAX ? -INFINITY : (printscore == DBL_MAX ? INFINITY : printscore)));
+                fflush(print_progress);
+            }
+            if (select_function(printscore))
+            {
+                // compute score and check if better than that of greedy_choice
+                /* If so, discard old choice */
+                if (greedy_choice != NULL)
+                {
+                    free_genes(greedy_choice->g);
+                    if (greedy_choice->event != NULL)
+                    {
+                        while (Length(greedy_choice->event) != 0)
+                            free(Pop(greedy_choice->event));
+                        DestroyLList(greedy_choice->event);
+                    }
+                    if (greedy_choice->elements != NULL)
+                        elist_destroy(greedy_choice->elements);
+                    if (greedy_choice->sites != NULL)
+                        elist_destroy(greedy_choice->sites);
+                    free(greedy_choice);
+                }
+                /* Set predecessor to be new choice */
+                greedy_choice = predecessor;
+            }
+            else
+            {
+                /* Discard predecessor */
+                free_genes(predecessor->g);
+                if (predecessor->event != NULL)
+                {
+                    while (Length(predecessor->event) != 0)
+                        free(Pop(predecessor->event));
+                    DestroyLList(predecessor->event);
+                }
+                if (predecessor->elements != NULL)
+                {
+                    elist_destroy(predecessor->elements);
+                }
+                if (predecessor->sites != NULL)
+                {
+                    elist_destroy(predecessor->sites);
+                }
+                free(predecessor);
+            }
+        }
 
-        switch (_greedy_choice->action)
+        free(score_array);
+
+        g_eventlist = tmp;
+        elist_empty(_predecessors, NULL); // this should now be empty
+
+        genes = greedy_choice->g;
+        g_elements = greedy_choice->elements;
+        g_sites = greedy_choice->sites;
+
+        switch (greedy_choice->action)
         {
         case COAL:
             break;
         case SE:
-            seflips = seflips + _greedy_choice->step_cost / se_cost;
+            seflips = seflips + greedy_choice->step_cost / se_cost;
             break;
         case RM:
-            rmflips = rmflips + _greedy_choice->step_cost / rm_cost;
+            rmflips = rmflips + greedy_choice->step_cost / rm_cost;
             break;
         case RECOMB1:
             recombs++;
@@ -2148,29 +2141,28 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
 
         if (print_progress != NULL && g_howverbose == 2)
         {
-            fprintf(print_progress, "%s completed at cost of %.3f.\n", names[_greedy_choice->action], _greedy_choice->step_cost);
+            fprintf(print_progress, "%s completed at cost of %.3f.\n", names[greedy_choice->action], greedy_choice->step_cost);
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
             fprintf(print_progress, "Current data:\n");
-            output_genes(_greedy_choice->g, print_progress, NULL);
+            output_genes(greedy_choice->g, print_progress, NULL);
             fflush(print_progress);
         }
         if (print_progress != NULL && g_howverbose == 1)
         {
-            fprintf(print_progress, "%s at cost %.3f \n", names[_greedy_choice->action], _greedy_choice->step_cost);
+            fprintf(print_progress, "%s at cost %.3f \n", names[greedy_choice->action], greedy_choice->step_cost);
             fflush(print_progress);
         }
-        /* Predecessor and events leading to it are stored in _greedy_choice */
-        //         }
+
 
         if (g_eventlist != NULL)
         {
-            Append(g_eventlist, _greedy_choice->event);
+            Append(g_eventlist, greedy_choice->event);
         }
 
-        r += _greedy_choice->step_cost;
+        total_event_cost += greedy_choice->step_cost;
 
         /* Clean up */
-        free(_greedy_choice);
+        free(greedy_choice);
         free(start);
         free(end);
         if (_choice_fixed)
@@ -2181,7 +2173,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         // Can abandon the run if the number of recombinations already exceeds recombinations_max
         if (recombs > recombinations_max)
         {
-            bad_soln = 1;
+            is_bad_soln = 1;
             break;
         }
 
@@ -2191,28 +2183,28 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
         {
             if (seflips + rmflips > (int)elist_get(lookup, recombs))
             {
-                bad_soln = 1;
+                is_bad_soln = 1;
                 break;
             }
         }
     }
 
     // If we exited the loop because of a sub-optimal solution, record this
-    if (bad_soln)
+    if (is_bad_soln)
     {
-        fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", print_reference, g_x2random_seed, temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
+        fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", print_reference, g_x2random_seed, temp, se_cost, rm_cost, r_cost, rr_cost, total_neighbourhood_size);
     }
     else
     {
         // Otherwise, record the result
         if (print_progress != NULL && g_howverbose > 0)
         {
-            fprintf(print_progress, "\nTotal number of states considered: %d\n", total_nbdsize);
-            fprintf(print_progress, "Total event cost: %.1f\n", r);
+            fprintf(print_progress, "\nTotal number of states considered: %d\n", total_neighbourhood_size);
+            fprintf(print_progress, "Total event cost: %.1f\n", total_event_cost);
             fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
                         "SE", "RM", "R", "N_states", "Time");
         }
-        fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", print_reference, g_x2random_seed, temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
+        fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", print_reference, g_x2random_seed, temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_neighbourhood_size);
 
         if (lookup != NULL)
         {
@@ -2230,6 +2222,6 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select)(double)
 
     elist_destroy(_predecessors);
 
-    KwargRunResult result = {.r = r, .recombinations_max = recombinations_max};
+    KwargRunResult result = {.r = total_event_cost, .recombinations_max = recombinations_max};
     return result;
 }
