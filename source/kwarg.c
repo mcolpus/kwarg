@@ -926,54 +926,6 @@ int main(int argc, char **argv)
             if (use_tree_search)
             {
                 fprintf(fp, "Using tree search!!");
-
-                /* Initialise random number generator */
-                initialise_x2random(g_x2random_seed);
-
-                // Copy the data and set up the tracking lists
-                genes_copy = copy_genes(genes);
-                g_seq_numbering = genes_copy->n;
-                g_elements = elist_make();
-                g_sites = elist_make();
-                // Initialise list of sequences
-                if ((g_gene_knownancestor) && (seqtype != GENE_BINARY))
-                {
-                    for (i = 0; i < genes_copy->n; i++)
-                    {
-                        elist_append(g_elements, (void *)(i + 1));
-                    }
-                }
-                else
-                {
-                    for (i = 0; i < genes_copy->n; i++)
-                    {
-                        elist_append(g_elements, (void *)i);
-                    }
-                }
-                // Initialise the list of sites
-                for (i = 0; i < genes_copy->length; i++)
-                {
-                    elist_append(g_sites, (void *)i);
-                }
-
-                // Get a history
-                clock_t tic, toc;
-                tic = clock();
-                runResult = ggreedy(genes_copy, print_progress, select_function, _reset_selections,
-                                    se_costs[k], rm_costs[k], r_costs[k], rr_costs[k], temp, lookup, recombinations_max, print_reference);
-                toc = clock();
-                timer = (double)(toc - tic) / CLOCKS_PER_SEC;
-                printf("%15.8f\n", timer);
-                // The ggreedy function will update lookup array, but changes to recombinations_max is returned
-                recombinations_max = runResult.recombinations_max;
-
-                // Tidy up for the next run
-                free_genes(genes_copy);
-                elist_destroy(g_elements);
-                g_elements = NULL;
-                elist_destroy(g_sites);
-                g_sites = NULL;
-                g_x2random_seed = 0;
             }
             else
             {

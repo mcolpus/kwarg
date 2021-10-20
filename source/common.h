@@ -26,14 +26,6 @@ extern int **haploblocks;
 void explode_local(int **local, LList *r, int n);
 #endif
 
-typedef struct _TreeSearchNode {
-  Genes *genes;
-  LList *event_list;
-  EList *elements;
-  EList *sites;
-  int weight;
-} TreeSearchNode;
-
 extern LList *g_eventlist;
 extern EList *g_elements;
 extern EList *g_sites;

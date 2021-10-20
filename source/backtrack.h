@@ -82,6 +82,15 @@ typedef struct _HistoryFragment
     Action action;
 } HistoryFragment;
 
+
+typedef struct _PartialHistory {
+  Genes *g;             // current genes
+  LList *event_list;    // List of Event's leading from start config to g
+  EList *elements;      //
+  EList *sites;         //
+  int weight;           // used for doing dfs to keep track of how many leaves will come from here.
+} PartialHistory;
+
 #ifdef DEBUG
 extern HashTable *ancestral_state_trace;
 #endif
