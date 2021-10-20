@@ -1,0 +1,159 @@
+ggreedy
+    copy_genes|
+
+    implode_genes|||
+        remove_uninformative||
+            transfer_data|
+        remove_siamesetwins||
+            siamese_site|
+            siamese_sites|
+        coalesce_subsumed|
+
+    update_lookup|
+
+    no_recombinations_required||
+        remove_uninformative|
+        ancestral_material_overlap|
+
+    maximumsubsumedpostfixs|
+
+    maximumsubsumedprefixs|
+
+    _store|||
+        no_recombinations_required||
+
+    _coalesce_compatible_and_entangled_map|||||
+        compatible|
+        entangled||
+            lsb|
+            msb|
+        _coalesce_cande_recursion||||
+            coalesce|
+            implode_genes|||
+
+    seqerror_flips||||
+        get_genes_character|
+        set_genes_character|
+        implode_genes|||
+
+    recmut_flips
+        get_genes_character|
+        set_genes_character|
+        implode_genes|||
+
+    maximal_prefix_coalesces_map||||
+        split_removeprefix|||
+            find_safe_coalescence||
+                subsumed_segregating|
+        output_genes_indexed|||
+            output_genes||
+                _output_genes|
+        implode_genes|||
+        split_coalesceprefix|
+
+    maximal_postfix_coalesces_map||||
+        split_removepostfix|||
+            find_safe_coalescence||
+                    subsumed_segregating|
+        implode_genes|||
+        splitafter_coalescepostfix|
+
+    maximal_infix_coalesces_map||||
+        genes2sites|
+        initialise_subsumed|
+        update_subsumed|
+        initialise_subsumedinterval|
+        extend_subsumedinterval|
+        initialise_compatibleinterval|
+        maximumsubsumedprefix|
+        check_leftflank|
+        check_maximality|
+        maximumsubsumedpostfix|
+        find_compatibleintervals|||
+            check_rightflank|
+            perform_maximal_splits||
+                _split|
+                split_coalesceprefix|
+            extend_compatibleinterval|
+        extend_compatibleinterval|
+        extend_subsumedinterval2|
+        _split|
+        split_removeprefix|||
+            find_safe_coalescence||
+                subsumed_segregating|
+
+    maximal_overlap_coalesces_map||
+        initialise_secondsplit|
+        _split|
+        splitafter_coalescepostfix|
+
+
+    _reset_builtins
+        count_ancestral_material||
+            weight|
+        hashtable_cleanout||
+            free_hashtablepair|
+        hashtable_new|
+
+
+    # Only place using Beagle
+    scoring_function
+        no_recombinations_required|
+        _noexp_rmin
+            beagle_allocate_hashtable|||
+                no_recombinations_required|
+                new_packedgeneshashtable||
+                    hashtable_new|
+            beagle_reusable
+                beagle_core **Big  |
+
+        _hb
+            haplotype_bound_genes
+                _global_from_local_genes||||
+                    genes2sites|||
+                    _global_from_local||
+                        local2global|
+                haplotype_bound_local
+                    haplotype_heuristic_local ** Big
+
+        hudson_kaplan_genes|||
+            genes2sites|
+            hudson_kaplan_local||
+            local2global|
+
+    score_renormalise||
+        no_recombinations_required|
+
+    output_genes||
+        _output_genes|
+
+** beagle_core||||
+    no_recombinations_required|
+    pack_genes||
+        copy_genes|
+        merge_sort|
+        gene_less_than|
+    implode_genes|
+    beagle_recursion|||
+        _coalesce_compatibleandentangled||
+            _coalesce_compatible_and_entangled_map|
+        check_for_bottom|
+        maximumsubsumedprefixs|
+        maximumsubsumedpostfixs|
+        maximal_prefix_coalesces|
+        maximal_postfix_coalesces|
+        maximal_infix_coalesces|
+        maximal_overlap_coalesces|
+        transfer2splitinformation||
+            count_ancestral_material|
+        compareboundandancestralmaterial|
+    explode_local|
+
+** haplotype_heuristic_local||
+    add_ancestral_sites|
+    _compare_sites|
+    compare_typeprevalence|
+    next_interval|
+    weight|
+    doublings|
+
