@@ -1779,6 +1779,8 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         fprintf(print_progress, "Input data:\n");
         if(howverbose == 2) {
             output_genes(g, print_progress, NULL);
+            print_elist(elements, "g_elements: ");
+            print_elist(sites, "g_sites: ");
         }
         fprintf(print_progress, "%d sequences with %d sites\n", g->n, g->length);
     }
