@@ -40,7 +40,7 @@ int **haploblocks = NULL;
 LList *g_eventlist;
 EList *g_elements;
 EList *g_sites;
-int g_seq_numbering;
+int g_num_of_sequences;
 int g_howverbose = 0;
 double g_step_cost;
 int g_gene_conversions_enabled = 0;

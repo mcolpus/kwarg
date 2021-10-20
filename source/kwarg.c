@@ -938,34 +938,47 @@ int main(int argc, char **argv)
 
                     // Copy the data and set up the tracking lists
                     genes_copy = copy_genes(genes);
-                    g_seq_numbering = genes_copy->n;
-                    g_elements = elist_make();
-                    g_sites = elist_make();
+                    g_num_of_sequences = genes_copy->n;
+                    EList *elements = elist_make();
+                    EList *sites = elist_make();
                     // Initialise list of sequences
                     if ((g_gene_knownancestor) && (seqtype != GENE_BINARY))
                     {
                         for (i = 0; i < genes_copy->n; i++)
                         {
-                            elist_append(g_elements, (void *)(i + 1));
+                            elist_append(elements, (void *)(i + 1));
                         }
                     }
                     else
                     {
                         for (i = 0; i < genes_copy->n; i++)
                         {
-                            elist_append(g_elements, (void *)i);
+                            elist_append(elements, (void *)i);
                         }
                     }
                     // Initialise the list of sites
                     for (i = 0; i < genes_copy->length; i++)
                     {
-                        elist_append(g_sites, (void *)i);
+                        elist_append(sites, (void *)i);
                     }
+
+                    // Package into starting PartialHistory
+                    PartialHistory starting_history = {
+                        .g = genes_copy,
+                        .event_list = MakeLList(),
+                        .sequence_labels = elements,
+                        .site_labels = sites,
+                        .recombinations = 0,
+                        .recurrent_mutations = 0,
+                        .num_of_sequences = genes_copy->n,
+                        .weight = 1
+                    };
+
 
                     // Get a history
                     clock_t tic, toc;
                     tic = clock();
-                    runResult = ggreedy(genes_copy, print_progress, select_function, _reset_selections,
+                    runResult = ggreedy(&starting_history, print_progress, select_function, _reset_selections,
                                         se_costs[k], rm_costs[k], r_costs[k], rr_costs[k], temp, lookup, recombinations_max, print_reference);
                     toc = clock();
                     timer = (double)(toc - tic) / CLOCKS_PER_SEC;
@@ -975,11 +988,13 @@ int main(int argc, char **argv)
 
                     // Tidy up for the next run
                     free_genes(genes_copy);
-                    elist_destroy(g_elements);
-                    g_elements = NULL;
-                    elist_destroy(g_sites);
-                    g_sites = NULL;
+                    elist_destroy(elements);
+                    elements = NULL;
+                    elist_destroy(sites);
+                    sites = NULL;
                     g_x2random_seed = 0;
+
+                    //TODO: destory partial history
                 }
             }
         }

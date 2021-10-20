@@ -72,23 +72,26 @@ typedef struct _Event
 
 typedef struct _HistoryFragment
 {
-    Genes *g;              /* End configuration */
-    LList *event;          /* List of events leading from start
-                            * configuration to end configuration.
-                            */
+    Genes *g;         /* End configuration */
+    LList *event;     /* List of events leading from start
+                       * configuration to end configuration.
+                       */
     double step_cost; /* Number of recombination events */
     EList *elements;
     EList *sites;
     Action action;
 } HistoryFragment;
 
-
-typedef struct _PartialHistory {
-  Genes *g;             // current genes
-  LList *event_list;    // List of Event's leading from start config to g
-  EList *elements;      //
-  EList *sites;         //
-  int weight;           // used for doing dfs to keep track of how many leaves will come from here.
+typedef struct _PartialHistory
+{
+    Genes *g;               // current genes
+    LList *event_list;      // List of Event's leading from start config to g
+    EList *sequence_labels; // List of ints which label the sequences. starting ones are 0,1,... (become -1 as coalesce)
+    EList *site_labels;     // List of ints which label the sites. starting ones are 0,1,... (become -1 as merged etc)
+    int weight;             // used for doing dfs to keep track of how many leaves will come from here.
+    int recombinations;
+    int recurrent_mutations;
+    int num_of_sequences;
 } PartialHistory;
 
 #ifdef DEBUG

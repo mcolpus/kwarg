@@ -1834,14 +1834,15 @@ void update_lookup(EList *_lookup, int index, int bd)
 
 /* Main function of kwarg implementing neighbourhood search.
  */
-KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select_function)(double), void (*reset_select_function)(void),
+KwargRunResult ggreedy(PartialHistory *history, FILE *print_progress, int (*select_function)(double), void (*reset_select_function)(void),
                        double se_cost, double rm_cost, double r_cost, double rr_cost, double temp,
                        EList *lookup, int recombinations_max, int print_reference)
 {
+    Genes *genes = history->g;
     int i, neighbourhood_size = 0, total_neighbourhood_size = 0, seflips = 0, rmflips = 0, recombs = 0, preds, is_bad_soln = 0;
     double total_event_cost = 0;
     Index *start, *end;
-    LList *tmp = g_eventlist;
+    // LList *tmp = g_eventlist;
     void (*action)(Genes *);
     const char *names[5];
     names[0] = "Coalescence";
@@ -1856,9 +1857,6 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select_function
     set_verbose(0);
 #endif
 
-    /* Create working copy of genes */
-    genes = copy_genes(genes);
-
     if (g_howverbose > 0)
     {
         fprintf(print_progress, "Input data:\n");
@@ -1870,7 +1868,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select_function
     }
 
     // Reduce the dataset
-    implode_genes(genes);
+    implode_genes(history);
     if (g_howverbose > 0)
     {
         printf("%d sequences with %d sites after reducing\n", genes->n, genes->length);

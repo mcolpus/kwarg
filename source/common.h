@@ -29,7 +29,7 @@ void explode_local(int **local, LList *r, int n);
 extern LList *g_eventlist;
 extern EList *g_elements;
 extern EList *g_sites;
-extern int g_seq_numbering;
+extern int g_num_of_sequences;
 extern int g_howverbose;
 extern double g_step_cost;
 extern int g_gene_conversions_enabled;

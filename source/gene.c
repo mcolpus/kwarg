@@ -2558,9 +2558,9 @@ static _Gene_TwinType siamese_sites(int nindex, int nblock, int index, int block
  * ancestral material. Return value tells whether any sites were
  * merged.
  */
-int remove_siamesetwins(TreeSearchNode *node)
+int remove_siamesetwins(PartialHistory *history)
 {
-    Genes *g = node->genes;
+    Genes *g = history->g;
     int i, j, n = 0, k, kk, p, s, index = 0, mindex, mblock, pindex, pblock, cindex, cblock;
     _SiameseBlock *state;
     unsigned long *tmp[2];
@@ -2769,7 +2769,7 @@ int remove_siamesetwins(TreeSearchNode *node)
         else
             g->length = mulblocksize(mblock);
 
-        if (node->event_list != NULL)
+        if (history->event_list != NULL)
             /* Insert collapse of Siamese twins into list of events */
             for (i = n - 1; i >= 0; i--)
             {
@@ -2779,24 +2779,24 @@ int remove_siamesetwins(TreeSearchNode *node)
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = COLLAPSE;
                     e->event.collapse = state[i].master;
-                    Enqueue(node->event_list, e);
+                    Enqueue(history->event_list, e);
                 }
                 for (j = state[i].master - 1; j >= state[i].start; j--)
                 {
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = COLLAPSE;
                     e->event.collapse = j;
-                    Enqueue(node->event_list, e);
+                    Enqueue(history->event_list, e);
                 }
             }
 
         // Updated list of sites, labelling the master sites with -(number of columns collapsed).
-        if (node->sites != NULL)
+        if (history->site_labels != NULL)
         {
             k = 0;
             for (i = 0; i < n; i++)
             {
-                s = -(int)elist_get(node->sites, state[i].master);
+                s = -(int)elist_get(history->site_labels, state[i].master);
                 if (s <= 0)
                 {
                     s = 1;
@@ -2804,7 +2804,7 @@ int remove_siamesetwins(TreeSearchNode *node)
                 for (j = state[i].start; j < state[i].master; j++)
                 {
                     //                     printf("Merging Siamese twin columns %d -> %d\n", j, state[i].master);
-                    p = (int)elist_get(node->sites, j - k);
+                    p = (int)elist_get(history->site_labels, j - k);
                     if (p < 0)
                     {
                         s = s - p;
@@ -2813,14 +2813,14 @@ int remove_siamesetwins(TreeSearchNode *node)
                     {
                         s++;
                     }
-                    elist_remove(node->sites, j - k);
+                    elist_remove(history->site_labels, j - k);
                     k++;
                 }
                 kk = k;
                 for (j = state[i].master + 1; j <= state[i].end; j++)
                 {
                     //                     printf("Merging Siamese twin columns %d <- %d\n", state[i].master, j);
-                    p = (int)elist_get(node->sites, j - k);
+                    p = (int)elist_get(history->site_labels, j - k);
                     if (p < 0)
                     {
                         s = s - p;
@@ -2829,13 +2829,13 @@ int remove_siamesetwins(TreeSearchNode *node)
                     {
                         s++;
                     }
-                    elist_remove(node->sites, j - k);
+                    elist_remove(history->site_labels, j - k);
                     k++;
                 }
                 // Master site is now at position state[i].start
                 // Change this to be -(number of columns collapsed)
                 //                 printf("%d %d\n", state[i].master-kk, -s);
-                elist_change(node->sites, state[i].master - kk, (void *)(-s));
+                elist_change(history->site_labels, state[i].master - kk, (void *)(-s));
             }
         }
 
@@ -2891,9 +2891,9 @@ int remove_siamesetwins(TreeSearchNode *node)
  * sequences with ancestral material differs. Return value tells
  * whether any columns were uninformative.
  */
-int remove_uninformative(TreeSearchNode *state)
+int remove_uninformative(PartialHistory *history)
 {
-    Genes *g = state->genes;
+    Genes *g = history->g;
     int block_i, seq_j, first, nindex = -1, nblock;
     int blocks = divblocksize(g->length - 1) + 1;
     unsigned long *tmp[2], one0, two0, one1, two1, current, index;
@@ -2963,20 +2963,20 @@ int remove_uninformative(TreeSearchNode *state)
                     }
 #endif
 
-                    if ((state->event_list != NULL) && ((g_gene_knownancestor ? one1 : one0 & one1) & index))
+                    if ((history->event_list != NULL) && ((g_gene_knownancestor ? one1 : one0 & one1) & index))
                     {
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = SUBSTITUTION;
                         e->event.s.seq = -1;
                         e->event.s.site = mulblocksize(block_i) + seq_j - n;
-                        Enqueue(state->event_list, e);
+                        Enqueue(history->event_list, e);
                     }
-                    if (state->sites != NULL)
+                    if (history->site_labels != NULL)
                     {
                         if (mulblocksize(block_i) + seq_j < g->length)
                         {
                             // printf("Removing site labelled %d by deleting element number %d\n", mulblocksize(i) + j, mulblocksize(i) + j - n);
-                            elist_remove(state->sites, mulblocksize(block_i) + seq_j - n);
+                            elist_remove(history->site_labels, mulblocksize(block_i) + seq_j - n);
                         }
                         else
                         {
@@ -3049,14 +3049,14 @@ int remove_uninformative(TreeSearchNode *state)
         if (g->length == 0)
         {
             /* Everything was removed */
-            if (state->event_list != NULL)
+            if (history->event_list != NULL)
                 for (block_i = 1; block_i < g->n; block_i++)
                 {
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = COALESCENCE;
                     e->event.c.s1 = 0;
                     e->event.c.s2 = 1;
-                    Enqueue(state->event_list, e);
+                    Enqueue(history->event_list, e);
                 }
             for (block_i = 0; block_i < g->n; block_i++)
             {
@@ -3238,9 +3238,9 @@ int remove_nonsegregating(TreeSearchNode *node)
  * one is a subset of the ancestral material of the other. Return
  * value is number of coalesces performed.
  */
-int coalesce_subsumed(TreeSearchNode *node)
+int coalesce_subsumed(PartialHistory *history)
 {
-    Genes *g = node->genes;
+    Genes *g = history->g;
     int i, j, k, changes = 0, conflicts, blocks = divblocksize(g->length - 1) + 1;
     Event *e;
 
@@ -3312,10 +3312,10 @@ int coalesce_subsumed(TreeSearchNode *node)
                                 printf("Coalescing sequences %d and %d\n", i, j);
 #endif
                             //                             printf("Coalescing sequences %d and %d\n", i, j);
-                            if (node->elements != NULL)
+                            if (history->sequence_labels != NULL)
                             {
-                                elist_change(node->elements, i, (void *)(-1));
-                                elist_change(node->elements, j, (void *)(-1));
+                                elist_change(history->sequence_labels, i, (void *)(-1));
+                                elist_change(history->sequence_labels, j, (void *)(-1));
                             }
 
                             if (conflicts == -1)
@@ -3350,16 +3350,16 @@ int coalesce_subsumed(TreeSearchNode *node)
         /* We did coalesce some sequences - compact list of sequences */
         for (i = 0; g->data[i].type != NULL; i++)
             ;
-        if (node->elements != NULL)
+        if (history->sequence_labels != NULL)
         {
-            elist_remove(node->elements, i);
+            elist_remove(history->sequence_labels, i);
         }
-        if (node->event_list != NULL)
+        if (history->event_list != NULL)
         {
             e = (Event *)xmalloc(sizeof(Event));
             e->type = REMOVE;
             e->event.remove = i;
-            Enqueue(node->event_list, e);
+            Enqueue(history->event_list, e);
         }
         for (j = i + 1; j < g->n; j++)
             if (g->data[j].type != NULL)
@@ -3370,16 +3370,16 @@ int coalesce_subsumed(TreeSearchNode *node)
             }
             else
             {
-                if (node->elements != NULL)
+                if (history->sequence_labels != NULL)
                 {
-                    elist_remove(node->elements, i);
+                    elist_remove(history->sequence_labels, i);
                 }
-                if (node->event_list != NULL)
+                if (history->event_list != NULL)
                 {
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = REMOVE;
                     e->event.remove = i;
-                    Enqueue(node->event_list, e);
+                    Enqueue(history->event_list, e);
                 }
             }
         /* Update g */
@@ -3395,9 +3395,9 @@ int coalesce_subsumed(TreeSearchNode *node)
  * recombinations required. The data structure g is modified to
  * reflect events, and the number of events is returned.
  */
-int implode_genes(TreeSearchNode *node)
+int implode_genes(PartialHistory *history)
 {
-    Genes *genes = node->genes;
+    Genes *genes = history->g;
     int n = genes->n, m = genes->length, has_changed = 1;
 
 #ifdef ENABLE_VERBOSE
@@ -3412,16 +3412,16 @@ int implode_genes(TreeSearchNode *node)
             output_genes_indexed(g, NULL);
 #endif
         /* Look for uninformative sites */
-        has_changed = remove_uninformative(node);
+        has_changed = remove_uninformative(history);
         if (genes->n == 0)
             break;
         /* Look for removable Siamese twins */
         /* Collapsing Siamese twins should not allow new mutations, and
          * coalesces are handled presently.
          */
-        remove_siamesetwins(node); // collapses identical neighbouring cols
+        remove_siamesetwins(history); // collapses identical neighbouring cols
         /* Look for safe coalesces */
-        has_changed |= coalesce_subsumed(node);
+        has_changed |= coalesce_subsumed(history);
     }
 
     return (n - genes->n) + (m - genes->length);
@@ -4281,13 +4281,13 @@ static void _split(Genes *g, int a, int index, int block)
     {
         if ((int)(elist_get(g_elements, a)) != -1)
         {
-            elist_append(g_elements, (void *)g_seq_numbering);
-            g_seq_numbering++;
+            elist_append(g_elements, (void *)g_num_of_sequences);
+            g_num_of_sequences++;
         }
         else
         {
             elist_append(g_elements, (void *)(-1));
-            g_seq_numbering++;
+            g_num_of_sequences++;
         }
     }
 }
