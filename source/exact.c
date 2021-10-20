@@ -1835,8 +1835,8 @@ void update_lookup(EList *_lookup, int index, int bd)
 /* Main function of kwarg implementing neighbourhood search.
  */
 KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select_function)(double), void (*reset_select_function)(void),
-               double se_cost, double rm_cost, double r_cost, double rr_cost, double temp,
-               EList *lookup, int recombinations_max, int print_reference)
+                       double se_cost, double rm_cost, double r_cost, double rr_cost, double temp,
+                       EList *lookup, int recombinations_max, int print_reference)
 {
     int i, neighbourhood_size = 0, total_neighbourhood_size = 0, seflips = 0, rmflips = 0, recombs = 0, preds, is_bad_soln = 0;
     double total_event_cost = 0;
@@ -2014,8 +2014,8 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select_function
         free_genes(genes);
         /* Still looking for path to MRCA */
         /* So far we have only enumerated putative predecessors -
-        * score these and choose one.
-        */
+         * score these and choose one.
+         */
 
         // Set the tracking lists to NULL for the score computation, and destroy the old elements/sites
         g_eventlist = NULL;
@@ -2055,7 +2055,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select_function
         {
             predecessor = (HistoryFragment *)elist_get(_predecessors, i);
             _reset_builtins(predecessor->g); // set _greedy_currentstate to be predecessor->g
-            
+
             g_step_cost = predecessor->step_cost;
             double printscore = score_renormalise(predecessor->g, score_array[i], temp, predecessor->step_cost);
             if (print_progress != NULL && g_howverbose == 2)
@@ -2153,7 +2153,6 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select_function
             fflush(print_progress);
         }
 
-
         if (g_eventlist != NULL)
         {
             Append(g_eventlist, greedy_choice->event);
@@ -2202,7 +2201,7 @@ KwargRunResult ggreedy(Genes *genes, FILE *print_progress, int (*select_function
             fprintf(print_progress, "\nTotal number of states considered: %d\n", total_neighbourhood_size);
             fprintf(print_progress, "Total event cost: %.1f\n", total_event_cost);
             fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
-                        "SE", "RM", "R", "N_states", "Time");
+                    "SE", "RM", "R", "N_states", "Time");
         }
         fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", print_reference, g_x2random_seed, temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_neighbourhood_size);
 

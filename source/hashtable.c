@@ -46,33 +46,37 @@ static unsigned long prime(unsigned long n)
    */
   n = n - (n % 6) + 1;
 
-  for (;;n += 6){
-        /* Check whether n is prime */
-        for (i = 5; i <= intsqrt(n); i += 6){
-            if (n % i == 0)
-                /* n is not a prime */
-                break;
-            if (n % (i + 4) == 0)
-                /* n is not a prime */
-                break;
-        }
-        if (i > intsqrt(n + 1))
-        /* n is a prime */
+  for (;; n += 6)
+  {
+    /* Check whether n is prime */
+    for (i = 5; i <= intsqrt(n); i += 6)
+    {
+      if (n % i == 0)
+        /* n is not a prime */
         break;
-        /* Check whether n + 4 is prime */
-        for (i = 5; i <= intsqrt(n + 4); i += 6){
-            if ((n + 4) % i == 0)
-                /* n + 4 is not a prime */
-                break;
-            if ((n + 4) % (i + 4) == 0)
-                /* n + 4 is not a prime */
-                break;
-        }
-        if (i > intsqrt(n + 4)){
-        /* n + 4 is a prime */
-        n += 4;
+      if (n % (i + 4) == 0)
+        /* n is not a prime */
         break;
-        }
+    }
+    if (i > intsqrt(n + 1))
+      /* n is a prime */
+      break;
+    /* Check whether n + 4 is prime */
+    for (i = 5; i <= intsqrt(n + 4); i += 6)
+    {
+      if ((n + 4) % i == 0)
+        /* n + 4 is not a prime */
+        break;
+      if ((n + 4) % (i + 4) == 0)
+        /* n + 4 is not a prime */
+        break;
+    }
+    if (i > intsqrt(n + 4))
+    {
+      /* n + 4 is a prime */
+      n += 4;
+      break;
+    }
   }
 
   return n;
@@ -92,9 +96,9 @@ static unsigned long modulo(int bits)
  * 2^bits and 2^(bits + 1).
  */
 void hashtable_init(int bits, HashTable *table,
-		    unsigned long (*hash)(void *, void *),
-		    int (*compare)(void *, void *),
-		    void *(*initialise_parameters)(unsigned long))
+                    unsigned long (*hash)(void *, void *),
+                    int (*compare)(void *, void *),
+                    void *(*initialise_parameters)(unsigned long))
 {
   unsigned long i;
 
@@ -114,8 +118,8 @@ void hashtable_init(int bits, HashTable *table,
  * 2^bits and 2^(bits + 1).
  */
 HashTable *hashtable_new(int bits, unsigned long (*hash)(void *, void *),
-			 int (*compare)(void *, void *),
-			 void *(*initialise_parameters)(unsigned long))
+                         int (*compare)(void *, void *),
+                         void *(*initialise_parameters)(unsigned long))
 {
   unsigned long i;
   HashTable *new = (HashTable *)xmalloc(sizeof(HashTable));
@@ -134,7 +138,8 @@ HashTable *hashtable_new(int bits, unsigned long (*hash)(void *, void *),
   return new;
 }
 
-typedef struct _HashTablePair {
+typedef struct _HashTablePair
+{
   void *key;
   void *value;
 } HashTablePair;
@@ -145,7 +150,6 @@ static void free_hashtablepair(HashTablePair *entry, va_list args)
 {
   void (*free_key)(void *) = va_arg(args, _HASHTABLE_V_Func_VP);
   void (*free_value)(void *) = va_arg(args, _HASHTABLE_V_Func_VP);
-  
 
   if (free_key != NULL)
     free_key(entry->key);
@@ -161,17 +165,18 @@ static void free_hashtablepair(HashTablePair *entry, va_list args)
  * applied to the parameters stored for the hash function.
  */
 void hashtable_free(HashTable *t, void (*free_key)(void *),
-		    void (*free_value)(void *),
-		    void (*free_parameters)(void *))
+                    void (*free_value)(void *),
+                    void (*free_parameters)(void *))
 {
   int i;
 
   for (i = 0; i < t->size; i++)
-    if (t->table[i].list != NULL){
+    if (t->table[i].list != NULL)
+    {
       if ((free_key != NULL) || (free_value != NULL))
-	elist_map(t->table + i,
-		  (void (*)(void *, va_list))free_hashtablepair,
-		  free_key, free_value);
+        elist_map(t->table + i,
+                  (void (*)(void *, va_list))free_hashtablepair,
+                  free_key, free_value);
       free(t->table[i].list);
     }
   free(t->table);
@@ -186,8 +191,8 @@ void hashtable_free(HashTable *t, void (*free_key)(void *),
  * function.
  */
 void hashtable_destroy(HashTable *t, void (*free_key)(void *),
-		       void (*free_value)(void *),
-		       void (*free_parameters)(void *))
+                       void (*free_value)(void *),
+                       void (*free_parameters)(void *))
 {
   hashtable_free(t, free_key, free_value, free_parameters);
   free(t);
@@ -198,17 +203,18 @@ void hashtable_destroy(HashTable *t, void (*free_key)(void *),
  * key/value pair stored in the hash table.
  */
 void hashtable_cleanout(HashTable *t, void (*free_key)(void *),
-			void (*free_value)(void *))
+                        void (*free_value)(void *))
 {
   int i;
 
   for (i = 0; i < t->size; i++)
-    if (t->table[i].count != 0){
-        if ((free_key != NULL) || (free_value != NULL))
-            elist_map(t->table + i,
-            (void (*)(void *, va_list))free_hashtablepair,
-            free_key, free_value);
-        t->table[i].count = 0;
+    if (t->table[i].count != 0)
+    {
+      if ((free_key != NULL) || (free_value != NULL))
+        elist_map(t->table + i,
+                  (void (*)(void *, va_list))free_hashtablepair,
+                  free_key, free_value);
+      t->table[i].count = 0;
     }
 }
 
@@ -218,7 +224,8 @@ static int find_index(void *elm, EList *elist, int (*compare)(void *, void *))
   int i;
   HashTablePair *entry;
 
-  for (i = 0; i < elist_length(elist); i++){
+  for (i = 0; i < elist_length(elist); i++)
+  {
     entry = (HashTablePair *)elist_get(elist, i);
     if (compare(elm, entry->key))
       return i;
@@ -239,8 +246,10 @@ int hashtable_lookup(void *elm, HashTable *t, void **value)
   if (i < 0)
     /* g is not present in t */
     return 0;
-  else{
-    if (value != NULL){
+  else
+  {
+    if (value != NULL)
+    {
       entry = elist_get(t->table + h, i);
       *value = entry->value;
     }
@@ -262,8 +271,10 @@ void *hashtable_lookuprepresentative(void *elm, HashTable *t, void **value)
   if (i < 0)
     /* g is not present in t */
     return NULL;
-  else{
-    if (value != NULL){
+  else
+  {
+    if (value != NULL)
+    {
       entry = elist_get(t->table + h, i);
       *value = entry->value;
     }
@@ -292,21 +303,24 @@ void hashtable_insert(void *elm, void *value, HashTable *t)
  * elm was inserted.
  */
 int hashtable_update(void *elm, void *value, HashTable *t,
-		     int (*update)(void *, void *))
+                     int (*update)(void *, void *))
 {
   unsigned long h = t->hash(elm, t->parameters);
   int i = find_index(elm, t->table + h, t->compare);
   HashTablePair *entry;
 
-  if (i < 0){
+  if (i < 0)
+  {
     /* g is not already present in t */
     hashtable_insert(elm, value, t);
     return -1;
   }
-  else{
+  else
+  {
     /* g is present in t */
     entry = elist_get(t->table + h, i);
-    if ((update == NULL) || update(entry->value, value)){
+    if ((update == NULL) || update(entry->value, value))
+    {
       /* Update g's associated value */
       entry->value = value;
       return 1;
@@ -335,7 +349,8 @@ void hashtable_map(HashTable *t, void (*f)(void *, void *, va_list), ...)
   va_list args;
 
   for (i = 0; i < t->size; i++)
-    for (j = 0; j < elist_length(t->table + i); j++){
+    for (j = 0; j < elist_length(t->table + i); j++)
+    {
       entry = elist_get(t->table + i, j);
       va_start(args, *f);
       f(entry->key, entry->value, args);
@@ -369,11 +384,12 @@ int hashtable_largestbucket(HashTable *t)
 
 /* Print the genes in (one of) the largest bucket(s) */
 void hashtable_printlargestbucket(HashTable *t,
-				  void (*print_elm)(void *, va_list))
+                                  void (*print_elm)(void *, va_list))
 {
   int i, l = hashtable_largestbucket(t);
 
-  for (i = 0; t->table[i].count != l; i++);
+  for (i = 0; t->table[i].count != l; i++)
+    ;
 
   elist_map(t->table + i, print_elm);
 }
