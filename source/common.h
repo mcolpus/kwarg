@@ -6,6 +6,10 @@
 #include "llist.h"
 #include "gene.h"
 #include "arg.h"
+
+#define HAPLOTYPE_BLOCKS
+#define DEBUG
+
 /* Function prototypes; a brief explanation of each function should be
  * provided prior to its implementation in common.c.
  */
@@ -20,34 +24,30 @@ typedef struct _SuperColumn {
   int right;
 } SuperColumn;
 
-extern LList *representativeness;
-extern LListCounter *representativeness_counter;
-extern int **haploblocks;
+extern LList *g_representativeness;
+extern LListCounter *g_representativeness_counter;
+extern int **g_haploblocks;
 void explode_local(int **local, LList *r, int n);
 #endif
-extern LList *eventlist;
-extern EList *elements;
-extern EList *sites;
-extern EList *lookup;
-extern int seq_numbering;
-extern double se_cost;
-extern double rm_cost;
-extern double r_cost;
-extern double rr_cost;
-extern int howverbose;
-extern double _recombinations;
-extern int no_events;
+extern LList *g_eventlist;
+extern EList *g_sequence_labels;
+extern EList *g_site_labels;
+extern EList *g_lookup;
+extern int g_seq_numbering;
+extern double g_se_cost;
+extern double g_rm_cost;
+extern double g_r_cost;
+extern double g_rr_cost;
+extern int g_howverbose;
+extern double g_step_cost;
 extern int gc_enabled;
-extern double Temp;
-extern double r_seed;
-extern int rec_max, rm_max;
-extern long int x2seed;
-extern long int xseed;
-extern int counter;
-extern int reference;
+extern double g_Temp;
+extern double g_r_seed;
+extern int g_recombs_max, g_rm_max;
+extern int g_reference;
 extern HashTable *_greedy_functioncalls, *_greedy_beaglereusable;
 #ifdef DEBUG
-extern HashTable *ancestral_state_trace;
+extern HashTable *g_ancestral_state_trace;
 #endif
 
 void *xmalloc(int n);

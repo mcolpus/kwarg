@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     FILE *fp;
     fp = stdout;
     
-    eventlist = MakeLList();
+    g_eventlist = MakeLList();
     
     /* Analyse command line options */
     #define SIMPLIFY_OPTIONS "b::kofanQhH?"
@@ -111,20 +111,20 @@ int main(int argc, char **argv)
     
 
     //Initialise the elements array (this will track the number of recombinations which each of the sequences has undergone)
-    elements = elist_make();
-    sites = elist_make();
+    g_sequence_labels = elist_make();
+    g_site_labels = elist_make();
     if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
         for(i=0; i < g->n; i++) {
-            elist_append(elements, (void *)(i+1));
+            elist_append(g_sequence_labels, (void *)(i+1));
         }
     } else {
         for(i=0; i < g->n; i++) {
-            elist_append(elements, (void *)i);
+            elist_append(g_sequence_labels, (void *)i);
         }
     }
     // Initialise the list of sites
     for(i=0; i < g->length; i++) {
-        elist_append(sites, (void *)i);
+        elist_append(g_site_labels, (void *)i);
     }
     
     // Print stats for input dataset
@@ -140,16 +140,16 @@ int main(int argc, char **argv)
     output_genes(g, fp, NULL);
    
     printf("Sequences:\n");
-    print_elist(elements, NULL);
+    print_elist(g_sequence_labels, NULL);
     
     printf("Sites:\n");
-    print_elist(sites, NULL);
+    print_elist(g_site_labels, NULL);
 
     // Tidying
-    if (eventlist != NULL){
-        while (Length(eventlist) > 0)
-            free(Pop(eventlist));
-        DestroyLList(eventlist);
+    if (g_eventlist != NULL){
+        while (Length(g_eventlist) > 0)
+            free(Pop(g_eventlist));
+        DestroyLList(g_eventlist);
     }
     free_annotatedgenes(a);
 

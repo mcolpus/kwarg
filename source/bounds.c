@@ -1269,9 +1269,9 @@ static void _miphb_recurse_on_subregion(Sites *s, LList *positions, int **B,
     /* Implode this data set */
     g = sites2genes(s);
     free_sites(s);
-    representativeness = new;
+    g_representativeness = new;
     implode_genes(g);
-    representativeness = NULL;
+    g_representativeness = NULL;
     s = genes2sites(g);
     free_genes(g);
     
@@ -1983,11 +1983,11 @@ static void _miphaplotype_bound_local_recursion(Sites *s, LList *positions,
 
 static int **miphaplotype_bound_local(Genes *g, int ip)
 {
-    LList *positions, *tmp = representativeness;
+    LList *positions, *tmp = g_representativeness;
     int i, **B;
     SuperColumn *sc;
     
-    representativeness = NULL;
+    g_representativeness = NULL;
     /* Set up data structures for bound computation recursion */
     B = (int **)xmalloc((g->length - 1) * sizeof(int *));
     for (i = 0; i < g->length - 1; i++)
@@ -2007,7 +2007,7 @@ static int **miphaplotype_bound_local(Genes *g, int ip)
     while (Length(positions) > 0)
         free(Pop(positions));
     DestroyLList(positions);
-    representativeness = tmp;
+    g_representativeness = tmp;
     
     return B;
 }

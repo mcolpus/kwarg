@@ -33,34 +33,32 @@ void set_verbose(int v)
 }
 #endif
 #ifdef HAPLOTYPE_BLOCKS
-LList *representativeness = NULL;
-LListCounter *representativeness_counter;
-int **haploblocks = NULL;
+LList *g_representativeness = NULL;
+LListCounter *g_representativeness_counter;
+int **g_haploblocks = NULL;
 #endif
-double se_cost;
-double rm_cost;
-double r_cost;
-double rr_cost;
-LList *eventlist;
-EList *elements;
-EList *sites;
-EList *lookup;
-int seq_numbering;
-int howverbose = 0;
-int no_events = 0;
-double _recombinations;
+double g_se_cost;
+double g_rm_cost;
+double g_r_cost;
+double g_rr_cost;
+LList *g_eventlist;
+EList *g_sequence_labels;
+EList *g_site_labels;
+EList *g_lookup;
+int g_seq_numbering;
+int g_howverbose = 0;
+double g_step_cost;
 int gc_enabled = 0;
-double Temp = 1;
-double r_seed;
-int rec_max, rm_max;
-int counter = 0;
-int reference = 0;
+double g_Temp = 1;
+double g_r_seed;
+int g_recombs_max, g_rm_max;
+int g_reference = 0;
 HashTable *_greedy_functioncalls = NULL, *_greedy_beaglereusable = NULL;
 #ifdef DEBUG
 /* Define structure for storing trace of ancestral states as we return
  * from a successful path.
  */
-HashTable *ancestral_state_trace = NULL;
+HashTable *g_ancestral_state_trace = NULL;
 #endif
 
 /* xmalloc(n): Allocate n bytes of memory, checking for successful allocation.
@@ -132,18 +130,17 @@ void *xrealloc(void *oldadr, int n)
 /* initialise_xrandom(): Initialise random number generator, using the
  * current time.
  */
-long int x2seed;
 void initialise_x2random(double seed)
 {
 #ifndef DEBUG
     if(seed == 0) {
-        r_seed = (double)time(NULL) + (double)xrandom();
+        g_r_seed = (double)time(NULL) + (double)xrandom();
     }
     else {
-        r_seed = seed;
+        g_r_seed = seed;
     }
 
-  srandom(r_seed);
+  srandom(g_r_seed);
 #else
   /* Make sure random sequence is the same for every run */
   srandom(1);
@@ -151,32 +148,26 @@ void initialise_x2random(double seed)
     
 }
 
-long int xseed;
-void initialise_xrandom()
-{
-    xseed = (double)time(NULL) + counter;
-}
-
 /* xrandom(): Return (pseudo-)random number between 0 and XRAND_MAX 
  */
 long int x2random()
 {
     long int r = random();
-    counter++;
-//     printf("%li ", r);
-//     fflush(stdout);
-    return r;
-//     x2seed = (x2seed * 1664519 + 1013904229) % XRAND_MAX;
-//     return x2seed;
-    
+    return r;    
+}
+
+long int _xseed;
+void initialise_xrandom()
+{
+    _xseed = (double)time(NULL);
 }
 
 /* Simple LCG, only used for initialising hash tables.
  */
 long int xrandom()
 {
-    xseed = (xseed * 1664525 + 1013904223) % XRAND_MAX;
-    return xseed;
+    _xseed = (_xseed * 1664525 + 1013904223) % XRAND_MAX;
+    return _xseed;
 }
 
 /* Convert n to string */

@@ -59,7 +59,7 @@ typedef struct _HistoryFragment {
 } HistoryFragment;
 
 #ifdef DEBUG
-extern HashTable *ancestral_state_trace;
+extern HashTable *g_ancestral_state_trace;
 #endif
 ARG *eventlist2history(AnnotatedGenes *a, FILE *output);
 
