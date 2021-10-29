@@ -73,12 +73,12 @@ typedef struct _Event
 typedef struct _HistoryFragment
 {
     Genes *g;         /* End configuration */
-    LList *event;     /* List of events leading from start
+    LList *event_list;     /* List of events leading from start
                        * configuration to end configuration.
                        */
+    EList *sequence_labels;
+    EList *site_labels;
     double step_cost; /* Number of recombination events */
-    EList *elements;
-    EList *sites;
     Action action;
 } HistoryFragment;
 
@@ -98,5 +98,8 @@ typedef struct _PartialHistory
 extern HashTable *ancestral_state_trace;
 #endif
 ARG *eventlist2history(AnnotatedGenes *a, FILE *output);
+PartialHistory *shallow_copy_partial_history(PartialHistory *history);
+void copy_partial_history_without_eventlist(PartialHistory *source, PartialHistory *target);
+PartialHistory *history_fragment_to_partial_history(HistoryFragment *fragment);
 
 #endif

@@ -103,14 +103,13 @@ char *site2string(Site *s, int n);
 char **genes2string(Genes *g);
 void output_sites(Sites *s, FILE *fp, char *comment);
 void output_sites_indexed(Sites *s, FILE *fp);
-int remove_siamesetwins(Genes *g);
-int remove_uninformative(Genes *g);
+int remove_siamesetwins(PartialHistory *history);
+int remove_uninformative(PartialHistory *history);
 int remove_nonsegregating(Genes *g);
-int coalesce_subsumed(Genes *g);
+int coalesce_subsumed(PartialHistory *history);
 int reduce_coalesce(Genes *g, int *elements);
-int implode_genes(Genes *g);
-int implode_genes_from(Genes *genes, LList *event_list, EList *elements, EList *sites);
-int no_recombinations_required(Genes *g);
+int implode_genes(PartialHistory *history);
+int no_recombinations_required(PartialHistory *history);
 void force_safeevents(Genes *g);
 int force_mutations(Genes *g);
 int mutate(Genes *g, int pos, int mutant);
@@ -128,16 +127,16 @@ EList *zero_sequences(Sites *s, int i);
 EList *one_sequences(Sites *s, int i);
 int find_safe_coalescence(Genes *g, int a);
 int entangled(Genes *g, int a, int b);
-void coalesce(Genes *g, int a, int b);
+void coalesce(PartialHistory *history, int a, int b);
 EList *force_coalesce(Genes *g, EList *event);
 int coalescence_amleft(Genes *g, int a, int b);
 void split(Genes *g, int a, int i);
 EList *force_split(Genes *g, int a, EList *event);
-void split_coalesceprefix(Genes *g, int a, int index, int block, int b);
+void split_coalesceprefix(PartialHistory *history, int a, int index, int block, int b);
 void split_coalescepostfix(Genes *g, int a, int index, int block, int b);
-void splitafter_coalescepostfix(Genes *g, int a, int index, int block, int b);
-int split_removeprefix(Genes *g, int a, int index, int block);
-int split_removepostfix(Genes *g, int a, int index, int block);
+void splitafter_coalescepostfix(PartialHistory *history, int a, int index, int block, int b);
+int split_removeprefix(PartialHistory *history, int a, int index, int block);
+int split_removepostfix(PartialHistory *history, int a, int index, int block);
 int individual_ancestral_material(Genes *g, int i);
 int count_ancestral_material(Genes *g);
 int individual_all_ancestral(Genes *g, int i);
@@ -152,18 +151,18 @@ Index *maximumsubsumedpostfixs(Genes *g);
 Index *maximumsubsumedprefix(Genes *g, int s);
 Index *maximumsubsumedpostfix(Genes *g, int s);
 EList *maximal_prefix_coalesces(Genes *g, Index *a, Index *b);
-void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
+void maximal_prefix_coalesces_map(PartialHistory *history, Index *a, Index *b,
 				    void (*f)(Genes *));
 EList *maximal_postfix_coalesces(Genes *g, Index *a, Index *b);
-void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
+void maximal_postfix_coalesces_map(PartialHistory *history, Index *a, Index *b,
 				     void (*f)(Genes *));
-void seqerror_flips(Genes* g, void (*f)(Genes *), double se_cost);
-void recmut_flips(Genes* g, void (*f)(Genes *), double rm_cost);
+void seqerror_flips(PartialHistory* history, void (*f)(PartialHistory *), double se_cost);
+void recmut_flips(PartialHistory* history, void (*f)(PartialHistory *), double rm_cost);
 EList *maximal_infix_coalesces(Genes *g, Index *a, Index *b);
-void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
+void maximal_infix_coalesces_map(PartialHistory *history, Index *a, Index *b,
 				  void (*f)(Genes *));
 EList *maximal_overlap_coalesces(Genes *g, Index *a, Index *b);
-void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
+void maximal_overlap_coalesces_map(PartialHistory *history, Index *a, Index *b,
 				     void (*f)(Genes *));
 int compare_sequences(Genes *g, int a, int b);
 int compare_sites(Sites *s, int a, int b);

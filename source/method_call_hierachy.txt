@@ -1,131 +1,134 @@
 ggreedy
     copy_genes|
 
-    implode_genes|||
-        remove_uninformative||
-            transfer_data|
-        remove_siamesetwins||
-            siamese_site|
-            siamese_sites|
-        coalesce_subsumed|
+    implode_genes|||  done history
+        remove_uninformative|| done history
+            transfer_data|  done genes
+        remove_siamesetwins|| done history
+            siamese_site| done genes
+            siamese_sites| done genes
+        coalesce_subsumed| done history
 
     update_lookup|
 
-    no_recombinations_required||
-        remove_uninformative|
-        ancestral_material_overlap|
+    no_recombinations_required|| done history
+        remove_uninformative| done history
+        ancestral_material_overlap| done genes
 
-    maximumsubsumedpostfixs|
+    maximumsubsumedpostfixs| done genes
 
-    maximumsubsumedprefixs|
+    maximumsubsumedprefixs| done genes
 
-    _store|||
-        no_recombinations_required||
+    _store|||| done history
+        no_recombinations_required|| done history
+        __update||| done genes
+            count_ancestral_material|| done genes
+                weight | done
 
     _coalesce_compatible_and_entangled_map|||||
-        compatible|
-        entangled||
-            lsb|
-            msb|
-        _coalesce_cande_recursion||||
-            coalesce|
-            implode_genes|||
+        compatible| done genes
+        entangled|| done genes
+            lsb| done
+            msb| done
+        _coalesce_cande_recursion|||| done history (++ has to make copy and restore)
+            coalesce| done history
+            implode_genes||| done history
 
-    seqerror_flips||||
-        get_genes_character|
-        set_genes_character|
-        implode_genes|||
+    seqerror_flips|||| done history
+        get_genes_character| done genes
+        set_genes_character| done genes
+        implode_genes||| done history
 
-    recmut_flips
-        get_genes_character|
-        set_genes_character|
-        implode_genes|||
+    recmut_flips |||| done history
+        get_genes_character| done genes
+        set_genes_character| done genes
+        implode_genes||| done history
 
-    maximal_prefix_coalesces_map||||
-        split_removeprefix|||
-            find_safe_coalescence||
-                subsumed_segregating|
-        output_genes_indexed|||
-            output_genes||
-                _output_genes|
-        implode_genes|||
-        split_coalesceprefix|
+    maximal_prefix_coalesces_map|||| done history
+        split_removeprefix||| done history
+            find_safe_coalescence|| done genes
+                subsumed_segregating| done none
+        output_genes_indexed||| done genes
+            output_genes|| done genes
+                _output_genes| done genes
+        implode_genes||| done history
+        split_coalesceprefix| done history
 
-    maximal_postfix_coalesces_map||||
-        split_removepostfix|||
-            find_safe_coalescence||
-                    subsumed_segregating|
-        implode_genes|||
-        splitafter_coalescepostfix|
+    maximal_postfix_coalesces_map|||| done history
+        split_removepostfix||| done history
+            find_safe_coalescence|| done genes
+                    subsumed_segregating| done none
+        implode_genes||| done history
+        splitafter_coalescepostfix| done history
 
-    maximal_infix_coalesces_map||||
-        genes2sites|
-        initialise_subsumed|
-        update_subsumed|
-        initialise_subsumedinterval|
-        extend_subsumedinterval|
-        initialise_compatibleinterval|
-        maximumsubsumedprefix|
-        check_leftflank|
-        check_maximality|
-        maximumsubsumedpostfix|
-        find_compatibleintervals|||
-            check_rightflank|
-            perform_maximal_splits||
-                _split|
-                split_coalesceprefix|
-            extend_compatibleinterval|
-        extend_compatibleinterval|
-        extend_subsumedinterval2|
-        _split|
-        split_removeprefix|||
-            find_safe_coalescence||
-                subsumed_segregating|
+    maximal_infix_coalesces_map|||| done history
+        genes2sites| done genes
+        initialise_subsumed| done none
+        update_subsumed| done none
+        initialise_subsumedinterval| done none
+        extend_subsumedinterval| done none
+        initialise_compatibleinterval| done none
+        maximumsubsumedprefix| done genes
+        check_leftflank| done none
+        check_maximality| done none
+        maximumsubsumedpostfix| done genes
+        find_compatibleintervals||| done history
+            check_rightflank| done none
+            perform_maximal_splits|| done history
+                _split| done history
+                split_coalesceprefix| done history
+            extend_compatibleinterval| done none
+        extend_compatibleinterval| done none
+        extend_subsumedinterval2| done none
+        _split| done history
+        split_removeprefix||| done history
+            find_safe_coalescence|| done genes
+                subsumed_segregating| done none
 
-    maximal_overlap_coalesces_map||
-        initialise_secondsplit|
-        _split|
-        splitafter_coalescepostfix|
+    maximal_overlap_coalesces_map|| done history
+        initialise_secondsplit| done genes
+        _split| done history
+        splitafter_coalescepostfix| done history
 
 
-    _reset_builtins
-        count_ancestral_material||
-            weight|
-        hashtable_cleanout||
-            free_hashtablepair|
-        hashtable_new|
+    _reset_builtins ||| done genes
+        count_ancestral_material|| done genes
+            weight| done none
+        hashtable_cleanout|| done none
+            free_hashtablepair| done none
+        hashtable_new| done none
 
 
     # Only place using Beagle
     scoring_function
-        no_recombinations_required|
+        no_recombinations_required| done history
         _noexp_rmin
             beagle_allocate_hashtable|||
                 no_recombinations_required|
-                new_packedgeneshashtable||
-                    hashtable_new|
+                new_packedgeneshashtable|| done none
+                    hashtable_new| done none
             beagle_reusable
                 beagle_core **Big  |
 
-        _hb
-            haplotype_bound_genes
-                _global_from_local_genes||||
-                    genes2sites|||
-                    _global_from_local||
-                        local2global|
-                haplotype_bound_local
-                    haplotype_heuristic_local ** Big
+        _hb | Done genes
+            haplotype_bound_genes ||||| done genes
+                _global_from_local_genes|||| done genes
+                    genes2sites||| done genes
+                    _global_from_local|| done genes
+                        local2global| done none
+                haplotype_bound_local | done sites
+                    haplotype_heuristic_local ** Big | done sites
 
-        hudson_kaplan_genes|||
-            genes2sites|
-            hudson_kaplan_local||
-            local2global|
+        hudson_kaplan_genes||| done genes
+            genes2sites| done genes
+            hudson_kaplan_local|| done sites
+            local2global| done none
 
-    score_renormalise||
-        no_recombinations_required|
+    score_renormalise|| done history
+        no_recombinations_required| done history
 
-    output_genes||
-        _output_genes|
+    output_genes|| done genes
+        _output_genes| done genes
 
 ** beagle_core||||
     no_recombinations_required|
@@ -145,15 +148,15 @@ ggreedy
         maximal_infix_coalesces|
         maximal_overlap_coalesces|
         transfer2splitinformation||
-            count_ancestral_material|
+            count_ancestral_material| done genes
         compareboundandancestralmaterial|
     explode_local|
 
-** haplotype_heuristic_local||
-    add_ancestral_sites|
-    _compare_sites|
-    compare_typeprevalence|
-    next_interval|
-    weight|
-    doublings|
+** haplotype_heuristic_local|| done sites
+    add_ancestral_sites| done sites
+    _compare_sites| done sites
+    compare_typeprevalence| done none
+    next_interval| done none
+    weight| done none
+    doublings| done none
 
