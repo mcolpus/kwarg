@@ -4,3 +4,5 @@ simplify
 flip
 beagle
 venv/
+.vscode/
+.vs/
