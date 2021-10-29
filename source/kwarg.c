@@ -20,7 +20,7 @@
 
 #include "gene.h"
 #include "bounds.h"
-#include "exact.h"
+#include "kwarg_logic.h"
 #include "common.h"
 #include "backtrack.h"
 
@@ -1109,15 +1109,15 @@ int main(int argc, char **argv)
         elist_destroy(g_lookup);
     }
 
-    if (_greedy_beaglereusable != NULL)
+    if (g_greedy_beaglereusable != NULL)
     {
-        beagle_deallocate_hashtable(_greedy_beaglereusable);
-        _greedy_beaglereusable = NULL;
+        beagle_deallocate_hashtable(g_greedy_beaglereusable);
+        g_greedy_beaglereusable = NULL;
     }
-    if (_greedy_functioncalls != NULL)
+    if (g_greedy_functioncalls != NULL)
     {
-        hashtable_destroy(_greedy_functioncalls, free, NULL, free);
-        _greedy_functioncalls = NULL;
+        hashtable_destroy(g_greedy_functioncalls, free, NULL, free);
+        g_greedy_functioncalls = NULL;
     }
 
     DestroyLList(dot_files);

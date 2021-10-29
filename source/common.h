@@ -7,8 +7,8 @@
 #include "gene.h"
 #include "arg.h"
 
-#define HAPLOTYPE_BLOCKS
-#define DEBUG
+// #define HAPLOTYPE_BLOCKS
+// #define DEBUG
 
 /* Function prototypes; a brief explanation of each function should be
  * provided prior to its implementation in common.c.
@@ -45,7 +45,7 @@ extern double g_Temp;
 extern double g_r_seed;
 extern int g_recombs_max, g_rm_max;
 extern int g_reference;
-extern HashTable *_greedy_functioncalls, *_greedy_beaglereusable;
+extern HashTable *g_greedy_functioncalls, *g_greedy_beaglereusable;
 #ifdef DEBUG
 extern HashTable *g_ancestral_state_trace;
 #endif

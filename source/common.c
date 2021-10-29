@@ -53,7 +53,7 @@ double g_Temp = 1;
 double g_r_seed;
 int g_recombs_max, g_rm_max;
 int g_reference = 0;
-HashTable *_greedy_functioncalls = NULL, *_greedy_beaglereusable = NULL;
+HashTable *g_greedy_functioncalls = NULL, *g_greedy_beaglereusable = NULL;
 #ifdef DEBUG
 /* Define structure for storing trace of ancestral states as we return
  * from a successful path.
