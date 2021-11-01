@@ -18,7 +18,7 @@
 
 #include "gene.h"
 #include "bounds.h"
-#include "beagle_logic.h"
+#include "exact.h"
 #include "common.h"
 #include "backtrack.h"
 
@@ -423,16 +423,16 @@ int main(int argc, char **argv)
         || (Length(gml_files) > 0) || (Length(gdl_files) > 0)
         || (Length(tree_files) > 0) || (Length(dottree_files) > 0)
         || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
-        g_eventlist = MakeLList();
+        eventlist = MakeLList();
     #ifdef HAPLOTYPE_BLOCKS
     if (haploblock_file != NULL){
-        g_haploblocks = (int **)xmalloc((g->length - 1) * sizeof(int *));
+        haploblocks = (int **)xmalloc((g->length - 1) * sizeof(int *));
         for (i = 0; i < g->length - 1; i++)
-            g_haploblocks[i] = (int *)xcalloc((g->length - i - 1), sizeof(int));
+            haploblocks[i] = (int *)xcalloc((g->length - i - 1), sizeof(int));
     }
     #endif
     #ifdef DEBUG
-    g_ancestral_state_trace = beagle_allocate_hashtable(NULL, -1);
+    ancestral_state_trace = beagle_allocate_hashtable(NULL, -1);
     #endif
     
     /* Compute number of recombinations */
@@ -470,12 +470,12 @@ int main(int argc, char **argv)
     if (haploblock_file != NULL){
         for (i = 1; i < g->length; i++){
             for (j = 0; j < i - 1; j++)
-                fprintf(haploblock_file, "%d ", g_haploblocks[j][i - j - 1]);
-            fprintf(haploblock_file, "%d\n", g_haploblocks[j][i - j - 1]);
+                fprintf(haploblock_file, "%d ", haploblocks[j][i - j - 1]);
+            fprintf(haploblock_file, "%d\n", haploblocks[j][i - j - 1]);
         }
         for (i = 0; i < g->length - 1; i++)
-            free(g_haploblocks[i]);
-        free(g_haploblocks);
+            free(haploblocks[i]);
+        free(haploblocks);
         if (haploblock_file != stdout)
             fclose(haploblock_file);
     }
@@ -485,7 +485,7 @@ int main(int argc, char **argv)
         || (Length(tree_files) > 0) || (Length(dottree_files) > 0)
         || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0)){
         if (comprehensive_bound >= 0){
-            g_eventlist	= beagle_randomised(g, NULL, comprehensive_bound, t);
+            eventlist	= beagle_randomised(g, NULL, comprehensive_bound, t);
             beagle_deallocate_hashtable(t);
         }
         while ((fp = (FILE *)Pop(history_files)) != NULL){
@@ -579,10 +579,10 @@ int main(int argc, char **argv)
             }
             arg_destroy(arg);
         }
-        if (g_eventlist != NULL){
-            while (Length(g_eventlist) > 0)
-                free(Pop(g_eventlist));
-            DestroyLList(g_eventlist);
+        if (eventlist != NULL){
+            while (Length(eventlist) > 0)
+                free(Pop(eventlist));
+            DestroyLList(eventlist);
         }
         }
         
@@ -596,8 +596,8 @@ int main(int argc, char **argv)
         DestroyLList(gdltree_files);
         DestroyLList(history_files);
         #ifdef DEBUG
-        if (g_ancestral_state_trace != NULL)
-            hashtable_destroy(g_ancestral_state_trace,
+        if (ancestral_state_trace != NULL)
+            hashtable_destroy(ancestral_state_trace,
                               (void (*)(void *))free_packedgenes, NULL,
                               (void (*)(void *))free);
         #endif

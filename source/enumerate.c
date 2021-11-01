@@ -14,7 +14,7 @@
 #include "elist.h"
 #include "common.h"
 #include "bounds.h"
-#include "beagle_logic.h"
+#include "exact.h"
 #include "bitfunctions.h"
 #include "mergesort.h"
 #include "hashtable.h"

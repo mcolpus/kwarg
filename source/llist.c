@@ -98,21 +98,21 @@ void DestroyLList(LList *llist)
   free(llist);
 }
 
-/* Inserts a new node to the right of `lnode', thus it would be a BIG
+/* Inserts a _new node to the right of `lnode', thus it would be a BIG
  * mistake to call with `lnode' equal to `llist->last'.  
  */
 void Insert(LList *llist, LListNode *lnode, void *elm)
 {
-  LListNode *newnode = (LListNode *)xmalloc(sizeof(LListNode));
+  LListNode *_newnode = (LListNode *)xmalloc(sizeof(LListNode));
 
-  /* Initialize the new node */
-  newnode->elm = elm;
-  newnode->prev = lnode;
-  newnode->next = lnode->next;
+  /* Initialize the _new node */
+  _newnode->elm = elm;
+  _newnode->prev = lnode;
+  _newnode->next = lnode->next;
 
   /* Update the list */
-  (newnode->prev)->next = newnode;
-  (newnode->next)->prev = newnode;
+  (_newnode->prev)->next = _newnode;
+  (_newnode->next)->prev = _newnode;
   (llist->count)++;
 }
 
@@ -247,7 +247,7 @@ void LListMap(LList *llist, void (*f)(void *, va_list), ...)
   }
 }
 
-/* Allocate and return a new LListCounter initialised to LList llist
+/* Allocate and return a _new LListCounter initialised to LList llist
  * and position pos.
  */
 LListCounter *MakeCounter(LList *llist, int pos)
@@ -405,15 +405,15 @@ int Length(LList *llist)
 static LListNode *_merge(LListNode *a, LListNode *b,
 		   int (*less_than)(void *, void *))
 {
-  LListNode *new, *tmp;
+  LListNode *_new, *tmp;
 
   /* Find first element in merged list */
   if (less_than(a->elm, b->elm)){
-    new = tmp = a;
+    _new = tmp = a;
     a = a->next;
   }
   else{
-    new = tmp = b;
+    _new = tmp = b;
     b = b->next;
   }
 
@@ -434,7 +434,7 @@ static LListNode *_merge(LListNode *a, LListNode *b,
   else
     tmp->next = b;
 
-  return new;
+  return _new;
 }
 
 /* Sort llist in ascending order according to less_than, reusing the nodes */

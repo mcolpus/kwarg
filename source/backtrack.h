@@ -13,6 +13,8 @@
 #include "arg.h"
 #include "gene.h"
 
+#include <vector>
+
 typedef enum {SUBSTITUTION, COALESCENCE, RECOMBINATION, REMOVE,
     COLLAPSE, SWAP, LOOKUP, SEFLIP, RMFLIP} EventType;
 typedef enum {COAL, SE, RM, RECOMB1, RECOMB2} Action;
@@ -47,19 +49,36 @@ typedef enum {COAL, SE, RM, RECOMB1, RECOMB2} Action;
     } Event;
     
 
-typedef struct _HistoryFragment {
+struct HistoryFragment {
   Genes *g;           /* End configuration */
   LList *event;       /* List of events leading from start
 		       * configuration to end configuration.
 		       */
   double recombinations; /* Number of recombination events */
   EList *elements;
-  EList *sites;
+  std::vector<int> sites;
   Action action;
-} HistoryFragment;
+
+  HistoryFragment() = default;
+
+  HistoryFragment(HistoryFragment const &) = delete;
+  HistoryFragment& operator=(HistoryFragment const &) = delete;
+
+  ~HistoryFragment() {
+    free_genes(g);
+    if (event != NULL) {
+      while (Length(event) != 0)
+        free(Pop(event));
+      DestroyLList(event);
+    }
+    if(elements != NULL) {
+      elist_destroy(elements);
+    }
+  }
+};
 
 #ifdef DEBUG
-extern HashTable *g_ancestral_state_trace;
+extern HashTable *ancestral_state_trace;
 #endif
 ARG *eventlist2history(AnnotatedGenes *a, FILE *output);
 

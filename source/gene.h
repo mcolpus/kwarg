@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+#include <vector>
+
 #include "elist.h"
 #include "llist.h"
 #include "hashtable.h"
@@ -50,9 +52,6 @@ typedef struct _Index {
   int block;
 } Index;
 
-/* Postpone this inclusion until data types have been defined */
-#include "backtrack.h"
-
 /* Global variable for specifying whether the common ancestral
  * sequence is known or not.
  */
@@ -71,12 +70,10 @@ void output_genes(Genes *g, FILE *fp, char *comment);
 void output_labelled_genes(Genes *g, FILE *fp, LList *labels);
 void output_genes_indexed(Genes *s, FILE *fp);
 void output_annotatedgenes(AnnotatedGenes *a, FILE *fp, char *comment);
-void add_gene(Genes *g, Gene *new, ...);
-void add_site(Sites *s, Site *new, ...);
+void add_gene(Genes *g, Gene *_new, ...);
+void add_site(Sites *s, Site *_new, ...);
 Gene *get_gene(Genes *g, int i);
 Site *get_site(Sites *s, int i);
-Genes *select_genes(Genes *g, EList *l);
-Sites *select_sites(Sites *s, EList *l);
 char get_genes_character(Genes *g, int seq, int site);
 char get_sites_character(Sites *s, int seq, int site);
 void set_genes_character(Genes *g, int seq, int site, char c);
@@ -163,7 +160,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
 				  void (*f)(Genes *));
 EList *maximal_overlap_coalesces(Genes *g, Index *a, Index *b);
 void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
-				     void (*f)(Genes *));
+				     std::function<void (Genes *)>);
 int compare_sequences(Genes *g, int a, int b);
 int compare_sites(Sites *s, int a, int b);
 int compare_genes(Genes *g, Genes *h);
@@ -175,4 +172,8 @@ HashTable *new_geneshashtable(int bits);
 void init_geneshashtable(HashTable *table, int bits);
 HashTable *new_packedgeneshashtable(int bits);
 void init_packedgeneshashtable(HashTable *table, int bits);
+
+/* Postpone this inclusion until data types have been defined */
+#include "backtrack.h"
+
 #endif

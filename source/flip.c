@@ -136,8 +136,8 @@ int main(int argc, char **argv)
     
     char c;
     while (Length(sequences) !=0) {
-        q = (int)Pop(sequences);
-        s = (int)Pop(sites);
+        q = (intptr_t)Pop(sequences);
+        s = (intptr_t)Pop(sites);
         c = get_genes_character(g, q-1, s-1);
         switch(c) {
             case 0:

@@ -55,9 +55,9 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
     Genes *old;
     #endif
     
-    if ((g_eventlist != NULL) && (Length(g_eventlist) > 0)){
+    if ((eventlist != NULL) && (Length(eventlist) > 0)){
         /* Determine number of nodes in ARG */
-        lcounter = MakeCounter(g_eventlist, FIRST);
+        lcounter = MakeCounter(eventlist, FIRST);
         while ((e = (Event *)Next(lcounter)) != NULL)
             if (e->type == RECOMBINATION)
                 n++;
@@ -114,7 +114,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
             lpos = MakeCounter(positions, FIRST);
             lseq = MakeCounter(sequences, FIRST);
             lc = MakeCounter(positions, FIRST);
-            InitCounter(lcounter, g_eventlist, FIRST);
+            InitCounter(lcounter, eventlist, FIRST);
             
             /* Go through the events recorded */
             while ((e = (Event *)Next(lcounter)) != NULL){
@@ -149,19 +149,19 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     case SUBSTITUTION:
                         /* Next event is a mutation of a singleton */
                         SetCounter(lpos, e->event.s.site);
-                        tmp = RemoveMoveRight(positions, lpos);
+                        tmp = (LList*)RemoveMoveRight(positions, lpos);
                         /* Make sure to carry out the mutation in all original
                          * positions that has been collapsed into this position in the
                          * working copy.
                          */
                         while (Length(tmp) > 0){
-                            i = (int)Pop(tmp);
+                            i = (intptr_t)Pop(tmp);
                             if ((j = mutate(h, i, -1)) < 0){
                                 /* Sanity check - a mutation should be possible in this site */
                                 fprintf(stderr, "[SUBSTITUTION:] Error in backtracking - please email error report\n");
                                 exit(1);
                             }
-                            j = (int)SetCounter(lseq, j);
+                            j = (intptr_t)SetCounter(lseq, j);
                             if (output != NULL){
                                 /* Print mutation to output */
                                 if (a->positions != NULL)
@@ -172,12 +172,12 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                 if ((a->sequences != NULL) && (Length(a->sequences) > j))
                                     t = (char *)GetByIndex(a->sequences, j);
                                 if (t != NULL) {
-                                    if(g_howverbose != -1) {
+                                    if(howverbose != -1) {
                                         fprintf(output, "Mutation of site %s in sequence %s\n", s, t);
                                     }
                                 }
                                 else {
-                                    if(g_howverbose != -1) {
+                                    if(howverbose != -1) {
                                         fprintf(output, "Mutation of site %s in sequence %d\n", s, j + 1);
                                     }
                                 }
@@ -197,19 +197,19 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                         DestroyLList(tmp);
                         break;
                     case SEFLIP:
-                        i = (int)SetCounter(lseq, e->event.flip.seq); //sequence
-                        tmp = SetCounter(lpos, e->event.flip.site); //get all the collapsed sites
+                        i = (intptr_t)SetCounter(lseq, e->event.flip.seq); //sequence
+                        tmp = (LList*)SetCounter(lpos, e->event.flip.site); //get all the collapsed sites
                         if(Length(tmp) > 1) {
-                            if(g_howverbose != -1 && output != NULL) {
+                            if(howverbose != -1 && output != NULL) {
                                 fprintf(output, "---->Stretch of sequencing errors spanning %d sites:\n", Length(tmp));
-                                if(g_howverbose > 0 && output != stdout && output != NULL) {
+                                if(howverbose > 0 && output != stdout && output != NULL) {
                                     printf("---->Stretch of sequencing errors spanning %d sites:\n", Length(tmp));
                                 }
                             }
                         }
                         for(k = 0; k < Length(tmp); k++) {
                             n_se++;
-                            j = (int)GetByIndex(tmp, k);
+                            j = (intptr_t)GetByIndex(tmp, k);
                             if (output != NULL){
                                 /* Print mutation to output */
                                 if (a->positions != NULL)
@@ -220,19 +220,19 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                 if ((a->sequences != NULL) && (Length(a->sequences) > i))
                                     t = (char *)GetByIndex(a->sequences, i);
                                 if (t != NULL) {
-                                    if(g_howverbose != -1) {
+                                    if(howverbose != -1) {
                                         fprintf(output, "---->");
                                         fprintf(output, "Sequencing error at site %s in sequence %s\n", s, t);
-                                        if(g_howverbose > 0 && output != stdout) {
+                                        if(howverbose > 0 && output != stdout) {
                                             printf("Sequencing error at site %s in sequence %s\n", s, t);
                                         }
                                     }
                                 }
                                 else {
-                                    if(g_howverbose != -1) {
+                                    if(howverbose != -1) {
                                         fprintf(output, "---->");
                                         fprintf(output, "Sequencing error at site %s in sequence %d\n", s, i + 1);
-                                        if(g_howverbose > 0 && output != stdout) {
+                                        if(howverbose > 0 && output != stdout) {
                                             printf("Sequencing error at site %s in sequence %d\n", s, i + 1);
                                         }
                                     }
@@ -259,19 +259,19 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                         }
                         break;
                     case RMFLIP:
-                        i = (int)SetCounter(lseq, e->event.flip.seq); //sequence
-                        tmp = SetCounter(lpos, e->event.flip.site); //get all the collapsed sites
+                        i = (intptr_t)SetCounter(lseq, e->event.flip.seq); //sequence
+                        tmp = (LList*)SetCounter(lpos, e->event.flip.site); //get all the collapsed sites
                         if(Length(tmp) > 1) {
-                            if(g_howverbose != -1 && output != NULL) {
+                            if(howverbose != -1 && output != NULL) {
                                 fprintf(output, "---->Stretch of recurrent mutations spanning %d sites:\n", Length(tmp));
-                                if(g_howverbose > 0 && output != stdout && output != NULL) {
+                                if(howverbose > 0 && output != stdout && output != NULL) {
                                     printf("---->Stretch of recurrent mutations spanning %d sites:\n", Length(tmp));
                                 }
                             }
                         }
                         for(k = 0; k < Length(tmp); k++) {
                             n_rm++;
-                            j = (int)GetByIndex(tmp, k);
+                            j = (intptr_t)GetByIndex(tmp, k);
                             if (output != NULL){
                                 /* Print mutation to output */
                                 if (a->positions != NULL)
@@ -282,19 +282,19 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                 if ((a->sequences != NULL) && (Length(a->sequences) > i))
                                     t = (char *)GetByIndex(a->sequences, i);
                                 if (t != NULL) {
-                                    if(g_howverbose != -1) {
+                                    if(howverbose != -1) {
                                         fprintf(output, "---->");
                                         fprintf(output, "Recurrent mutation at site %s in sequence %s\n", s, t);
-                                        if(g_howverbose > 0 && output != stdout && output != NULL) {
+                                        if(howverbose > 0 && output != stdout && output != NULL) {
                                             printf("Recurrent mutation at site %s in sequence %s\n", s, t);
                                         }
                                     }
                                 }
                                 else {
-                                    if(g_howverbose != -1) {
+                                    if(howverbose != -1) {
                                         fprintf(output, "---->");
                                         fprintf(output, "Recurrent mutation at site %s in sequence %d\n", s, i + 1);
-                                        if(g_howverbose > 0 && output != stdout && output != NULL) {
+                                        if(howverbose > 0 && output != stdout && output != NULL) {
                                             printf("Recurrent mutation at site %s in sequence %d\n", s, i + 1);
                                         }
                                     }
@@ -329,8 +329,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                              * siamese twins may alter the picture.
                              */
                             g = copy_genes(h);
-                            tmp = g_eventlist;
-                            g_eventlist = NULL;
+                            tmp = eventlist;
+                            eventlist = NULL;
                             remove_nonsegregating(g);
                             if (g->length > 0){
                                 remove_siamesetwins(g);
@@ -343,12 +343,12 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                  * sequence and the next remaining sequence.
                                  */
                                 e->event.c.s1 = (e->event.c.s2 == 0 ? 1 : 0);
-                            g_eventlist = tmp;
+                            eventlist = tmp;
                             free_genes(g);
                             g = NULL;
                         }
-                        i = (int)SetCounter(lseq, e->event.c.s1);
-                        j = (int)SetCounter(lseq, e->event.c.s2);
+                        i = (intptr_t)SetCounter(lseq, e->event.c.s1);
+                        j = (intptr_t)SetCounter(lseq, e->event.c.s2);
                         if (output != NULL){
                             /* Print coalescence to output */
                             s = NULL;
@@ -360,22 +360,22 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                     t = (char *)GetByIndex(a->sequences, j);
                             }
                             if (s != NULL) {
-                                if(g_howverbose != -1) {
+                                if(howverbose != -1) {
                                     fprintf(output, "Coalescing sequences %s", s);
                                 }
                             }
                             else {
-                                if(g_howverbose != -1) {
+                                if(howverbose != -1) {
                                     fprintf(output, "Coalescing sequences %d", i + 1);
                                 }
                             }
                             if (t != NULL) {
-                                if(g_howverbose != -1) {
+                                if(howverbose != -1) {
                                     fprintf(output, " and %s\n", t);
                                 }
                             }
                             else {
-                                if(g_howverbose != -1) {
+                                if(howverbose != -1) {
                                     fprintf(output, " and %d\n", j + 1);
                                 }
                             }
@@ -425,8 +425,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                  * case no further reductions should be made.
                                  */
                                 g = copy_genes(h);
-                                tmp = g_eventlist;
-                                g_eventlist = NULL;
+                                tmp = eventlist;
+                                eventlist = NULL;
                                 remove_nonsegregating(g);
                                 if (g->length > 0)
                                     remove_siamesetwins(g);
@@ -441,9 +441,9 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                  * sequence and the next remaining sequence.
                                  */
                                 i = (e->event.remove == 0 ? 1 : 0);
-                            g_eventlist = tmp;
-                            j = (int)SetCounter(lseq, i);
-                            k = (int)SetCounter(lseq, e->event.remove);
+                            eventlist = tmp;
+                            j = (intptr_t)SetCounter(lseq, i);
+                            k = (intptr_t)SetCounter(lseq, e->event.remove);
                             if (output != NULL){
                                 s = NULL;
                                 t = NULL;
@@ -454,22 +454,22 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                         t = (char *)GetByIndex(a->sequences, k);
                                 }
                                 if (s != NULL) {
-                                    if(g_howverbose != -1) {
+                                    if(howverbose != -1) {
                                         fprintf(output, "Coalescing sequences %s", s);
                                     }
                                 }
                                 else {
-                                    if(g_howverbose != -1) {
+                                    if(howverbose != -1) {
                                         fprintf(output, "Coalescing sequences %d", j + 1);
                                     }
                                 }
                                 if (t != NULL) {
-                                    if(g_howverbose != -1) {
+                                    if(howverbose != -1) {
                                         fprintf(output, " and %s\n", t);
                                     }
                                 }
                                 else {
-                                    if(g_howverbose != -1) {
+                                    if(howverbose != -1) {
                                         fprintf(output, " and %d\n", k + 1);
                                     }
                                 }
@@ -503,8 +503,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                  * sequence while the postfix is inserted at the end of the
                                  * list of existing sequences.
                                  */
-                                i = (int)Top(SetCounter(lpos, e->event.r.pos));
-                                j = (int)SetCounter(lseq, e->event.r.seq);
+                                i = (intptr_t)Top((LList*)SetCounter(lpos, e->event.r.pos));
+                                j = (intptr_t)SetCounter(lseq, e->event.r.seq);
                                 split(h, e->event.r.seq, i);
                                 Enqueue(sequences, (void *)next_seq);
                                 /* Update ARG */
@@ -518,7 +518,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                  * change whether the prefix or postfix retains the place of
                                  * the old sequence.
                                  */
-                                f = Next(lcounter);
+                                f = (Event*)Next(lcounter);
                                 if ((f != NULL) && (f->type == SWAP)){
                                     pfix = "pre";
                                     swap_genes(h, f->event.swap.s1, f->event.swap.s2);
@@ -562,20 +562,20 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                                     if ((a->sequences != NULL) && (Length(a->sequences) > j))
                                         t = (char *)GetByIndex(a->sequences, j);
                                     if (t != NULL) {
-                                        if(g_howverbose != -1) {
+                                        if(howverbose != -1) {
                                             fprintf(output, "---->");
                                             fprintf(output, "Recombination in sequence %s after site %s; %sfix is new sequence %d\n", t, s, pfix, next_seq);
                                         }
-                                        if(g_howverbose > 0 && output != stdout) {
+                                        if(howverbose > 0 && output != stdout) {
                                             printf("Recombination in sequence %s after site %s; %sfix is new sequence %d\n", t, s, pfix, next_seq);
                                         }
                                     }
                                     else {
-                                        if(g_howverbose != -1) {
+                                        if(howverbose != -1) {
                                             fprintf(output, "---->");
                                             fprintf(output, "Recombination in sequence %d after site %s; %sfix is new sequence %d\n",j + 1, s, pfix, next_seq);
                                         }
-                                        if(g_howverbose > 0 && output != stdout) {
+                                        if(howverbose > 0 && output != stdout) {
                                             printf("Recombination in sequence %d after site %s; %sfix is new sequence %d\n",j + 1, s, pfix, next_seq);
                                         }
                                     }
@@ -596,15 +596,15 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 }
                 #ifdef DEBUG
                 /* Sanity check - did we see this ancestral state in the forward pass? */
-                if ((g_ancestral_state_trace != NULL) && (e->type != RECOMBINATION)){
-                    tmp = g_eventlist;
-                    g_eventlist = NULL;
+                if ((ancestral_state_trace != NULL) && (e->type != RECOMBINATION)){
+                    tmp = eventlist;
+                    eventlist = NULL;
                     g = copy_genes(h);
                     implode_genes(g);
-                    g_eventlist = tmp;
+                    eventlist = tmp;
                     if (!no_recombinations_required(g)){
                         p = pack_genes(g);
-                        if (!hashtable_lookup(p, g_ancestral_state_trace, NULL)){
+                        if (!hashtable_lookup(p, ancestral_state_trace, NULL)){
                             fprintf(stderr, "Warning - did not encounter state\n\n");
                             output_genes_indexed(h, stderr);
                             fprintf(stderr, "\nreached from\n\n");
@@ -619,7 +619,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 free_genes(old);
                 #endif
             }
-            if(g_howverbose != -1 && output != stdout && output != NULL) {
+            if(howverbose != -1 && output != stdout && output != NULL) {
                 fprintf(output, "Total: %d sequencing errors, %d recurrent mutations, %d recombinations.\n", n_se, n_rm, n_re);
             }
 
@@ -673,7 +673,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     /* Sanity check */
                     fprintf(stderr, "Possible error in backtrack\n");
                     while (Length(positions) > 0)
-                        DestroyLList(Pop(positions));
+                        DestroyLList((LList*)Pop(positions));
                 }
                 DestroyLList(positions);
                 DestroyLList(sequences);

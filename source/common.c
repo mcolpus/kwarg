@@ -33,32 +33,34 @@ void set_verbose(int v)
 }
 #endif
 #ifdef HAPLOTYPE_BLOCKS
-LList *g_representativeness = NULL;
-LListCounter *g_representativeness_counter;
-int **g_haploblocks = NULL;
+LList *representativeness = NULL;
+LListCounter *representativeness_counter;
+int **haploblocks = NULL;
 #endif
-double g_se_cost;
-double g_rm_cost;
-double g_r_cost;
-double g_rr_cost;
-LList *g_eventlist;
-EList *g_sequence_labels;
-EList *g_site_labels;
-EList *g_lookup;
-int g_seq_numbering;
-int g_howverbose = 0;
-double g_step_cost;
+double se_cost;
+double rm_cost;
+double r_cost;
+double rr_cost;
+LList *eventlist;
+EList *elements;
+std::vector<int> sites;
+EList *lookup;
+int seq_numbering;
+int howverbose = 0;
+int no_events = 0;
+double _recombinations;
 int gc_enabled = 0;
-double g_Temp = 1;
-double g_r_seed;
-int g_recombs_max, g_rm_max;
-int g_reference = 0;
-HashTable *g_greedy_functioncalls = NULL, *g_greedy_beaglereusable = NULL;
+double Temp = 1;
+double r_seed;
+int rec_max, rm_max;
+int counter = 0;
+int reference = 0;
+HashTable *_greedy_functioncalls = NULL, *_greedy_beaglereusable = NULL;
 #ifdef DEBUG
 /* Define structure for storing trace of ancestral states as we return
  * from a successful path.
  */
-HashTable *g_ancestral_state_trace = NULL;
+HashTable *ancestral_state_trace = NULL;
 #endif
 
 /* xmalloc(n): Allocate n bytes of memory, checking for successful allocation.
@@ -130,17 +132,18 @@ void *xrealloc(void *oldadr, int n)
 /* initialise_xrandom(): Initialise random number generator, using the
  * current time.
  */
+long int x2seed;
 void initialise_x2random(double seed)
 {
 #ifndef DEBUG
     if(seed == 0) {
-        g_r_seed = (double)time(NULL) + (double)xrandom();
+        r_seed = (double)time(NULL) + (double)xrandom();
     }
     else {
-        g_r_seed = seed;
+        r_seed = seed;
     }
 
-  srandom(g_r_seed);
+  srandom(r_seed);
 #else
   /* Make sure random sequence is the same for every run */
   srandom(1);
@@ -148,26 +151,32 @@ void initialise_x2random(double seed)
     
 }
 
+long int xseed;
+void initialise_xrandom()
+{
+    xseed = (double)time(NULL) + counter;
+}
+
 /* xrandom(): Return (pseudo-)random number between 0 and XRAND_MAX 
  */
 long int x2random()
 {
     long int r = random();
-    return r;    
-}
-
-long int _xseed;
-void initialise_xrandom()
-{
-    _xseed = (double)time(NULL);
+    counter++;
+//     printf("%li ", r);
+//     fflush(stdout);
+    return r;
+//     x2seed = (x2seed * 1664519 + 1013904229) % XRAND_MAX;
+//     return x2seed;
+    
 }
 
 /* Simple LCG, only used for initialising hash tables.
  */
 long int xrandom()
 {
-    _xseed = (_xseed * 1664525 + 1013904223) % XRAND_MAX;
-    return _xseed;
+    xseed = (xseed * 1664525 + 1013904223) % XRAND_MAX;
+    return xseed;
 }
 
 /* Convert n to string */
@@ -176,11 +185,11 @@ char *i2a(int n)
   char *s, *t;
 
   if (n > 0)
-    s = t = xmalloc(((int)log10(n) + 2) * sizeof(char));
+    s = t = (char*)xmalloc(((int)log10(n) + 2) * sizeof(char));
   else if (n == 0)
-    s = t = xmalloc(2 * sizeof(char));
+    s = t = (char*)xmalloc(2 * sizeof(char));
   else{
-    s = xmalloc(((int)log10(n) + 2) * sizeof(char));
+    s = (char*)xmalloc(((int)log10(n) + 2) * sizeof(char));
     s[0] = '-';
     t = s + 1;
   }
@@ -368,7 +377,7 @@ void explode_local(int **local, LList *r, int n)
 	  local[i][j - i - 1] = local[GetPosition(first) + 1]
 	    [GetPosition(last) - GetPosition(first) - 2];
       b = l->left;
-      l = Prev(last);
+      l = (SuperColumn*)Prev(last);
     }
     /* Make sure to reset entries corresponding to bounds between
      * sites in the same collapsed position to 0.
@@ -422,8 +431,8 @@ void print_elist(EList *e, char *comment) {
         printf("%s", comment);
     }
     for(i=0; i < e->count; i++) {
-        p = (int)(elist_get(e, i));
-        if(p >= 0) {
+        p = (intptr_t)(elist_get(e, i));
+        if(p > 0) {
             printf("%d ", p);
         }
         else {

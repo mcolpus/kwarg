@@ -31,8 +31,8 @@ static void *xmalloc(size_t n)
  * are compared using less_than and e1 (e2) specifies the address
  * immediately after the end of array 1 (array 2).
  */
-static void merge(void *s1, void *e1, void *s2, void *e2, void *dest,
-		  size_t size, int (*less_than)(void *, void *))
+static void merge(char *s1, char *e1, char *s2, char *e2, char *dest,
+		  size_t size, int (*less_than)(char *, char *))
 {
   for (;;){
     /* By testing whether the next element in array 2 is smaller than
@@ -70,10 +70,10 @@ static void merge(void *s1, void *e1, void *s2, void *e2, void *dest,
  * according to the less_than comparison function; the data array is
  * overwritten with the sorted array.
  */
-void merge_sort(void *data, size_t n, size_t size,
-		int (*less_than)(void *, void *))
+void merge_sort(char *data, size_t n, size_t size,
+		int (*less_than)(char *, char *))
 {
-  void *tmp = (void *)xmalloc(n * size), *tmp2;
+  char *tmp = (char *)xmalloc(n * size), *tmp2;
   int i, istmp = 0, l = size;
 
   /* Intervals and array lengths are measured in multiples of size to

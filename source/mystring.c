@@ -47,7 +47,7 @@ char *mystring_mystr2str(MyString *s)
 
   /* Copy characters to string one at a time */
   while ((c = Next(lcounter)) != NULL)
-    t[i++] = (char)c;
+    t[i++] = (char)(intptr_t)c;
   /* Null terminate */
   t[i] = '\0';
 

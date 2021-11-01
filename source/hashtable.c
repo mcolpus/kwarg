@@ -88,7 +88,7 @@ static unsigned long modulo(int bits)
   return prime(((unsigned long)1 << bits) + (xrandom() & (((unsigned long)1 << bits) - 1)));
 }
 
-/* Initialise a new hash table mapping to a universe of size between
+/* Initialise a _new hash table mapping to a universe of size between
  * 2^bits and 2^(bits + 1).
  */
 void hashtable_init(int bits, HashTable *table,
@@ -110,7 +110,7 @@ void hashtable_init(int bits, HashTable *table,
     elist_init(table->table + i);
 }
 
-/* Create a new hash table mapping to a universe of size between
+/* Create a _new hash table mapping to a universe of size between
  * 2^bits and 2^(bits + 1).
  */
 HashTable *hashtable_new(int bits, unsigned long (*hash)(void *, void *),
@@ -118,20 +118,20 @@ HashTable *hashtable_new(int bits, unsigned long (*hash)(void *, void *),
 			 void *(*initialise_parameters)(unsigned long))
 {
   unsigned long i;
-  HashTable *new = (HashTable *)xmalloc(sizeof(HashTable));
+  HashTable *_new = (HashTable *)xmalloc(sizeof(HashTable));
 
   /* Determine hash table size */
-  new->size = modulo(bits);
+  _new->size = modulo(bits);
 
   /* Initialise hash table */
-  new->parameters = initialise_parameters(new->size);
-  new->hash = hash;
-  new->compare = compare;
-  new->table = (EList *)xmalloc(new->size * sizeof(EList));
-  for (i = 0; i < new->size; i++)
-    elist_init(new->table + i);
+  _new->parameters = initialise_parameters(_new->size);
+  _new->hash = hash;
+  _new->compare = compare;
+  _new->table = (EList *)xmalloc(_new->size * sizeof(EList));
+  for (i = 0; i < _new->size; i++)
+    elist_init(_new->table + i);
 
-  return new;
+  return _new;
 }
 
 typedef struct _HashTablePair {
@@ -241,7 +241,7 @@ int hashtable_lookup(void *elm, HashTable *t, void **value)
     return 0;
   else{
     if (value != NULL){
-      entry = elist_get(t->table + h, i);
+      entry = (HashTablePair*)elist_get(t->table + h, i);
       *value = entry->value;
     }
     return 1;
@@ -264,7 +264,7 @@ void *hashtable_lookuprepresentative(void *elm, HashTable *t, void **value)
     return NULL;
   else{
     if (value != NULL){
-      entry = elist_get(t->table + h, i);
+      entry = (HashTablePair*)elist_get(t->table + h, i);
       *value = entry->value;
     }
     return entry->key;
@@ -286,7 +286,7 @@ void hashtable_insert(void *elm, void *value, HashTable *t)
 
 /* If elm is already present in t, change its associated value to
  * value if update is NULL or returns true when invoked with the old
- * and the new value. If elm is not present, insert g with value
+ * and the _new value. If elm is not present, insert g with value
  * associated.  Returns 1 if elm was present and the associated value
  * was changed, 0 if elm was present but left unmodified, and -1 if
  * elm was inserted.
@@ -305,7 +305,7 @@ int hashtable_update(void *elm, void *value, HashTable *t,
   }
   else{
     /* g is present in t */
-    entry = elist_get(t->table + h, i);
+    entry = (HashTablePair*)elist_get(t->table + h, i);
     if ((update == NULL) || update(entry->value, value)){
       /* Update g's associated value */
       entry->value = value;
@@ -336,7 +336,7 @@ void hashtable_map(HashTable *t, void (*f)(void *, void *, va_list), ...)
 
   for (i = 0; i < t->size; i++)
     for (j = 0; j < elist_length(t->table + i); j++){
-      entry = elist_get(t->table + i, j);
+      entry = (HashTablePair*)elist_get(t->table + i, j);
       va_start(args, *f);
       f(entry->key, entry->value, args);
       va_end(args);
