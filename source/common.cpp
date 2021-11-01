@@ -442,6 +442,20 @@ void print_elist(EList *e, char *comment) {
     printf("\n");
 }
 
+void print_int_vector(std::vector<int> vec, char *comment) {
+  if(comment != NULL) {
+        printf("%s", comment);
+  }
+  for(auto p : vec) {
+    if(p > 0) {
+        printf("%d ", p);
+    }
+    else {
+        printf("X ");
+    }
+  }
+}
+
 void set_array(double *a1, double *a2, int a2_length, int b) {
     int i;
     

@@ -6,8 +6,8 @@
 
 ********************************************************************/
 
-#ifndef _MYSTRING_H
-#define _MYSTRING_H
+#ifndef MYSTRING_H
+#define MYSTRING_H
 
 #include "llist.h"
 

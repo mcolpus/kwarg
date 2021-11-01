@@ -824,7 +824,7 @@ int main(int argc, char **argv)
                 h = copy_genes(g);
                 seq_numbering = h->n;
                 elements = elist_make();
-                sites = elist_make();
+                sites = {};
                 // Initialise list of sequences
                 if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
                     for(i=0; i < h->n; i++) {
@@ -835,9 +835,10 @@ int main(int argc, char **argv)
                         elist_append(elements, (void *)i);
                     }
                 }
+                
                 // Initialise the list of sites
                 for(i=0; i < h->length; i++) {
-                    elist_append(sites, (void *)i);
+                    sites.push_back(i);
                 }
                 
                 // Get a history
@@ -852,8 +853,7 @@ int main(int argc, char **argv)
                 free_genes(h);
                 elist_destroy(elements);
                 elements = NULL;
-                elist_destroy(sites);
-                sites = NULL;
+                sites.clear();
                 r_seed = 0;
                 
             }

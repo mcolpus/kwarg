@@ -1,7 +1,7 @@
 /* mergesort.h: Prototype for mergesort function */
 
-#ifndef _MERGESORT_H
-#define _MERGESORT_H
+#ifndef MERGESORT_H
+#define MERGESORT_H
 
 #include <stdlib.h>
 

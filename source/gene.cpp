@@ -19,12 +19,13 @@
 #include <stdbool.h>
 
 #include <vector>
+#include <functional>
 
 #include "gene.h"
 #include "llist.h"
 #include "common.h"
-#include "bitfunctions.h"
 #include "hashtable.h"
+#include "bitfunctions.h"
 #include "mergesort.h"
 #include "backtrack.h"
 
@@ -4654,7 +4655,7 @@ Index *maximumsubsumedpostfix(Genes *g, int s)
  * HistoryFragments.
  */
 void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
-                                  void (*f)(Genes *))
+                                  std::function<void (Genes *)> f)
 {
     int i, j, s, index, block, sindex, sblock,
         *ancestral = (int*)xmalloc(g->n * sizeof(int)),
@@ -4989,7 +4990,7 @@ EList *maximal_prefix_coalesces(Genes *g, Index *a, Index *b)
  * function to free memory used for the HistoryFragments.
  */
 void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
-                                   void (*f)(Genes *))
+                                   std::function<void (Genes *)> f)
 {
     int i, j, k, s, index, block, sindex, sblock,
         *ancestral = (int*)xmalloc(g->n * sizeof(int)),
@@ -5660,7 +5661,7 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                                    unsigned long *maximal,
                                    unsigned long *type,
                                    unsigned long *ancestral, Genes *g, int k,
-                                   void (*f)(Genes *))
+                                   std::function<void (Genes *)> f)
 {
     int i, j, eindex, eblock;
     unsigned long pattern;
@@ -5859,7 +5860,7 @@ static void find_compatibleintervals(int index, int block, int i, int blocks,
                                      int leftindex, int leftblock, int start,
                                      int end, unsigned long *compatible,
                                      Index *postfixs, Sites *s, Genes *g,
-                                     void (*f)(Genes *))
+                                     std::function<void (Genes *)> f)
 {
     int c = 1;
 
@@ -5895,7 +5896,7 @@ static void find_compatibleintervals(int index, int block, int i, int blocks,
  * these HistoryFragments.
  */
 void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
-                                 void (*f)(Genes *))
+                                 std::function<void (Genes *)> f)
 {
     int c, i, j, k, index, block, start, end, left, right, leftindex,
         leftblock, blocks = divblocksize(g->n - 1) + 1;
@@ -6880,7 +6881,7 @@ void init_packedgeneshashtable(HashTable *table, int bits)
 
 /* Function to try all possible flips of sequencing errors
  */
-void seqerror_flips(Genes* g, void (*f)(Genes *)) {
+void seqerror_flips(Genes* g, std::function<void (Genes *)> f) {
     int q, s, m;
     Genes *h;
     Event *e;
@@ -6938,7 +6939,7 @@ void seqerror_flips(Genes* g, void (*f)(Genes *)) {
 
 /* Function to try all possible flips of recurrent mutations
  */
-void recmut_flips(Genes* g, void (*f)(Genes *)) {
+void recmut_flips(Genes* g, std::function<void (Genes *)> f) {
     int q, s, m;
     Genes *h;
     Event *e;

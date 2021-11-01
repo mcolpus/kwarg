@@ -1,5 +1,5 @@
-#ifndef _ENUMERATE_H
-#define _ENUMERATE_H
+#ifndef ENUMERATE_H
+#define ENUMERATE_H
 
 #include "gene.h"
 #include "hashtable.h"

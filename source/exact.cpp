@@ -17,6 +17,8 @@
 #include <math.h>
 #include <float.h>
 
+#include <memory>
+
 #include "gene.h"
 #include "common.h"
 #include "mergesort.h"
@@ -1576,7 +1578,7 @@ static void _update(Genes *g)
     if (!_choice_fixed && no_recombinations_required(g)) {
         /* Found a path to the MRCA - choose it */
         _choice_fixed = 1;
-        _greedy_choice = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
+        _greedy_choice = std::make_unique<HistoryFragment>();
         _greedy_choice->g = g;
         _greedy_choice->event = eventlist;
         _greedy_choice->recombinations = _recombinations;
@@ -1767,8 +1769,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
      */
     _choice_function = select;
     if (!ontheflyselection && global)
-        _predecessors = {};
-    if ((_choice_fixed = no_recombinations_required(g)) != 0)
+        _predecessors.clear();
+    _choice_fixed = no_recombinations_required(g);
+    if (_choice_fixed != 0)
         /* Data set can be explained without recombinations */
         free_genes(g);
     
@@ -1947,14 +1950,14 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 // Now consider each predecessor one by one, score, and set as the new choice if the score is lower
                 for (auto& f : _predecessors) {
                     _reset_builtins(f->g); // set _greedy_currentstate to be f->g
-                    // Bug fix: need to update _recombinations otherwise this will always be 2
+
                     _recombinations = f->recombinations; 
                     printscore = score_renormalise(f->g, score_array[i]);
                     if (print_progress != NULL && howverbose == 2) {
                         fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i+1, f->recombinations);
                         output_genes(f->g, print_progress, NULL);
                         print_elist(f->elements, "Sequences: ");
-                        print_elist(f->sites, "Sites: ");
+                        print_int_vector(f->sites, "Sites: ");
                         fprintf(print_progress, "Predecessor score: %.0f \n\n", 
                                 (printscore == -DBL_MAX ? -INFINITY : (printscore == DBL_MAX ? INFINITY : printscore)));
                         fflush(print_progress);
@@ -1969,7 +1972,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 free(score_array);
                 
                 eventlist = tmp;
-                _predecessors = {};
+                _predecessors.clear();
             }
             
             g = _greedy_choice->g;
@@ -2015,7 +2018,6 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         r += _greedy_choice->recombinations;
         
         /* Clean up */
-        free(_greedy_choice);
         free(start);
         free(end);
         if(_choice_fixed) {

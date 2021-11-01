@@ -7,8 +7,8 @@
 
 ********************************************************************/
 
-#ifndef _TOPOLOGICAL_SORT_H
-#define _TOPOLOGICAL_SORT_H
+#ifndef TOPOLOGICAL_SORT_H
+#define TOPOLOGICAL_SORT_H
 int strongly_connected_components(int n, int *Ap, int *Ai, int **newindex,
 				  int **oldindex, int **accsize);
 int topological_sort(int n, int *Ap, int *Ai, double *Ax, double *bx,

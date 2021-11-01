@@ -1,7 +1,7 @@
 /* common.h: header file for common.c; definition of common data types.
  */
-#ifndef _COMMON_H
-#define _COMMON_H
+#ifndef COMMON_H
+#define COMMON_H
 
 #include "llist.h"
 #include "gene.h"
@@ -69,6 +69,7 @@ void delete_i(int *array, int i, int array_length);
 void delete_by_value(int *array, int v, int array_length);
 int max_value(int *array, int array_length);
 void print_elist(EList *e, char *comment);
+void print_int_vector(std::vector<int> vec, char *comment);
 void set_array(double *a1, double *a2, int a2_length, int b);
 
 #endif

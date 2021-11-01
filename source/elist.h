@@ -6,8 +6,8 @@
 
 ********************************************************************/
 
-#ifndef _ELIST_H
-#define _ELIST_H
+#ifndef ELIST_H
+#define ELIST_H
 
 #include <stdarg.h>
 

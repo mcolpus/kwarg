@@ -1,5 +1,5 @@
-#ifndef _EXACT_H
-#define _EXACT_H
+#ifndef EXACT_H
+#define EXACT_H
 
 #include <stdio.h>
 #include "gene.h"

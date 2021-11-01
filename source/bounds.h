@@ -1,5 +1,5 @@
-#ifndef _BOUNDS_H
-#define _BOUNDS_H
+#ifndef BOUNDS_H
+#define BOUNDS_H
 
 #include "gene.h"
 

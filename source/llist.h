@@ -9,8 +9,8 @@
 
 ********************************************************************/
 
-#ifndef _LLIST_H
-#define _LLIST_H
+#ifndef LLIST_H
+#define LLIST_H
 
 #include <stdarg.h>
 

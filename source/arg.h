@@ -7,8 +7,8 @@
 
 ********************************************************************/
 
-#ifndef _ARG_H
-#define _ARG_H
+#ifndef ARG_H
+#define ARG_H
 
 #include "llist.h"
 #include "mystring.h"

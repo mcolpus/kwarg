@@ -112,7 +112,7 @@ int main(int argc, char **argv)
 
     //Initialise the elements array (this will track the number of recombinations which each of the sequences has undergone)
     elements = elist_make();
-    sites = elist_make();
+    sites = {};
     if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
         for(i=0; i < g->n; i++) {
             elist_append(elements, (void *)(i+1));
@@ -124,7 +124,7 @@ int main(int argc, char **argv)
     }
     // Initialise the list of sites
     for(i=0; i < g->length; i++) {
-        elist_append(sites, (void *)i);
+        sites.push_back(i);
     }
     
     // Print stats for input dataset
@@ -143,7 +143,7 @@ int main(int argc, char **argv)
     print_elist(elements, NULL);
     
     printf("Sites:\n");
-    print_elist(sites, NULL);
+    print_int_vector(sites, NULL);
 
     // Tidying
     if (eventlist != NULL){

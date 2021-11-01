@@ -1,9 +1,10 @@
-#ifndef _GENE_H
-#define _GENE_H
+#ifndef GENE_H
+#define GENE_H
 
 #include <stdio.h>
 
 #include <vector>
+#include <functional>
 
 #include "elist.h"
 #include "llist.h"
@@ -51,6 +52,7 @@ typedef struct _Index {
   int index;
   int block;
 } Index;
+
 
 /* Global variable for specifying whether the common ancestral
  * sequence is known or not.
@@ -149,15 +151,15 @@ Index *maximumsubsumedprefix(Genes *g, int s);
 Index *maximumsubsumedpostfix(Genes *g, int s);
 EList *maximal_prefix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
-				    void (*f)(Genes *));
+				    std::function<void (Genes *)> f);
 EList *maximal_postfix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
-				     void (*f)(Genes *));
-void seqerror_flips(Genes* g, void (*f)(Genes *));
-void recmut_flips(Genes* g, void (*f)(Genes *));
+				     std::function<void (Genes *)> f);
+void seqerror_flips(Genes* g, std::function<void (Genes *)> f);
+void recmut_flips(Genes* g, std::function<void (Genes *)> f);
 EList *maximal_infix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
-				  void (*f)(Genes *));
+				  std::function<void (Genes *)> f);
 EList *maximal_overlap_coalesces(Genes *g, Index *a, Index *b);
 void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
 				     std::function<void (Genes *)>);
