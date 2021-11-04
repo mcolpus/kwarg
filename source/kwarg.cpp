@@ -272,7 +272,6 @@ int main(int argc, char **argv)
     char *token;
 //     int gc_ind = 0;
     double timer;
-    clock_t tic, toc;
     char *endptr;
     errno = 0;
     reference = -1;
@@ -842,9 +841,9 @@ int main(int argc, char **argv)
                 }
                 
                 // Get a history
-                tic = clock();
+                clock_t tic = clock();
                 n = ggreedy(h, print_progress, select, _reset_selections, ontheflyselection);
-                toc = clock();
+                clock_t toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
                 // The ggreedy function will update rec_max and the lookup array

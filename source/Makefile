@@ -1,11 +1,13 @@
 # Tools to use
 CC = g++
 
+DEBUG = yes
+
 # Flags to the C compiler
 # If DEBUG is 'yes', the executable is not optimised and compiled with
 # information used by the gnu debugging and profiling tools
 ifeq (${DEBUG}, yes)
-CPPFLAGS = -Wall -Wextra -Wpedantic --std=c++17 -g -pg -DDEBUG
+CPPFLAGS = -Wall -Wextra -Wpedantic --std=c++17 -g -pg -DDEBUG -w
 else
 CPPFLAGS = --std=c++17 -Wall -Wextra -Wpedantic -O3 -w
 endif

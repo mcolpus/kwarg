@@ -7,6 +7,15 @@
 #include "gene.h"
 #include "arg.h"
 
+#define VERBOSE
+
+// These definitions are passed when kwarg is created using make file
+#define HAPLOTYPE_BLOCKS
+#define BEAGLE_HAPLOTYPEHEURISTIC
+#define BEAGLE_DONOTSTORELEAVES
+#define ENUMERATE_DONOTSTORELEAVES
+#define ENUMERATE_HAPLOTYPEHEURISTIC
+
 #include <vector>
 
 /* Function prototypes; a brief explanation of each function should be

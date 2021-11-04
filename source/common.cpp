@@ -71,7 +71,7 @@ void *xmalloc(int n)
 
   if (n <= 0){
     fprintf(stderr,
-	    "Erroneous memory allocation - please email error report\n");
+	    "Erroneous memory allocation with xmalloc, n<=0 - please email error report\n");
     return NULL;
   }
 
@@ -92,7 +92,7 @@ void *xcalloc(int m, int n)
 
   if ((n <= 0) || (m <= 0)){
     fprintf(stderr,
-	    "Erroneous memory allocation - please email error report\n");
+	    "Erroneous memory allocation with xcalloc, either n<=0 or m<=0 - please email error report\n");
     return NULL;
   }
 
@@ -113,7 +113,7 @@ void *xrealloc(void *oldadr, int n)
 
   if (n <= 0){
     fprintf(stderr,
-	    "Erroneous memory allocation - please email error report\n");
+	    "Erroneous memory allocation with xrealloc, n<=0 - please email error report\n");
     return NULL;
   }
 
@@ -454,6 +454,7 @@ void print_int_vector(std::vector<int> vec, char *comment) {
         printf("X ");
     }
   }
+  printf("\n");
 }
 
 void set_array(double *a1, double *a2, int a2_length, int b) {
