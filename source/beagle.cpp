@@ -426,9 +426,9 @@ int main(int argc, char **argv)
         g_eventlist = MakeLList();
     #ifdef HAPLOTYPE_BLOCKS
     if (haploblock_file != NULL){
-        haploblocks = (int **)xmalloc((g->length - 1) * sizeof(int *));
+        g_haploblocks = (int **)xmalloc((g->length - 1) * sizeof(int *));
         for (i = 0; i < g->length - 1; i++)
-            haploblocks[i] = (int *)xcalloc((g->length - i - 1), sizeof(int));
+            g_haploblocks[i] = (int *)xcalloc((g->length - i - 1), sizeof(int));
     }
     #endif
     #ifdef DEBUG
@@ -470,12 +470,12 @@ int main(int argc, char **argv)
     if (haploblock_file != NULL){
         for (i = 1; i < g->length; i++){
             for (j = 0; j < i - 1; j++)
-                fprintf(haploblock_file, "%d ", haploblocks[j][i - j - 1]);
-            fprintf(haploblock_file, "%d\n", haploblocks[j][i - j - 1]);
+                fprintf(haploblock_file, "%d ", g_haploblocks[j][i - j - 1]);
+            fprintf(haploblock_file, "%d\n", g_haploblocks[j][i - j - 1]);
         }
         for (i = 0; i < g->length - 1; i++)
-            free(haploblocks[i]);
-        free(haploblocks);
+            free(g_haploblocks[i]);
+        free(g_haploblocks);
         if (haploblock_file != stdout)
             fclose(haploblock_file);
     }

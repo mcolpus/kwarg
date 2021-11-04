@@ -267,15 +267,15 @@ int main(int argc, char **argv)
     gc_enabled = 0;
     Event *e;
     LList *tmp;
-    r_seed = 0;
-    rec_max = INT_MAX;
+    g_run_seed = 0;
+    g_rec_max = INT_MAX;
     char *token;
 //     int gc_ind = 0;
     double timer;
     char *endptr;
     errno = 0;
-    reference = -1;
-    rm_max = INT_MAX;
+    g_run_reference = -1;
+    g_rm_max = INT_MAX;
     
     int T_in = 0, cost_in = 0;
     double T_array[100] = {30};
@@ -390,12 +390,12 @@ int main(int argc, char **argv)
                 }
                 break;
 			case 'V':
-                howverbose = strtol(optarg, &endptr, 10);
+                g_howverbose = strtol(optarg, &endptr, 10);
                 if(errno != 0 || *endptr != '\0') {
                     fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
                     exit(1);
                 }
-                if(howverbose > 2 && howverbose < 0) {
+                if(g_howverbose > 2 && g_howverbose < 0) {
                     fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
                     exit(1);
                 }
@@ -612,12 +612,12 @@ int main(int argc, char **argv)
                 seqtype = GENE_NUCLEIC;
                 break;
             case 'Z':
-                r_seed = strtod(optarg, &endptr);
+                g_run_seed = strtod(optarg, &endptr);
                 if(errno != 0 || *endptr != '\0') {
                     fprintf(stderr, "Seed input should be a positive integer.\n");
                     exit(1);
                 }
-                if(r_seed <= 0) {
+                if(g_run_seed <= 0) {
                     fprintf(stderr, "Seed input should be a positive integer.\n");
                     exit(1);
                 }
@@ -634,14 +634,14 @@ int main(int argc, char **argv)
                 }
                 break;
             case 'X':
-                rec_max = strtol(optarg, &endptr, 10);
+                g_rec_max = strtol(optarg, &endptr, 10);
                 if(errno != 0 || *endptr != '\0') {
                     fprintf(stderr, "Upper bound on number of recombinations should be a positive integer.\n");
                     exit(1);
                 }
                 break;
             case 'Y':
-                rm_max = strtol(optarg, &endptr, 10);
+                g_rm_max = strtol(optarg, &endptr, 10);
                 if(errno != 0 || *endptr != '\0') {
                     fprintf(stderr, "Upper bound on number of recurrent mutations should be a positive integer.\n");
                     exit(1);
@@ -651,12 +651,12 @@ int main(int argc, char **argv)
                 head = 0;
                 break;
             case 'L':
-                reference = strtol(optarg, &endptr, 10);
+                g_run_reference = strtol(optarg, &endptr, 10);
                 if(errno != 0 || *endptr != '\0') {
                     fprintf(stderr, "Reference should be a positive integer.\n");
                     exit(1);
                 }
-                if(reference < 0) {
+                if(g_run_reference < 0) {
                     fprintf(stderr, "Reference should be a positive integer.\n");
                     exit(1);
                 }
@@ -726,7 +726,7 @@ int main(int argc, char **argv)
     initialise_xrandom();
     
     
-    if(r_seed > 0) {
+    if(g_run_seed > 0) {
         multruns = 0;
         T_in = 1;
         cost_in = 1;
@@ -734,13 +734,13 @@ int main(int argc, char **argv)
         rm_costs[0] = (rm_costs[0] !=0 ? rm_costs[0] : 0.9);
         r_costs[0] = (r_costs[0] !=0 ? r_costs[0] : 1.0);
         rr_costs[0] = (rr_costs[0] != 0 ? rr_costs[0] : 2.0);
-        if(howverbose > 0) {
+        if(g_howverbose > 0) {
             head = 0;
         }
     }
     else if(cost_in > 0) {
         if(multruns > 0 || cost_in > 1) {
-            howverbose = 0;
+            g_howverbose = 0;
         }
         for(t = 0; t < cost_in; t++) {
             se_costs[t] = (se_costs[t] !=0 ? se_costs[t] : 0.5);
@@ -750,7 +750,7 @@ int main(int argc, char **argv)
         }
     }
     else {
-        howverbose = 0;
+        g_howverbose = 0;
         cost_in = 13;
         double template1[13] = {-1, 1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.01, 1};
         double template2[13] = {-1, 1.01, 0.91, 0.81, 0.71, 0.61, 0.51, 0.41, 0.31, 0.21, 0.11, 0.02, 1.1};
@@ -767,7 +767,7 @@ int main(int argc, char **argv)
     }
     
     if(head) {
-        if(reference > 0) {
+        if(g_run_reference > 0) {
             fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
             "SE", "RM", "R", "N_states", "Time");
         }
@@ -777,24 +777,24 @@ int main(int argc, char **argv)
         }
     }
     
-    // Create the lookup array if will have multiple runs
+    // Create the g_lookup array if will have multiple runs
     if(multruns > 0 || cost_in > 1){  
-        if(rec_max == INT_MAX) {
-            rec_max = 1000; // TODO What should this be
+        if(g_rec_max == INT_MAX) {
+            g_rec_max = 1000; // TODO What should this be
         }
-        // Will store SE + RM in a lookup list with index = number of recombinations
-        lookup = elist_make();
-        for(i = 0; i <= rec_max; i++) {
-            elist_append(lookup, (void *)INT_MAX);
+        // Will store SE + RM in a g_lookup list with index = number of recombinations
+        g_lookup = elist_make();
+        for(i = 0; i <= g_rec_max; i++) {
+            elist_append(g_lookup, (void *)INT_MAX);
         }
-        // We need 0 se/rm for rec_max recombinations
-        elist_change(lookup, rec_max, (void *)0);
+        // We need 0 se/rm for g_rec_max recombinations
+        elist_change(g_lookup, g_rec_max, (void *)0);
     }
     
     for(l = 0; l < T_in; l++) {
         
-        Temp = T_array[l];
-        if(Temp == -1) {
+        g_Temp = T_array[l];
+        if(g_Temp == -1) {
             select = _minimum_select;
         }
         else {
@@ -803,11 +803,11 @@ int main(int argc, char **argv)
         
         for(k = 0; k < cost_in; k++) {
             
-            se_cost = se_costs[k];
+            g_se_cost = se_costs[k];
             rm_cost = rm_costs[k];
-            r_cost = r_costs[k];
-            rr_cost = rr_costs[k];
-            if(se_cost == -1 && rm_cost == -1 && r_cost == -1 && rr_cost == -1) {
+            g_r_cost = r_costs[k];
+            g_rr_cost = rr_costs[k];
+            if(g_se_cost == -1 && rm_cost == -1 && g_r_cost == -1 && g_rr_cost == -1) {
                 fprintf(stderr, "At least one type of event should be allowed (all event costs are -1).\n");
                 exit(1);
             }
@@ -816,12 +816,12 @@ int main(int argc, char **argv)
             for(j = 0; j <= multruns; j++) {
                 
                 /* Initialise random number generator */
-                initialise_x2random(r_seed);
-                counter = 0;
+                initialise_x2random(g_run_seed);
+                g_seed_counter = 0;
                 
                 // Copy the data and set up the tracking lists
                 h = copy_genes(g);
-                seq_numbering = h->n;
+                g_seq_numbering = h->n;
                 g_sequence_labels = elist_make();
                 g_site_labels = {};
                 // Initialise list of sequences
@@ -846,14 +846,14 @@ int main(int argc, char **argv)
                 clock_t toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
-                // The ggreedy function will update rec_max and the lookup array
+                // The ggreedy function will update g_rec_max and the g_lookup array
                 
                 // Tidy up for the next run
                 free_genes(h);
                 elist_destroy(g_sequence_labels);
                 g_sequence_labels = NULL;
                 g_site_labels.clear();
-                r_seed = 0;
+                g_run_seed = 0;
                 
             }
 
@@ -969,17 +969,17 @@ int main(int argc, char **argv)
     
         
         /* Clean up */
-        if (lookup != NULL){
-            elist_destroy(lookup);
+        if (g_lookup != NULL){
+            elist_destroy(g_lookup);
         }
         
-        if (_greedy_beaglereusable != NULL) {
-            beagle_deallocate_hashtable(_greedy_beaglereusable);
-            _greedy_beaglereusable = NULL;
+        if (g_greedy_beaglereusable != NULL) {
+            beagle_deallocate_hashtable(g_greedy_beaglereusable);
+            g_greedy_beaglereusable = NULL;
         }
-        if (_greedy_functioncalls != NULL) {
-            hashtable_destroy(_greedy_functioncalls, free, NULL, free);
-            _greedy_functioncalls = NULL;
+        if (g_greedy_functioncalls != NULL) {
+            hashtable_destroy(g_greedy_functioncalls, free, NULL, free);
+            g_greedy_functioncalls = NULL;
         }
         
         DestroyLList(dot_files);

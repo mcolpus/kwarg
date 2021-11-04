@@ -32,32 +32,30 @@ typedef struct _SuperColumn {
   int right;
 } SuperColumn;
 
-extern LList *representativeness;
-extern LListCounter *representativeness_counter;
-extern int **haploblocks;
+extern LList *g_representativeness;
+extern LListCounter *g_representativeness_counter;
+extern int **g_haploblocks;
 void explode_local(int **local, LList *r, int n);
 #endif
+
 extern LList *g_eventlist;
 extern EList *g_sequence_labels;
 extern std::vector<int> g_site_labels;
-extern EList *lookup;
-extern int seq_numbering;
-extern double se_cost;
+extern EList *g_lookup;
+extern int g_seq_numbering;
+extern double g_se_cost;
 extern double rm_cost;
-extern double r_cost;
-extern double rr_cost;
-extern int howverbose;
-extern double _recombinations;
-extern int no_events;
+extern double g_r_cost;
+extern double g_rr_cost;
+extern int g_howverbose;
+extern double g_recombinations;
 extern int gc_enabled;
-extern double Temp;
-extern double r_seed;
-extern int rec_max, rm_max;
-extern long int x2seed;
-extern long int xseed;
-extern int counter;
-extern int reference;
-extern HashTable *_greedy_functioncalls, *_greedy_beaglereusable;
+extern double g_Temp;
+extern double g_run_seed;
+extern int g_rec_max, g_rm_max;
+extern int g_seed_counter;
+extern int g_run_reference;
+extern HashTable *g_greedy_functioncalls, *g_greedy_beaglereusable;
 #ifdef DEBUG
 extern HashTable *ancestral_state_trace;
 #endif

@@ -33,29 +33,28 @@ void set_verbose(int v)
 }
 #endif
 #ifdef HAPLOTYPE_BLOCKS
-LList *representativeness = NULL;
-LListCounter *representativeness_counter;
-int **haploblocks = NULL;
+LList *g_representativeness = NULL;
+LListCounter *g_representativeness_counter;
+int **g_haploblocks = NULL;
 #endif
-double se_cost;
+double g_se_cost;
 double rm_cost;
-double r_cost;
-double rr_cost;
+double g_r_cost;
+double g_rr_cost;
 LList *g_eventlist;
 EList *g_sequence_labels;
 std::vector<int> g_site_labels;
-EList *lookup;
-int seq_numbering;
-int howverbose = 0;
-int no_events = 0;
-double _recombinations;
+EList *g_lookup;
+int g_seq_numbering;
+int g_howverbose = 0;
+double g_recombinations;
 int gc_enabled = 0;
-double Temp = 1;
-double r_seed;
-int rec_max, rm_max;
-int counter = 0;
-int reference = 0;
-HashTable *_greedy_functioncalls = NULL, *_greedy_beaglereusable = NULL;
+double g_Temp = 1;
+double g_run_seed;
+int g_rec_max, g_rm_max;
+int g_seed_counter = 0;
+int g_run_reference = 0;
+HashTable *g_greedy_functioncalls = NULL, *g_greedy_beaglereusable = NULL;
 #ifdef DEBUG
 /* Define structure for storing trace of ancestral states as we return
  * from a successful path.
@@ -132,18 +131,17 @@ void *xrealloc(void *oldadr, int n)
 /* initialise_xrandom(): Initialise random number generator, using the
  * current time.
  */
-long int x2seed;
 void initialise_x2random(double seed)
 {
 #ifndef DEBUG
     if(seed == 0) {
-        r_seed = (double)time(NULL) + (double)xrandom();
+        g_run_seed = (double)time(NULL) + (double)xrandom();
     }
     else {
-        r_seed = seed;
+        g_run_seed = seed;
     }
 
-  srandom(r_seed);
+  srandom(g_run_seed);
 #else
   /* Make sure random sequence is the same for every run */
   srandom(1);
@@ -151,10 +149,10 @@ void initialise_x2random(double seed)
     
 }
 
-long int xseed;
+long int _xseed;
 void initialise_xrandom()
 {
-    xseed = (double)time(NULL) + counter;
+    _xseed = (double)time(NULL) + g_seed_counter;
 }
 
 /* xrandom(): Return (pseudo-)random number between 0 and XRAND_MAX 
@@ -162,7 +160,7 @@ void initialise_xrandom()
 long int x2random()
 {
     long int r = random();
-    counter++;
+    g_seed_counter++;
 //     printf("%li ", r);
 //     fflush(stdout);
     return r;
@@ -175,8 +173,8 @@ long int x2random()
  */
 long int xrandom()
 {
-    xseed = (xseed * 1664525 + 1013904223) % XRAND_MAX;
-    return xseed;
+    _xseed = (_xseed * 1664525 + 1013904223) % XRAND_MAX;
+    return _xseed;
 }
 
 /* Convert n to string */

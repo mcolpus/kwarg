@@ -2780,7 +2780,7 @@ int remove_siamesetwins(Genes *g)
             }
 #endif
 #ifdef HAPLOTYPE_BLOCKS
-        if (representativeness != NULL)
+        if (g_representativeness != NULL)
             /* Update list of blocks of collapsed sites to reflect the
              * Siamese blocks just collapsed.
              */
@@ -2789,14 +2789,14 @@ int remove_siamesetwins(Genes *g)
                 /* Find start position of this Siamese block in list of block
                  * of sites that have already been collapsed.
                  */
-                c = (SuperColumn *)SetCounter(representativeness_counter,
+                c = (SuperColumn *)SetCounter(g_representativeness_counter,
                                               state[i].start);
                 /* Merge with block for other sites in this Siamese block */
                 for (j = state[i].start; j < state[i].end; j++)
                 {
-                    d = (SuperColumn *)Next(representativeness_counter);
+                    d = (SuperColumn *)Next(g_representativeness_counter);
                     c->right = d->right;
-                    RemoveMoveLeft(representativeness, representativeness_counter);
+                    RemoveMoveLeft(g_representativeness, g_representativeness_counter);
                 }
             }
 #endif
@@ -2912,12 +2912,12 @@ int remove_uninformative(Genes *g)
                     }
                     n++;
 #ifdef HAPLOTYPE_BLOCKS
-                    if ((representativeness != NULL) && (mulblocksize(i) + j < g->length))
+                    if ((g_representativeness != NULL) && (mulblocksize(i) + j < g->length))
                     {
                         /* Remove uninformative sites */
-                        SetCounter(representativeness_counter, mulblocksize(i) + j - m);
-                        free(RemoveMoveLeft(representativeness,
-                                            representativeness_counter));
+                        SetCounter(g_representativeness_counter, mulblocksize(i) + j - m);
+                        free(RemoveMoveLeft(g_representativeness,
+                                            g_representativeness_counter));
                         m++;
                     }
 #endif
@@ -3071,12 +3071,12 @@ int remove_nonsegregating(Genes *g)
                     }
 #endif
 #ifdef HAPLOTYPE_BLOCKS
-                    if ((representativeness != NULL) && (mulblocksize(i) + j < g->length))
+                    if ((g_representativeness != NULL) && (mulblocksize(i) + j < g->length))
                     {
                         /* Remove non-segregating sites */
-                        SetCounter(representativeness_counter, mulblocksize(i) + j - m);
-                        free(RemoveMoveLeft(representativeness,
-                                            representativeness_counter));
+                        SetCounter(g_representativeness_counter, mulblocksize(i) + j - m);
+                        free(RemoveMoveLeft(g_representativeness,
+                                            g_representativeness_counter));
                         m++;
                     }
 #endif
@@ -4193,13 +4193,13 @@ static void _split(Genes *g, int a, int index, int block)
     {
         if ((intptr_t)(elist_get(g_sequence_labels, a)) != -1)
         {
-            elist_append(g_sequence_labels, (void *)seq_numbering);
-            seq_numbering++;
+            elist_append(g_sequence_labels, (void *)g_seq_numbering);
+            g_seq_numbering++;
         }
         else
         {
             elist_append(g_sequence_labels, (void *)(-1));
-            seq_numbering++;
+            g_seq_numbering++;
         }
     }
 }
@@ -7367,13 +7367,12 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
         {
             for (s = 0; s < g->length; s++)
             {
-                _recombinations = se_cost;
+                g_recombinations = g_se_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = tmp_sites[s];
                 if (m < 0)
                 {
-                    _recombinations = se_cost * (-m);
-                    no_events = -m;
+                    g_recombinations = g_se_cost * (-m);
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
@@ -7410,8 +7409,7 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
         }
     }
 
-    no_events = 1;
-    _recombinations = se_cost;
+    g_recombinations = g_se_cost;
     g_eventlist = tmp;
     g_sequence_labels = tmp_elements;
     g_site_labels = tmp_sites;
@@ -7436,13 +7434,12 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
         {
             for (s = 0; s < g->length; s++)
             {
-                _recombinations = rm_cost;
+                g_recombinations = rm_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = tmp_sites[s];
                 if (m < 0)
                 {
-                    _recombinations = rm_cost * (-m);
-                    no_events = -m;
+                    g_recombinations = rm_cost * (-m);
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
@@ -7479,8 +7476,7 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
         }
     }
 
-    _recombinations = rm_cost;
-    no_events = 1;
+    g_recombinations = rm_cost;
     g_eventlist = tmp;
     g_sequence_labels = tmp_elements;
     g_site_labels = tmp_sites;

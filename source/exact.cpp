@@ -1016,9 +1016,9 @@ static int _intmax(int a, int b)
 /* Use branch&bound plus dynamic programming techniques to reconstruct
  * a history for g requiring a minimum number of recombinations. If
  * g_eventlist is not NULL, a list of the events leading to this number
- * of recombinations is compiled in g_eventlist. If haploblocks is not
+ * of recombinations is compiled in g_eventlist. If g_haploblocks is not
  * NULL, local minimum number of recombinations are stored in
- * haploblocks; haploblocks is assumed to be a table initialised to 0s
+ * g_haploblocks; g_haploblocks is assumed to be a table initialised to 0s
  * - entry i, j is set to the minimum number of recombinations
  * required in the region from site i to site i + j + 1. It is assumed
  * that lower is a valid lower bound on the number of recombinations,
@@ -1039,8 +1039,8 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     Event *e;
 #ifdef HAPLOTYPE_BLOCKS
     int i, j, n, localbound, oldreusable = reusable;
-    LList *l, *tmprep = representativeness;
-    LListCounter *tmprepcount = representativeness_counter;
+    LList *l, *tmprep = g_representativeness;
+    LListCounter *tmprepcount = g_representativeness_counter;
     SuperColumn *c;
 #endif
     PackedGenes *p;
@@ -1094,17 +1094,17 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     if (g_eventlist != NULL)
         g_eventlist = MakeLList();
 #ifdef HAPLOTYPE_BLOCKS
-    if (haploblocks != NULL)
+    if (g_haploblocks != NULL)
     {
         n = g->length;
-        representativeness = MakeLList();
+        g_representativeness = MakeLList();
         for (i = 0; i < g->length; i++)
         {
             c = (SuperColumn *)xmalloc(sizeof(SuperColumn));
             c->left = c->right = i;
-            Enqueue(representativeness, (void *)c);
+            Enqueue(g_representativeness, (void *)c);
         }
-        representativeness_counter = MakeCounter(representativeness, FIRST);
+        g_representativeness_counter = MakeCounter(g_representativeness, FIRST);
     }
 #endif
     /* Create working copy of g */
@@ -1124,11 +1124,11 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     implode = g_eventlist;
     g_eventlist = tmp;
 #ifdef HAPLOTYPE_BLOCKS
-    if (haploblocks != NULL)
+    if (g_haploblocks != NULL)
     {
-        l = representativeness;
-        representativeness = NULL;
-        free(representativeness_counter);
+        l = g_representativeness;
+        g_representativeness = NULL;
+        free(g_representativeness_counter);
     }
 #endif
     if (!no_recombinations_required(g))
@@ -1143,7 +1143,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
         }
 
 #ifdef HAPLOTYPE_BLOCKS
-        if (haploblocks != NULL)
+        if (g_haploblocks != NULL)
             reusable = 1;
 #endif
 #ifdef ENABLE_VERBOSE
@@ -1205,12 +1205,12 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 #endif
 
 #ifdef HAPLOTYPE_BLOCKS
-        if (haploblocks != NULL)
+        if (g_haploblocks != NULL)
         {
             /* We already computed minimum number of recombinations for full
              * sequence set.
              */
-            haploblocks[0][g->length - 2] = bound;
+            g_haploblocks[0][g->length - 2] = bound;
             /* Do not remember events from local bound computations */
             g_eventlist = NULL;
             /* Run through regions in order of increasing length */
@@ -1229,15 +1229,15 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
                             localbound = (intptr_t)lookup / 2;
                             if (i > 2)
                                 localbound = _intmax(localbound,
-                                                     _intmax(haploblocks[j][i - 3],
-                                                             haploblocks[j + 1][i - 3]));
+                                                     _intmax(g_haploblocks[j][i - 3],
+                                                             g_haploblocks[j + 1][i - 3]));
                             if (hashtable_update((void *)p, (void *)(localbound << reusable),
                                                  t, NULL) < 0)
                                 r2 = 1;
                             for (; (localbound <= upper) && !beagle_recursion(h, t, localbound, 1);)
                                 hashtable_update((void *)p, (void *)(++localbound << reusable),
                                                  t, NULL);
-                            haploblocks[j][i - 2] = localbound;
+                            g_haploblocks[j][i - 2] = localbound;
 #ifdef ENABLE_VERBOSE
                             if (v)
                                 printf("%d recombinations required between site %d and site %d\n",
@@ -1245,7 +1245,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 #endif
                         }
                         else
-                            haploblocks[j][i - 2] = -(intptr_t)lookup - 1;
+                            g_haploblocks[j][i - 2] = -(intptr_t)lookup - 1;
                         if (!r2)
                             free_packedgenes(p);
                     }
@@ -1255,7 +1255,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
             /* So far we have worked on imploded sequence set - reconstruct
              * local bounds for original sequence set.
              */
-            explode_local(haploblocks, l, n);
+            explode_local(g_haploblocks, l, n);
             /* Clean up */
             while (Length(l) > 0)
                 free(Pop(l));
@@ -1271,14 +1271,14 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
                               NULL, (void (*)(void *))free);
     }
 #ifdef HAPLOTYPE_BLOCKS
-    else if (haploblocks != NULL)
+    else if (g_haploblocks != NULL)
     {
         while (Length(l) > 0)
             DestroyLList((LList *)Pop(l));
         DestroyLList(l);
     }
-    representativeness = tmprep;
-    representativeness_counter = tmprepcount;
+    g_representativeness = tmprep;
+    g_representativeness_counter = tmprepcount;
 #endif
 
     if (g_eventlist != NULL)
@@ -1529,15 +1529,15 @@ static int *_greedy_initparam(unsigned long m)
 static void _noexp_rmin()
 {
     /* Set up hash table for common use for all beagle invocations */
-    if (_greedy_beaglereusable == NULL)
+    if (g_greedy_beaglereusable == NULL)
     {
-        _greedy_beaglereusable = beagle_allocate_hashtable(_greedy_currentstate, -1);
+        g_greedy_beaglereusable = beagle_allocate_hashtable(_greedy_currentstate, -1);
     }
     if (_greedy_rmin < 0)
     {
         /* We haven't computed r_min for this configuration yet */
         _greedy_rmin = beagle_reusable(_greedy_currentstate, NULL,
-                                       _greedy_beaglereusable);
+                                       g_greedy_beaglereusable);
     }
 }
 
@@ -1559,10 +1559,10 @@ static int _hb(Genes *g)
     /* Check whether this function call has previously been invoked; if
      * not, compute and store value.
      */
-    if (!hashtable_lookup(a, _greedy_functioncalls, (void **)&i))
+    if (!hashtable_lookup(a, g_greedy_functioncalls, (void **)&i))
     {
         i = haplotype_bound_genes(g);
-        hashtable_insert(a, (void *)i, _greedy_functioncalls);
+        hashtable_insert(a, (void *)i, g_greedy_functioncalls);
     }
 
     /* Store lower bound in expression */
@@ -1586,13 +1586,13 @@ static int _eagl(Genes *g)
     /* Check whether this function call has previously been invoked; if
      * not, compute and store value.
      */
-    if (!hashtable_lookup(a, _greedy_functioncalls, (void **)&b))
+    if (!hashtable_lookup(a, g_greedy_functioncalls, (void **)&b))
     {
         s = genes2sites(g);
         B = hudson_kaplan_local(s);
         free_sites(s);
         b = eagl(g, 10, B, NULL, NULL);
-        hashtable_insert(a, (void *)b, _greedy_functioncalls);
+        hashtable_insert(a, (void *)b, g_greedy_functioncalls);
     }
 
     return b;
@@ -1648,12 +1648,12 @@ static void _reset_builtins(Genes *g)
     _len = g->length;
 
     _greedy_rmin = _greedy_hk = -1;
-    if (_greedy_functioncalls != NULL)
+    if (g_greedy_functioncalls != NULL)
     {
-        hashtable_cleanout(_greedy_functioncalls, free, NULL);
+        hashtable_cleanout(g_greedy_functioncalls, free, NULL);
     }
     else
-        _greedy_functioncalls = hashtable_new(6, (unsigned long (*)(void *, void *))_greedy_hash,
+        g_greedy_functioncalls = hashtable_new(6, (unsigned long (*)(void *, void *))_greedy_hash,
                                               (int (*)(void *, void *))_greedy_compare,
                                               (void *(*)(unsigned long))_greedy_initparam);
 }
@@ -1698,10 +1698,10 @@ double scoring_function(Genes *g)
     // pick the move with the least negative score in this case, as needed.
     if (_choice_fixed)
     {
-        sign = (Temp < 0) - (Temp > 0) - (Temp == 0);
+        sign = (g_Temp < 0) - (g_Temp > 0) - (g_Temp == 0);
         if (no_recombinations_required(g))
         {
-            sc = sign * _recombinations;
+            sc = sign * g_recombinations;
         }
         else
         {
@@ -1730,7 +1730,7 @@ double scoring_function(Genes *g)
 
         _lb = lb;
 
-        sc = (_recombinations + lb) * _maxam + _am;
+        sc = (g_recombinations + lb) * _maxam + _am;
         if (sc < sc_min)
         {
             sc_min = sc;
@@ -1751,10 +1751,10 @@ double score_renormalise(Genes *g, double sc)
 
     if (_choice_fixed)
     {
-        sign = (Temp < 0) - (Temp > 0) - (Temp == 0);
+        sign = (g_Temp < 0) - (g_Temp > 0) - (g_Temp == 0);
         if (no_recombinations_required(g))
         {
-            sc = sign * _recombinations;
+            sc = sign * g_recombinations;
         }
         else
         {
@@ -1765,9 +1765,9 @@ double score_renormalise(Genes *g, double sc)
     {
         if (sc_max != sc_min)
         {
-            if (Temp != -1)
+            if (g_Temp != -1)
             {
-                sc = exp(Temp * (1 - (sc - sc_min) / (sc_max - sc_min)));
+                sc = exp(g_Temp * (1 - (sc - sc_min) / (sc_max - sc_min)));
             }
         }
         else
@@ -1835,18 +1835,18 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     set_verbose(0);
 #endif
 
-    if (rm_max < INT_MAX)
+    if (g_rm_max < INT_MAX)
     {
-        update_lookup(lookup, 0, rm_max);
+        update_lookup(g_lookup, 0, g_rm_max);
     }
 
     /* Create working copy of g */
     g = copy_genes(g);
 
-    if (howverbose > 0)
+    if (g_howverbose > 0)
     {
         fprintf(print_progress, "Input data:\n");
-        if (howverbose == 2)
+        if (g_howverbose == 2)
         {
             output_genes(g, print_progress, NULL);
         }
@@ -1855,18 +1855,18 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
     // Reduce the dataset
     implode_genes(g);
-    if (howverbose > 0)
+    if (g_howverbose > 0)
     {
-        if (howverbose == 2)
+        if (g_howverbose == 2)
         {
             output_genes(g, print_progress, NULL);
         }
         printf("%d sequences with %d sites after reducing\n", g->n, g->length);
     }
-    if (lookup != NULL)
+    if (g_lookup != NULL)
     {
-        if ((intptr_t)elist_get(lookup, 0) == INT_MAX)
-            update_lookup(lookup, 0, g->n * g->length);
+        if ((intptr_t)elist_get(g_lookup, 0) == INT_MAX)
+            update_lookup(g_lookup, 0, g->n * g->length);
     }
 
     global = 1;
@@ -1906,13 +1906,13 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             /* Wrap configuration and events leading to it in a HistoryFragment */
             f->event = g_eventlist;
             f->g = g;
-            f->recombinations = _recombinations;
+            f->recombinations = g_recombinations;
             f->elements = g_sequence_labels;
             f->sites = g_site_labels;
             f->action = ac;
             if (g_sequence_labels != NULL && g->n != 0 && g->n != elist_length(g_sequence_labels))
             {
-                fprintf(stderr, "Error: number of sequence labels in g_sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", elist_length(g_sequence_labels), g->n, _recombinations);
+                fprintf(stderr, "Error: number of sequence labels in g_sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", elist_length(g_sequence_labels), g->n, g_recombinations);
                 exit(0);
             }
             if (g_sequence_labels != NULL && g->length > 0 && g->length != g_site_labels.size())
@@ -1935,13 +1935,12 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
          * coalescing compatible sequences where neither is subsumed in the
          * other but where the ancestral material is still entangled.
          */
-        if (howverbose > 0)
+        if (g_howverbose > 0)
         {
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
             fprintf(print_progress, "Searching possible predecessors:\n");
         }
-        no_events = 0;
-        _recombinations = 0;
+        g_recombinations = 0;
         ac = COAL;
         preds = 0;
         nbdsize = 0;
@@ -1949,21 +1948,20 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         _coalesce_compatibleandentangled_map(g, action);
         preds = predecessors.size() - nbdsize;
         nbdsize = predecessors.size();
-        if (howverbose > 0)
+        if (g_howverbose > 0)
         {
             fprintf(print_progress, "%-40s %3d\n", "Coalescing entangled: ", preds);
         }
 
-        if (se_cost != -1)
+        if (g_se_cost != -1)
         {
-            no_events = 1;
-            _recombinations = se_cost;
+            g_recombinations = g_se_cost;
             ac = SE;
 
             seqerror_flips(g, action);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Sequencing errors: ", preds);
             }
@@ -1971,31 +1969,29 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
         if (rm_cost != -1)
         {
-            no_events = 1;
-            _recombinations = rm_cost;
+            g_recombinations = rm_cost;
             ac = RM;
 
             recmut_flips(g, action);
 
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Recurrent mutations: ", preds);
             }
         }
 
         /* Try all sensible events with one split */
-        if (r_cost != -1)
+        if (g_r_cost != -1)
         {
-            no_events = 1;
-            _recombinations = r_cost;
+            g_recombinations = g_r_cost;
             ac = RECOMB1;
 
             maximal_prefix_coalesces_map(g, start, end, action);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Prefix recombinations: ", preds);
             }
@@ -2003,23 +1999,22 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             maximal_postfix_coalesces_map(g, start, end, action);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Postfix recombinations: ", preds);
             }
         }
 
         /* Try all sensible events with two splits */
-        if (rr_cost != -1)
+        if (g_rr_cost != -1)
         {
-            no_events = 2;
-            _recombinations = rr_cost;
+            g_recombinations = g_rr_cost;
             ac = RECOMB2;
 
             maximal_infix_coalesces_map(g, start, end, action);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Two recombinations (infix): ", preds);
             }
@@ -2027,13 +2022,13 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             maximal_overlap_coalesces_map(g, start, end, action);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
-            if (howverbose > 0)
+            if (g_howverbose > 0)
             {
                 fprintf(print_progress, "%-40s %3d\n", "Two recombinations (overlap): ", preds);
             }
         }
 
-        if (howverbose > 0)
+        if (g_howverbose > 0)
         {
             fprintf(print_progress, "%-40s %3d\n", "Finished constructing predecessors.", predecessors.size());
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
@@ -2075,7 +2070,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 {
                     // output_genes(f->g, stderr, "\nGenes of f:\n");
                     _reset_builtins(f->g); // set f to be _greedy_currentstate
-                    _recombinations = f->recombinations;
+                    g_recombinations = f->recombinations;
                     // Calculate all the scores and update the min and max
                     score_array[i] = scoring_function(f->g);
 
@@ -2089,9 +2084,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             {
                 _reset_builtins(f->g); // set _greedy_currentstate to be f->g
 
-                _recombinations = f->recombinations;
+                g_recombinations = f->recombinations;
                 printscore = score_renormalise(f->g, score_array[i]);
-                if (print_progress != NULL && howverbose == 2)
+                if (print_progress != NULL && g_howverbose == 2)
                 {
                     fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->recombinations);
                     output_genes(f->g, print_progress, NULL);
@@ -2131,7 +2126,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         case COAL:
             break;
         case SE:
-            seflips = seflips + greedy_choice->recombinations / se_cost;
+            seflips = seflips + greedy_choice->recombinations / g_se_cost;
             break;
         case RM:
             rmflips = rmflips + greedy_choice->recombinations / rm_cost;
@@ -2144,7 +2139,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             break;
         }
 
-        if (print_progress != NULL && howverbose == 2)
+        if (print_progress != NULL && g_howverbose == 2)
         {
             fprintf(print_progress, "%s completed at cost of %.3f.\n", names[greedy_choice->action], greedy_choice->recombinations);
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
@@ -2152,7 +2147,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             output_genes(greedy_choice->g, print_progress, NULL);
             fflush(print_progress);
         }
-        if (print_progress != NULL && howverbose == 1)
+        if (print_progress != NULL && g_howverbose == 1)
         {
             fprintf(print_progress, "%s at cost %.3f \n", names[greedy_choice->action], greedy_choice->recombinations);
             fflush(print_progress);
@@ -2175,8 +2170,8 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             free_genes(g);
         }
 
-        // Can abandon the run if the number of recombinations already exceeds rec_max
-        if (recombs > rec_max)
+        // Can abandon the run if the number of recombinations already exceeds g_rec_max
+        if (recombs > g_rec_max)
         {
             bad_soln = 1;
             break;
@@ -2184,9 +2179,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
         // Can also abandon the run if the number of SE+RM when we have r recombinations is greater than what we've
         // seen in earlier solutions.
-        if (rec_max != INT_MAX && lookup != NULL)
+        if (g_rec_max != INT_MAX && g_lookup != NULL)
         {
-            if (seflips + rmflips > (intptr_t)elist_get(lookup, recombs))
+            if (seflips + rmflips > (intptr_t)elist_get(g_lookup, recombs))
             {
                 bad_soln = 1;
                 break;
@@ -2197,23 +2192,23 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     // If we exited the loop because of a sub-optimal solution, record this
     if (bad_soln)
     {
-        if (reference > 0)
+        if (g_run_reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", reference, r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", g_run_reference, g_run_seed, g_Temp, g_se_cost, rm_cost, g_r_cost, g_rr_cost, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", g_run_seed, g_Temp, g_se_cost, rm_cost, g_r_cost, g_rr_cost, total_nbdsize);
         }
     }
     else
     {
         // Otherwise, record the result
-        if (print_progress != NULL && howverbose > 0)
+        if (print_progress != NULL && g_howverbose > 0)
         {
             fprintf(print_progress, "\nTotal number of states considered: %d\n", total_nbdsize);
             fprintf(print_progress, "Total event cost: %.1f\n", r);
-            if (reference > 0)
+            if (g_run_reference > 0)
             {
                 fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
                         "SE", "RM", "R", "N_states", "Time");
@@ -2223,24 +2218,24 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 fprintf(print_progress, "%13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost", "SE", "RM", "R", "N_states", "Time");
             }
         }
-        if (reference > 0)
+        if (g_run_reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", reference, r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", g_run_reference, g_run_seed, g_Temp, g_se_cost, rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", r_seed, Temp, se_cost, rm_cost, r_cost, rr_cost, seflips, rmflips, recombs, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", g_run_seed, g_Temp, g_se_cost, rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
-        if (lookup != NULL)
+        if (g_lookup != NULL)
         {
-            if (seflips + rmflips < (intptr_t)elist_get(lookup, recombs))
+            if (seflips + rmflips < (intptr_t)elist_get(g_lookup, recombs))
             {
-                // If found a better bound r < rec_max for Rmin, update.
+                // If found a better bound r < g_rec_max for Rmin, update.
                 if (seflips + rmflips == 0)
                 {
-                    rec_max = recombs;
+                    g_rec_max = recombs;
                 }
-                update_lookup(lookup, recombs, seflips + rmflips);
+                update_lookup(g_lookup, recombs, seflips + rmflips);
             }
         }
     }
