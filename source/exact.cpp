@@ -604,7 +604,6 @@ static EList *_coalesce_compatibleandentangled(Genes *g)
 static int beagle_recursion(Genes *g, HashTable *t, int target,
                             int try_coalesces)
 {
-    fprintf(stderr, "\n starting beagle recursion \n");
     int i, j, n;
     Index *start, *end;
     EList *coalesced, *prefix, *postfix, *infix, *overlap;
@@ -1033,7 +1032,6 @@ static int _intmax(int a, int b)
 static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
                        HashTable *t)
 {
-    fprintf(stderr, "starting beagle core");
     Genes *h;
     int table_size, bound = 0, r1 = 0, r2 = 0;
     void *lookup;
@@ -1323,7 +1321,6 @@ int beagle_reusable(Genes *g, FILE *print_progress, HashTable *t)
     reusable = 1;
     n = beagle_core(g, print_progress, 0, INT_MAX, t);
     reusable = 0;
-    fprintf(stderr, "\n end beagle reusable \n");
 
     return n;
 }
@@ -1542,7 +1539,6 @@ static void _noexp_rmin()
         _greedy_rmin = beagle_reusable(_greedy_currentstate, NULL,
                                        _greedy_beaglereusable);
     }
-    fprintf(stderr, "\n end noexp \n");
 }
 
 /* Compute haplotype lower bound with the heuristic parameters
@@ -1691,7 +1687,6 @@ static double sc_min = DBL_MAX, sc_max = 0;
 static double prev_lb = 0, current_lb = 0, _lb;
 double scoring_function(Genes *g)
 {
-    fprintf(stderr, "starting scoring_function");
     double sc;
     double lb;
     int sign;
@@ -1716,7 +1711,7 @@ double scoring_function(Genes *g)
     // If we have not reached the end, score the move as usual.
     else
     {
-        if (_maxam < -75)
+        if (false) //_maxam < 75)
         {
             _noexp_rmin();
             lb = _greedy_rmin;
@@ -1726,12 +1721,10 @@ double scoring_function(Genes *g)
         //         }
         else if (_maxam < 200)
         {
-            fprintf(stderr, "score _hb");
             lb = _hb(g);
         }
         else
         {
-            fprintf(stderr, "score hudson kaplan");
             lb = hudson_kaplan_genes(g);
         }
 
@@ -1747,7 +1740,6 @@ double scoring_function(Genes *g)
             sc_max = sc;
         }
     }
-    fprintf(stderr, "score end");
     return sc;
 }
 
@@ -1910,8 +1902,6 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         auto action = [&](Genes *g)
         {
             auto f = std::make_unique<HistoryFragment>();
-
-            fprintf(print_progress, "\'");
 
             /* Wrap configuration and events leading to it in a HistoryFragment */
             f->event = eventlist;
@@ -2083,7 +2073,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 int i = 0;
                 for (auto &f : predecessors)
                 {
-                    output_genes(f->g, stderr, "\nGenes of f:\n");
+                    // output_genes(f->g, stderr, "\nGenes of f:\n");
                     _reset_builtins(f->g); // set f to be _greedy_currentstate
                     _recombinations = f->recombinations;
                     // Calculate all the scores and update the min and max
@@ -2116,7 +2106,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                     // compute score and check if better than that of greedy_choice
                     /* Set f to be new choice */
                     greedy_choice = std::move(f);
-                    output_genes(greedy_choice->g, stderr, "greedy_choice update:\n");
+                    //output_genes(greedy_choice->g, stderr, "greedy_choice update:\n");
                 }
 
                 i++;
@@ -2131,7 +2121,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         }   
 
         // greedy_choice is a unique pointer and everything it will be reset so need to copy out elements.
-        output_genes(greedy_choice->g, stderr, "greedy_choice:\n");
+        // output_genes(greedy_choice->g, stderr, "greedy_choice:\n");
         g = greedy_choice->g;
         elements =  greedy_choice->elements;
         sites = greedy_choice->sites;

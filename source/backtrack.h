@@ -65,7 +65,6 @@ struct HistoryFragment {
   HistoryFragment& operator=(HistoryFragment const &) = delete;
 
   ~HistoryFragment() {
-    fprintf(stderr, "deleting History Fragment and everything it contains!\n");
     if(g != NULL)
       free_genes(g);
     if (event != NULL) {

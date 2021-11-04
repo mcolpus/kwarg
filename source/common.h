@@ -7,7 +7,7 @@
 #include "gene.h"
 #include "arg.h"
 
-#define VERBOSE
+// #define VERBOSE
 
 // These definitions are passed when kwarg is created using make file
 #define HAPLOTYPE_BLOCKS

@@ -2901,7 +2901,7 @@ int remove_uninformative(Genes *g)
                         if (mulblocksize(i) + j < g->length)
                         {
                             //                             printf("Removing site labelled %d by deleting element number %d\n", mulblocksize(i) + j, mulblocksize(i) + j - n);
-                            print_int_vector(sites, "test output: \n");
+                            // print_int_vector(sites, "test output: \n");
                             sites.erase(sites.begin() + mulblocksize(i) + j - n);
                         }
                         else
@@ -2909,9 +2909,6 @@ int remove_uninformative(Genes *g)
                             j = BLOCKSIZE;
                             index = 0;
                         }
-                    }
-                    else {
-                        fprintf(stderr, "sites empty");
                     }
                     n++;
 #ifdef HAPLOTYPE_BLOCKS
@@ -5011,7 +5008,6 @@ Index *maximumsubsumedpostfix(Genes *g, int s)
 void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                   std::function<void(Genes *)> f)
 {
-    fprintf(stderr, "\n starting maximal_prefix_coalesces_map \n");
     int i, j, s, index, block, sindex, sblock,
         *ancestral = (int *)xmalloc(g->n * sizeof(int)),
         *out = (int *)xmalloc(g->n * sizeof(int));
@@ -5319,7 +5315,6 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
         }
     }
 
-    fprintf(stderr, "end");
 
     /* Clean up */
     free(out);

@@ -1,7 +1,7 @@
 # Tools to use
 CC = g++
 
-DEBUG = yes
+# DEBUG = yes
 
 # Flags to the C compiler
 # If DEBUG is 'yes', the executable is not optimised and compiled with
