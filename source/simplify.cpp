@@ -1,7 +1,7 @@
 /***************************************************************************
- * 
+ *
  *    simplify.c: Import a dataset and run the Clean algorithm
- * 
+ *
  ***************************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,122 +37,135 @@ int main(int argc, char **argv)
     Gene_SeqType seqtype = GENE_BINARY;
     FILE *fp;
     fp = stdout;
-    
+
     g_eventlist = MakeLList();
-    
-    /* Analyse command line options */
-    #define SIMPLIFY_OPTIONS "b::kofanQhH?"
-    
+
+/* Analyse command line options */
+#define SIMPLIFY_OPTIONS "b::kofanQhH?"
+
     /* Parse command line options */
-    while ((i = getopt(argc, argv, SIMPLIFY_OPTIONS)) >= 0){
-        switch(i){
-            case 'b':
-                /* Was a file name specified? */
-                if (optarg != 0){
-                    if(optarg[0] == '-') {
-                        fprintf(stderr, "Option -b requires an output file.\n");
-                        exit(1);
-                    }
-                    /* Check whether file can be written before initiating compuation */
-                    if ((fp = fopen(optarg, "w")) == NULL){
-                        fprintf(stderr, "Could not open file %s for output\n", optarg);
-                        _print_usage(stderr, argv[0]);
-                        exit(1);
-                    }
+    while ((i = getopt(argc, argv, SIMPLIFY_OPTIONS)) >= 0)
+    {
+        switch (i)
+        {
+        case 'b':
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    fprintf(stderr, "Option -b requires an output file.\n");
+                    exit(1);
                 }
-                break;
-            case 'k':
-                gene_knownancestor = 1;
-                break;
-            case 'Q':
-                quiet = 1;
-                break;
-            case 'o':
-                format = GENE_BEAGLE;
-                break;
-            case 'f':
-                format = GENE_FASTA;
-                break;
-            case 'a':
-                seqtype = GENE_AMINO;
-                break;
-            case 'n':
-                seqtype = GENE_NUCLEIC;
-                break;
-            case 'h':
-            case 'H':
-            case '?':
-                _print_usage(stdout, argv[0]);
-                exit(0);
-            case ':':
-                _print_usage(stderr, argv[0]);
-                exit(1);
+                /* Check whether file can be written before initiating compuation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    _print_usage(stderr, argv[0]);
+                    exit(1);
+                }
+            }
+            break;
+        case 'k':
+            gene_knownancestor = 1;
+            break;
+        case 'Q':
+            quiet = 1;
+            break;
+        case 'o':
+            format = GENE_BEAGLE;
+            break;
+        case 'f':
+            format = GENE_FASTA;
+            break;
+        case 'a':
+            seqtype = GENE_AMINO;
+            break;
+        case 'n':
+            seqtype = GENE_NUCLEIC;
+            break;
+        case 'h':
+        case 'H':
+        case '?':
+            _print_usage(stdout, argv[0]);
+            exit(0);
+        case ':':
+            _print_usage(stderr, argv[0]);
+            exit(1);
         }
     }
-    
-    
+
     /* Read data */
-    if (argc > optind){
+    if (argc > optind)
+    {
         fprintf(stderr, "Not a valid option: %s\n", argv[optind]);
         exit(1);
     }
-    else{
-        if ((a = read_genes(NULL, format, seqtype)) == NULL){
+    else
+    {
+        if ((a = read_genes(NULL, format, seqtype)) == NULL)
+        {
             fprintf(stderr, "Could not parse input as valid data\n");
             exit(1);
         }
     }
-    
-    if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
+
+    if ((gene_knownancestor) && (seqtype != GENE_BINARY))
+    {
         /* First sequence only included to specify known common ancestor */
         remove_annotatedgene(a, 0);
     }
     g = a->g;
-    
 
-    //Initialise the g_sequence_labels array (this will track the number of recombinations which each of the sequences has undergone)
+    // Initialise the g_sequence_labels array (this will track the number of recombinations which each of the sequences has undergone)
     g_sequence_labels = elist_make();
     g_site_labels = {};
-    if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
-        for(i=0; i < g->n; i++) {
-            elist_append(g_sequence_labels, (void *)(i+1));
+    if ((gene_knownancestor) && (seqtype != GENE_BINARY))
+    {
+        for (i = 0; i < g->n; i++)
+        {
+            elist_append(g_sequence_labels, (void *)(i + 1));
         }
-    } else {
-        for(i=0; i < g->n; i++) {
+    }
+    else
+    {
+        for (i = 0; i < g->n; i++)
+        {
             elist_append(g_sequence_labels, (void *)i);
         }
     }
     // Initialise the list of sites
-    for(i=0; i < g->length; i++) {
+    for (i = 0; i < g->length; i++)
+    {
         g_site_labels.push_back(i);
     }
-    
+
     // Print stats for input dataset
-//         printf("Input dataset has %d sequences and %d sites\n", g->n, g->length);
+    //         printf("Input dataset has %d sequences and %d sites\n", g->n, g->length);
     printf("Input dataset: %d sequences, %d sites\n", g->n, g->length);
-    
+
     implode_genes(g);
-    
+
     // Print stats for reduced dataset
-//         printf("Reduced dataset has %d sequences and %d sites\n", g->n, g->length);
+    //         printf("Reduced dataset has %d sequences and %d sites\n", g->n, g->length);
     printf("Reduced dataset: %d sequences, %d sites\n", g->n, g->length);
-    
+
     output_genes(g, fp, NULL);
-   
+
     printf("Sequences:\n");
     print_elist(g_sequence_labels, NULL);
-    
+
     printf("Sites:\n");
     print_int_vector(g_site_labels, NULL);
 
     // Tidying
-    if (g_eventlist != NULL){
+    if (g_eventlist != NULL)
+    {
         while (Length(g_eventlist) > 0)
             free(Pop(g_eventlist));
         DestroyLList(g_eventlist);
     }
     free_annotatedgenes(a);
 
-    
     return 0;
 }

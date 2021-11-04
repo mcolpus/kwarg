@@ -2719,7 +2719,8 @@ int remove_siamesetwins(Genes *g)
             }
 
         // Updated list of sites, labelling the master sites with -(number of columns collapsed).
-        if(!g_site_labels.empty()) {
+        if (!g_site_labels.empty())
+        {
             k = 0;
             for (i = 0; i < n; i++)
             {
@@ -2897,7 +2898,8 @@ int remove_uninformative(Genes *g)
                         e->event.s.site = mulblocksize(i) + j - n;
                         Enqueue(g_eventlist, e);
                     }
-                    if(!g_site_labels.empty()) {
+                    if (!g_site_labels.empty())
+                    {
                         if (mulblocksize(i) + j < g->length)
                         {
                             //                             printf("Removing site labelled %d by deleting element number %d\n", mulblocksize(i) + j, mulblocksize(i) + j - n);
@@ -5309,7 +5311,6 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
             }
         }
     }
-
 
     /* Clean up */
     free(out);

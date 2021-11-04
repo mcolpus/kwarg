@@ -1,10 +1,10 @@
 /*******************************************************************
-*
-*    mystring.c
-*  
-*    Implementation of functions for a concatenable string type.
-*
-********************************************************************/
+ *
+ *    mystring.c
+ *
+ *    Implementation of functions for a concatenable string type.
+ *
+ ********************************************************************/
 
 #include <stdlib.h>
 #include <string.h>
@@ -72,7 +72,8 @@ MyString *mystring_prepend(MyString *s, char *t)
 {
   int i = strlen(t);
 
-  for (; i > 0; Push((LList *)s, (void *)t[--i]));
+  for (; i > 0; Push((LList *)s, (void *)t[--i]))
+    ;
 
   return s;
 }

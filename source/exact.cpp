@@ -868,7 +868,6 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         splits = (BeagleSplitInformation *)
             xmalloc(elist_length(coalesced) * sizeof(BeagleSplitInformation));
 
-
     if (try_coalesces)
     {
         if (elist_length(coalesced) > 0)
@@ -1089,7 +1088,6 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
             free_packedgenes(p);
     }
 
-
     /* Compute a good lower bound on the number of recombinations */
     if (g_eventlist != NULL)
         g_eventlist = MakeLList();
@@ -1110,7 +1108,6 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     /* Create working copy of g */
     g = copy_genes(g);
     implode_genes(g);
-
 
 #ifdef DEBUG
     /* Insert initial ancestral state as one that was visited */
@@ -1181,7 +1178,6 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
             hashtable_update((void *)p, (void *)(bound << reusable),
                              t, NULL);
         }
-
 
         if (!r1)
             free_packedgenes(p);
@@ -1654,8 +1650,8 @@ static void _reset_builtins(Genes *g)
     }
     else
         g_greedy_functioncalls = hashtable_new(6, (unsigned long (*)(void *, void *))_greedy_hash,
-                                              (int (*)(void *, void *))_greedy_compare,
-                                              (void *(*)(unsigned long))_greedy_initparam);
+                                               (int (*)(void *, void *))_greedy_compare,
+                                               (void *(*)(unsigned long))_greedy_initparam);
 }
 
 /* Update global quantities with contribution from g and free any
@@ -1891,7 +1887,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         _minam = _minseq = _minlen = INT_MAX;
         _maxam = _maxseq = _maxlen = 0;
         // g = copy_genes(g);
-        greedy_choice.reset(nullptr);// = NULL;
+        greedy_choice.reset(nullptr); // = NULL;
         nbdsize = 0;
         preds = 0;
 
@@ -2051,7 +2047,6 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             g_site_labels.clear();
             reset();
 
-
             nbdsize = predecessors.size(); // number of predecessors we score
             if (nbdsize == 0)
             {
@@ -2101,24 +2096,22 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                     // compute score and check if better than that of greedy_choice
                     /* Set f to be new choice */
                     greedy_choice = std::move(f);
-                    //output_genes(greedy_choice->g, stderr, "greedy_choice update:\n");
+                    // output_genes(greedy_choice->g, stderr, "greedy_choice update:\n");
                 }
 
                 i++;
             }
 
-
             free(score_array);
 
             g_eventlist = tmp;
             predecessors.clear();
-
-        }   
+        }
 
         // greedy_choice is a unique pointer and everything it will be reset so need to copy out elements.
         // output_genes(greedy_choice->g, stderr, "greedy_choice:\n");
         g = greedy_choice->g;
-        g_sequence_labels =  greedy_choice->elements;
+        g_sequence_labels = greedy_choice->elements;
         g_site_labels = greedy_choice->sites;
 
         switch (greedy_choice->action)

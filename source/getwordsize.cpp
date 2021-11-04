@@ -1,8 +1,8 @@
 /************************************************************************
- * 
+ *
  * getwordsize.c: A simple program that just prints the number of bits
  * in an unsigned long and in an unsigned int.
- * 
+ *
  ************************************************************************/
 
 #include <stdio.h>

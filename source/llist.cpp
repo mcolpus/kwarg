@@ -1,29 +1,29 @@
 /*******************************************************************
-*
-*    llist.c
-*  
-*    Implementation of a general purpose linked list with a stack and
-*    queue interface.
-*		
-*    Christian Storm (cstorm@daimi.aau.dk), May 1995
-*
-*    Revision History:
-*
-*    January 2001. Modified LListMap to take a variable list of
-*                  arguments, instead of a void pointer; minor
-*		           change to InitCounter to allow the use of FIRST
-*		           and LAST.
-*		           Rune Lyngsø (rlyngsoe@brics.dk)
-*
-*    March 2005. Added functions Append and Prepend
-*                Rune Lyngsø (lyngsoe@stats.ox.ac.uk)
-*
-*    April 2007. Added MergeSort
-*                Rune Lyngsø (lyngsoe@stats.ox.ac.uk)
-*
-********************************************************************/
+ *
+ *    llist.c
+ *
+ *    Implementation of a general purpose linked list with a stack and
+ *    queue interface.
+ *
+ *    Christian Storm (cstorm@daimi.aau.dk), May 1995
+ *
+ *    Revision History:
+ *
+ *    January 2001. Modified LListMap to take a variable list of
+ *                  arguments, instead of a void pointer; minor
+ *		           change to InitCounter to allow the use of FIRST
+ *		           and LAST.
+ *		           Rune Lyngsï¿½ (rlyngsoe@brics.dk)
+ *
+ *    March 2005. Added functions Append and Prepend
+ *                Rune Lyngsï¿½ (lyngsoe@stats.ox.ac.uk)
+ *
+ *    April 2007. Added MergeSort
+ *                Rune Lyngsï¿½ (lyngsoe@stats.ox.ac.uk)
+ *
+ ********************************************************************/
 
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include "llist.h"
@@ -32,7 +32,8 @@
 static void *xmalloc(int n)
 {
   void *adr;
-  if ((adr = malloc(n)) == NULL){
+  if ((adr = malloc(n)) == NULL)
+  {
     fprintf(stderr, "Virtual memory exhausted.\n");
     exit(1);
   }
@@ -56,7 +57,7 @@ LList *MakeLList()
   (llist->last)->prev = llist->first;
   (llist->last)->next = NULL;
   (llist->last)->elm = NULL;
-  
+
   return llist;
 }
 
@@ -80,7 +81,7 @@ void InitLList(LList *llist)
 /* Destroys the LList-structure. That is, all except the elements
  * possibly pointed to by the elm-field in the LListNodes. The
  * function makes it very easy to lose all contact with these
- * elements ... use with care.  
+ * elements ... use with care.
  */
 void DestroyLList(LList *llist)
 {
@@ -88,10 +89,10 @@ void DestroyLList(LList *llist)
 
   /* free all the LListNodes */
   while ((temp = llist->first->next) != NULL)
-    {
-      llist->first->next = temp->next;
-      free(temp);
-    }
+  {
+    llist->first->next = temp->next;
+    free(temp);
+  }
   free(llist->first);
 
   /* free the LList */
@@ -99,7 +100,7 @@ void DestroyLList(LList *llist)
 }
 
 /* Inserts a _new node to the right of `lnode', thus it would be a BIG
- * mistake to call with `lnode' equal to `llist->last'.  
+ * mistake to call with `lnode' equal to `llist->last'.
  */
 void Insert(LList *llist, LListNode *lnode, void *elm)
 {
@@ -117,12 +118,12 @@ void Insert(LList *llist, LListNode *lnode, void *elm)
 }
 
 /* Removes the node `lnode'. It shall only be used the remove nodes
- * inserted using `Insert'.  
+ * inserted using `Insert'.
  */
 void *Remove(LList *llist, LListNode *lnode)
 {
   void *elm = lnode->elm;
-  
+
   (lnode->prev)->next = lnode->next;
   (lnode->next)->prev = lnode->prev;
   (llist->count)--;
@@ -218,13 +219,15 @@ void *GetByIndex(LList *llist, unsigned int index)
   if (index >= llist->count)
     return NULL;
 
-  if (index < llist->count / 2){
+  if (index < llist->count / 2)
+  {
     /* Position closest to start of llist */
     current = llist->first;
     for (i = 0; i <= index; i++)
       current = current->next;
   }
-  else{
+  else
+  {
     /* Position closest to end of llist */
     current = llist->last;
     for (i = llist->count; i > index; i--)
@@ -240,7 +243,8 @@ void LListMap(LList *llist, void (*f)(void *, va_list), ...)
   LListNode *current = llist->first;
   va_list args;
 
-  while ((current = current->next) != llist->last){
+  while ((current = current->next) != llist->last)
+  {
     va_start(args, *f);
     (*f)(current->elm, args);
     va_end(args);
@@ -255,7 +259,7 @@ LListCounter *MakeCounter(LList *llist, int pos)
   LListCounter *lcounter = (LListCounter *)xmalloc(sizeof(LListCounter));
 
   InitCounter(lcounter, llist, pos);
-  
+
   return lcounter;
 }
 
@@ -266,17 +270,17 @@ void InitCounter(LListCounter *lcounter, LList *llist, int pos)
     pos = llist->count;
 
   if (pos <= llist->count - 1 - pos)
-    {
-      /* The node 'pos' is not closest to the last node */
-      lcounter->pos = -1;
-      lcounter->current = llist->first;
-    }
+  {
+    /* The node 'pos' is not closest to the last node */
+    lcounter->pos = -1;
+    lcounter->current = llist->first;
+  }
   else
-    {
-      /* The node 'pos' is closest to the last node */
-      lcounter->pos = llist->count;
-      lcounter->current = llist->last;
-    }
+  {
+    /* The node 'pos' is closest to the last node */
+    lcounter->pos = llist->count;
+    lcounter->current = llist->last;
+  }
   SetCounter(lcounter, pos);
 }
 
@@ -296,32 +300,32 @@ void DestroyCounter(LListCounter *lcounter)
 void *SetCounter(LListCounter *lcounter, int pos)
 {
   if (pos == LAST)
+  {
+    /* Move to the end of the llist */
+    while ((lcounter->current)->next != NULL)
     {
-      /* Move to the end of the llist */
-      while ((lcounter->current)->next != NULL)
-	{
-	  (lcounter->pos)++;
-	  lcounter->current = (lcounter->current)->next;
-	}
+      (lcounter->pos)++;
+      lcounter->current = (lcounter->current)->next;
     }
+  }
   else if (pos > lcounter->pos)
+  {
+    /* Move 'pos - lcounter->pos' nodes to the right */
+    while (lcounter->pos < pos && (lcounter->current)->next != NULL)
     {
-      /* Move 'pos - lcounter->pos' nodes to the right */
-      while (lcounter->pos < pos && (lcounter->current)->next != NULL)
-	{
-	  (lcounter->pos)++;
-	  lcounter->current = (lcounter->current)->next;
-	}
+      (lcounter->pos)++;
+      lcounter->current = (lcounter->current)->next;
     }
+  }
   else if (pos < lcounter->pos)
+  {
+    /* Move 'lcounter->pos - pos' nodes to the left */
+    while (lcounter->pos > pos && (lcounter->current)->prev != NULL)
     {
-      /* Move 'lcounter->pos - pos' nodes to the left */
-      while (lcounter->pos > pos && (lcounter->current)->prev != NULL)
-	{
-	  (lcounter->pos)--;
-	  lcounter->current = (lcounter->current)->prev;
-	}
+      (lcounter->pos)--;
+      lcounter->current = (lcounter->current)->prev;
     }
+  }
 
   return (lcounter->current)->elm;
 }
@@ -403,27 +407,31 @@ int Length(LList *llist)
 }
 
 static LListNode *_merge(LListNode *a, LListNode *b,
-		   int (*less_than)(void *, void *))
+                         int (*less_than)(void *, void *))
 {
   LListNode *_new, *tmp;
 
   /* Find first element in merged list */
-  if (less_than(a->elm, b->elm)){
+  if (less_than(a->elm, b->elm))
+  {
     _new = tmp = a;
     a = a->next;
   }
-  else{
+  else
+  {
     _new = tmp = b;
     b = b->next;
   }
 
   /* Continue merging as long as both lists are non-empty */
   while ((a != NULL) && (b != NULL))
-    if (less_than(a->elm, b->elm)){
+    if (less_than(a->elm, b->elm))
+    {
       tmp->next = a;
       a = a->next;
     }
-    else{
+    else
+    {
       tmp->next = b;
       b = b->next;
     }
@@ -452,14 +460,16 @@ void MergeSort(LList *llist, int (*less_than)(void *, void *))
   /* Set up structure for holding sorted sublists */
   sublist = (LListNode **)xmalloc(n * sizeof(LListNode *));
   sublist[0] = llist->first->next;
-  for (i = 1; i < n; i++){
+  for (i = 1; i < n; i++)
+  {
     sublist[i] = (sublist[i - 1])->next;
     sublist[i - 1]->next = NULL;
   }
   sublist[n - 1]->next = NULL;
 
   /* Do the rounds of merging */
-  while (n > 1){
+  while (n > 1)
+  {
     for (i = 0; i < n / 2; i++)
       sublist[i] = _merge(sublist[2 * i], sublist[2 * i + 1], less_than);
     /* With an odd number of lists the last one is not merged with other
@@ -475,7 +485,8 @@ void MergeSort(LList *llist, int (*less_than)(void *, void *))
    */
   llist->first->next = sublist[0];
   tmp = llist->first;
-  while (tmp->next != NULL){
+  while (tmp->next != NULL)
+  {
     tmp->next->prev = tmp;
     tmp = tmp->next;
   }

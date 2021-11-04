@@ -1,11 +1,11 @@
 /*******************************************************************
- *   
+ *
  *   elist.c: Implementation of an expandable list with amortised constant time
  *   operations.
- *   
+ *
  ********************************************************************/
 
-#include <stdlib.h> 
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -16,11 +16,12 @@
 static void *xmalloc(int n)
 {
     void *adr;
-    if ((adr = malloc(n)) == NULL){
+    if ((adr = malloc(n)) == NULL)
+    {
         fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
         exit(2);
     }
-    
+
     return adr;
 }
 
@@ -30,11 +31,12 @@ static void *xmalloc(int n)
 static void *xrealloc(void *oldadr, int n)
 {
     void *adr;
-    if ((adr = realloc(oldadr, n)) == NULL){
+    if ((adr = realloc(oldadr, n)) == NULL)
+    {
         fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
         exit(2);
     }
-    
+
     return adr;
 }
 
@@ -43,7 +45,7 @@ EList *elist_make()
 {
     EList *elist = (EList *)xmalloc(sizeof(EList));
     elist_init(elist);
-    
+
     return elist;
 }
 
@@ -61,12 +63,12 @@ void elist_init(EList *elist)
 void elist_empty(EList *elist, void (*release)(void *))
 {
     int i;
-    
+
     if (release != NULL)
         for (i = 0; i < elist->count; i++)
             release(elist->list[i]);
-        
-        elist->count = 0;
+
+    elist->count = 0;
 }
 
 /* Free memory used by an EList structure, except for the EList
@@ -89,7 +91,8 @@ void elist_destroy(EList *elist)
 /* Insert a new element elm at the end of EList */
 void elist_append(EList *elist, void *elm)
 {
-    if (elist->count == elist->size){
+    if (elist->count == elist->size)
+    {
         /* We need to expand the list */
         if (elist->size)
             elist->size *= 2;
@@ -97,7 +100,7 @@ void elist_append(EList *elist, void *elm)
             elist->size = 1;
         elist->list = (void **)xrealloc(elist->list, elist->size * sizeof(void *));
     }
-    
+
     elist->list[elist->count++] = elm;
 }
 
@@ -105,10 +108,12 @@ void elist_append(EList *elist, void *elm)
 void elist_extend(EList *l1, EList *l2)
 {
     int i;
-    
-    if (l2->count > 0){
+
+    if (l2->count > 0)
+    {
         /* l2 does contain elements that needs to be moved */
-        if (l1->count + l2->count > l1->size){
+        if (l1->count + l2->count > l1->size)
+        {
             /* And we will need more space */
             l1->size = 2 * (l1->count + l2->count);
             l1->list = (void **)xrealloc(l1->list, l1->size * sizeof(void *));
@@ -118,7 +123,7 @@ void elist_extend(EList *l1, EList *l2)
             l1->list[l1->count + i] = l2->list[i];
         l1->count += l2->count;
     }
-    
+
     /* Destroy l2 */
     elist_destroy(l2);
 }
@@ -127,10 +132,12 @@ void elist_extend(EList *l1, EList *l2)
 void elist_safeextend(EList *l1, EList *l2)
 {
     int i;
-    
-    if (l2->count > 0){
+
+    if (l2->count > 0)
+    {
         /* l2 does contain elements that needs to be moved */
-        if (l1->count + l2->count > l1->size){
+        if (l1->count + l2->count > l1->size)
+        {
             /* And we will need more space */
             l1->size = 2 * (l1->count + l2->count);
             l1->list = (void **)xrealloc(l1->list, l1->size * sizeof(void *));
@@ -140,7 +147,6 @@ void elist_safeextend(EList *l1, EList *l2)
             l1->list[l1->count + i] = l2->list[i];
         l1->count += l2->count;
     }
-    
 }
 
 /* Remove last element from elist and return it */
@@ -152,16 +158,18 @@ void *elist_removelast(EList *elist)
         return NULL;
 }
 
-void *elist_deletelast(EList *elist) {   
+void *elist_deletelast(EList *elist)
+{
     void *elm;
-    
-    if (elist->count) {
+
+    if (elist->count)
+    {
         elm = elist->list[elist->count - 1];
         elist_remove(elist, elist->count - 1);
     }
     else
         elm = NULL;
-    
+
     return elm;
 }
 
@@ -172,15 +180,16 @@ void *elist_deletelast(EList *elist) {
 void *elist_remove(EList *elist, unsigned int index)
 {
     void *elm;
-    
-    if (index < elist->count){
+
+    if (index < elist->count)
+    {
         elm = elist->list[index];
-        memmove(elist->list + index, elist->list + index + 1, (elist->count - index - 1)*sizeof(void *));
+        memmove(elist->list + index, elist->list + index + 1, (elist->count - index - 1) * sizeof(void *));
         elist->count--;
     }
     else
         elm = NULL;
-    
+
     return elm;
 }
 
@@ -188,14 +197,15 @@ void *elist_remove(EList *elist, unsigned int index)
 void *elist_change(EList *elist, unsigned int index, void *elm)
 {
     void *oldelm;
-    
-    if (index < elist->count){
+
+    if (index < elist->count)
+    {
         oldelm = elist->list[index];
         elist->list[index] = elm;
     }
     else
         oldelm = NULL;
-    
+
     return oldelm;
 }
 
@@ -205,8 +215,9 @@ void *elist_change(EList *elist, unsigned int index, void *elm)
 void elist_swap(EList *elist, int i, int j)
 {
     void *tmp;
-    
-    if (i != j){
+
+    if (i != j)
+    {
         tmp = elist->list[i];
         elist->list[i] = elist->list[j];
         elist->list[j] = tmp;
@@ -226,8 +237,9 @@ void elist_map(EList *elist, void (*f)(void *, va_list), ...)
 {
     unsigned int i;
     va_list args;
-    
-    for (i = 0; i < elist->count; i++){
+
+    for (i = 0; i < elist->count; i++)
+    {
         va_start(args, *f);
         (*f)(elist->list[i], args);
         va_end(args);

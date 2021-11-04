@@ -1,9 +1,9 @@
 /***************************************************************************
-*
-*    common.c: Implementation of functions that should be commonly available
-*    to all source files.
-*
-****************************************************************************/
+ *
+ *    common.c: Implementation of functions that should be commonly available
+ *    to all source files.
+ *
+ ****************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -68,13 +68,15 @@ void *xmalloc(int n)
 {
   void *adr;
 
-  if (n <= 0){
+  if (n <= 0)
+  {
     fprintf(stderr,
-	    "Erroneous memory allocation with xmalloc, n<=0 - please email error report\n");
+            "Erroneous memory allocation with xmalloc, n<=0 - please email error report\n");
     return NULL;
   }
 
-  if ((adr = malloc(n)) == NULL){
+  if ((adr = malloc(n)) == NULL)
+  {
     fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
     exit(2);
   }
@@ -89,13 +91,15 @@ void *xcalloc(int m, int n)
 {
   void *adr;
 
-  if ((n <= 0) || (m <= 0)){
+  if ((n <= 0) || (m <= 0))
+  {
     fprintf(stderr,
-	    "Erroneous memory allocation with xcalloc, either n<=0 or m<=0 - please email error report\n");
+            "Erroneous memory allocation with xcalloc, either n<=0 or m<=0 - please email error report\n");
     return NULL;
   }
 
-  if ((adr = calloc(m, n)) == NULL){
+  if ((adr = calloc(m, n)) == NULL)
+  {
     fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
     exit(2);
   }
@@ -110,13 +114,15 @@ void *xrealloc(void *oldadr, int n)
 {
   void *adr;
 
-  if (n <= 0){
+  if (n <= 0)
+  {
     fprintf(stderr,
-	    "Erroneous memory allocation with xrealloc, n<=0 - please email error report\n");
+            "Erroneous memory allocation with xrealloc, n<=0 - please email error report\n");
     return NULL;
   }
 
-  if ((adr = realloc(oldadr, n)) == NULL){
+  if ((adr = realloc(oldadr, n)) == NULL)
+  {
     fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
     exit(2);
   }
@@ -134,47 +140,47 @@ void *xrealloc(void *oldadr, int n)
 void initialise_x2random(double seed)
 {
 #ifndef DEBUG
-    if(seed == 0) {
-        g_run_seed = (double)time(NULL) + (double)xrandom();
-    }
-    else {
-        g_run_seed = seed;
-    }
+  if (seed == 0)
+  {
+    g_run_seed = (double)time(NULL) + (double)xrandom();
+  }
+  else
+  {
+    g_run_seed = seed;
+  }
 
   srandom(g_run_seed);
 #else
   /* Make sure random sequence is the same for every run */
   srandom(1);
 #endif
-    
 }
 
 long int _xseed;
 void initialise_xrandom()
 {
-    _xseed = (double)time(NULL) + g_seed_counter;
+  _xseed = (double)time(NULL) + g_seed_counter;
 }
 
-/* xrandom(): Return (pseudo-)random number between 0 and XRAND_MAX 
+/* xrandom(): Return (pseudo-)random number between 0 and XRAND_MAX
  */
 long int x2random()
 {
-    long int r = random();
-    g_seed_counter++;
-//     printf("%li ", r);
-//     fflush(stdout);
-    return r;
-//     x2seed = (x2seed * 1664519 + 1013904229) % XRAND_MAX;
-//     return x2seed;
-    
+  long int r = random();
+  g_seed_counter++;
+  //     printf("%li ", r);
+  //     fflush(stdout);
+  return r;
+  //     x2seed = (x2seed * 1664519 + 1013904229) % XRAND_MAX;
+  //     return x2seed;
 }
 
 /* Simple LCG, only used for initialising hash tables.
  */
 long int xrandom()
 {
-    _xseed = (_xseed * 1664525 + 1013904223) % XRAND_MAX;
-    return _xseed;
+  _xseed = (_xseed * 1664525 + 1013904223) % XRAND_MAX;
+  return _xseed;
 }
 
 /* Convert n to string */
@@ -183,11 +189,12 @@ char *i2a(int n)
   char *s, *t;
 
   if (n > 0)
-    s = t = (char*)xmalloc(((int)log10(n) + 2) * sizeof(char));
+    s = t = (char *)xmalloc(((int)log10(n) + 2) * sizeof(char));
   else if (n == 0)
-    s = t = (char*)xmalloc(2 * sizeof(char));
-  else{
-    s = (char*)xmalloc(((int)log10(n) + 2) * sizeof(char));
+    s = t = (char *)xmalloc(2 * sizeof(char));
+  else
+  {
+    s = (char *)xmalloc(((int)log10(n) + 2) * sizeof(char));
     s[0] = '-';
     t = s + 1;
   }
@@ -215,45 +222,53 @@ void pretty_print(FILE *fp, char *s, int l, int i)
   while (isspace(*last))
     last--;
 
-  while (s <= last){
+  while (s <= last)
+  {
     /* Output indentation */
     for (j = 0; j < i; j++)
       fputc(' ', fp);
 
     /* Is there a new line within reach? */
     for (j = 0; (j <= l - i - 2) && (s + j <= last); j++)
-      if (s[j] == '\n'){
-	fwrite(s, sizeof(char), j + 1, fp);
-	s += j + 1;
-	break;
+      if (s[j] == '\n')
+      {
+        fwrite(s, sizeof(char), j + 1, fp);
+        s += j + 1;
+        break;
       }
     if ((j <= l - i - 2) && (s + j <= last))
       /* New line encountered - continue with next line */
       continue;
 
-    if (s + l - i <= last){
+    if (s + l - i <= last)
+    {
       /* Find good place for next line break */
-      for (j = l - i - 2; j > 0; j--){
-	if ((s[j] == '-') && (s[j - 1] != ' ')){
-	  /* Break after hyphen */
-	  j++;
-	  break;
-	}
-	if ((s[j] == ' ') && (s[j + 1] != '-')){
-	  /* Break at space, unless it borders a dash */
-	  while ((j > 0) && (s[j] == ' '))
-	    j--;
-	  if ((j > 0) && (s[j - 1] != '-'))
-	    break;
-	}
+      for (j = l - i - 2; j > 0; j--)
+      {
+        if ((s[j] == '-') && (s[j - 1] != ' '))
+        {
+          /* Break after hyphen */
+          j++;
+          break;
+        }
+        if ((s[j] == ' ') && (s[j + 1] != '-'))
+        {
+          /* Break at space, unless it borders a dash */
+          while ((j > 0) && (s[j] == ' '))
+            j--;
+          if ((j > 0) && (s[j - 1] != '-'))
+            break;
+        }
       }
-      if (j == 0){
-	/* No good line break found - look for acceptable line break */
-	for (j = l - i - 2; (j > 0) && (s[j] != ' '); j--);
-	while (s[j] == ' ')
-	  j--;
-	if (j == 0)
-	  j = l - i - 2;
+      if (j == 0)
+      {
+        /* No good line break found - look for acceptable line break */
+        for (j = l - i - 2; (j > 0) && (s[j] != ' '); j--)
+          ;
+        while (s[j] == ' ')
+          j--;
+        if (j == 0)
+          j = l - i - 2;
       }
     }
     else
@@ -297,43 +312,51 @@ void print_option(FILE *fp, char *option, char *description, int l, int i)
   fwrite(option, sizeof(char), n, fp);
   fputc(' ', fp);
 
-  if (n + 2 + m <= l){
+  if (n + 2 + m <= l)
+  {
     /* Whole description fits on first line - output it */
     fwrite(description, sizeof(char), m, fp);
     fputc('\n', fp);
   }
-  else{
+  else
+  {
     /* Check whether there is a new line within reach */
     for (j = 0; j <= l - n - 2; j++)
-      if (description[j] == '\n'){
-	fwrite(description, sizeof(char), j + 1, fp);
-	pretty_print(fp, description + j + 1, l, (i < 0 ? n + 2 : i));
-	return;
+      if (description[j] == '\n')
+      {
+        fwrite(description, sizeof(char), j + 1, fp);
+        pretty_print(fp, description + j + 1, l, (i < 0 ? n + 2 : i));
+        return;
       }
 
     /* Output first line of description */
     /* Find good place for next line break */
-    for (j = l - n - 3; j > 0; j--){
-      if ((description[j] == '-') && (description[j - 1] != ' ')){
-	/* Break after hyphen */
-	j++;
-	break;
+    for (j = l - n - 3; j > 0; j--)
+    {
+      if ((description[j] == '-') && (description[j - 1] != ' '))
+      {
+        /* Break after hyphen */
+        j++;
+        break;
       }
-      if ((description[j] == ' ') && (description[j + 1] != '-')){
-	/* Break at space, unless it borders a dash */
-	while ((j > 0) && (description[j] == ' '))
-	  j--;
-	if ((j > 0) && (description[j - 1] != '-'))
-	  break;
+      if ((description[j] == ' ') && (description[j + 1] != '-'))
+      {
+        /* Break at space, unless it borders a dash */
+        while ((j > 0) && (description[j] == ' '))
+          j--;
+        if ((j > 0) && (description[j - 1] != '-'))
+          break;
       }
     }
-    if (j == 0){
+    if (j == 0)
+    {
       /* No good line break found - look for acceptable line break */
-      for (j = l - n - 4; (j > 0) && (description[j] != ' '); j--);
+      for (j = l - n - 4; (j > 0) && (description[j] != ' '); j--)
+        ;
       while (description[j] == ' ')
-	j--;
+        j--;
       if (j == 0)
-	j = l - n - 4;
+        j = l - n - 4;
     }
     fwrite(description, sizeof(char), j + 1, fp);
     fputc('\n', fp);
@@ -361,28 +384,30 @@ void explode_local(int **local, LList *r, int n)
   last = MakeCounter(r, LAST);
   f = (SuperColumn *)Prev(first);
   /* Run through all pairs of sites in imploded sequence set */
-  while (f != NULL){
+  while (f != NULL)
+  {
     f2 = (SuperColumn *)Prev(first);
     a = (f2 != NULL ? f2->right : -1);
     b = n;
     l = (SuperColumn *)Prev(last);
-    while (l != f){
+    while (l != f)
+    {
       /* Run through all pairs of sites in original sequence set the
        * pair of sites in the imploded sequence set corresponds to.
        */
       for (i = f->right; i > a; i--)
-	for (j = b - 1; j >= l->left; j--)
-	  local[i][j - i - 1] = local[GetPosition(first) + 1]
-	    [GetPosition(last) - GetPosition(first) - 2];
+        for (j = b - 1; j >= l->left; j--)
+          local[i][j - i - 1] = local[GetPosition(first) + 1]
+                                     [GetPosition(last) - GetPosition(first) - 2];
       b = l->left;
-      l = (SuperColumn*)Prev(last);
+      l = (SuperColumn *)Prev(last);
     }
     /* Make sure to reset entries corresponding to bounds between
      * sites in the same collapsed position to 0.
      */
     for (i = b - 2; i > a; i--)
       for (j = b - 1; j > i; j--)
-	local[i][j - i - 1] = 0;
+        local[i][j - i - 1] = 0;
     f = f2;
     InitCounter(last, r, LAST);
   }
@@ -393,73 +418,88 @@ void explode_local(int **local, LList *r, int n)
 
 void remove_element(int *array, int index, int array_length)
 {
-    int i;
-    for(i = index; i < array_length - 1; i++) 
-        array[i] = array[i + 1];
-    array[array_length - 1] = 0;
+  int i;
+  for (i = index; i < array_length - 1; i++)
+    array[i] = array[i + 1];
+  array[array_length - 1] = 0;
 }
 
 void delete_i(int *array, int i, int array_length)
 {
-    int j;
-    for(j = 0; j < array_length; j++) 
-        if(array[j] == i) {
-            remove_element(array, j, array_length);
-            break;
-        }
+  int j;
+  for (j = 0; j < array_length; j++)
+    if (array[j] == i)
+    {
+      remove_element(array, j, array_length);
+      break;
+    }
 }
 
 void delete_by_value(int *array, int v, int array_length)
 {
-    int j = 0;
-    while(j < array_length){
-        if(array[j] == v) {
-            remove_element(array, j, array_length);
-        }
-        else {
-            j++;
-        }
+  int j = 0;
+  while (j < array_length)
+  {
+    if (array[j] == v)
+    {
+      remove_element(array, j, array_length);
     }
-}
-
-void print_elist(EList *e, char *comment) {
-    int i;
-    int p;
-    if(comment != NULL) {
-        printf("%s", comment);
+    else
+    {
+      j++;
     }
-    for(i=0; i < e->count; i++) {
-        p = (intptr_t)(elist_get(e, i));
-        if(p > 0) {
-            printf("%d ", p);
-        }
-        else {
-            printf("X ");
-        }
-    }
-    printf("\n");
-}
-
-void print_int_vector(std::vector<int> vec, char *comment) {
-  if(comment != NULL) {
-        printf("%s", comment);
   }
-  for(auto p : vec) {
-    if(p > 0) {
-        printf("%d ", p);
+}
+
+void print_elist(EList *e, char *comment)
+{
+  int i;
+  int p;
+  if (comment != NULL)
+  {
+    printf("%s", comment);
+  }
+  for (i = 0; i < e->count; i++)
+  {
+    p = (intptr_t)(elist_get(e, i));
+    if (p > 0)
+    {
+      printf("%d ", p);
     }
-    else {
-        printf("X ");
+    else
+    {
+      printf("X ");
     }
   }
   printf("\n");
 }
 
-void set_array(double *a1, double *a2, int a2_length, int b) {
-    int i;
-    
-    for(i = 0; i < a2_length; i++) {
-        a1[b + i] = a2[i];
+void print_int_vector(std::vector<int> vec, char *comment)
+{
+  if (comment != NULL)
+  {
+    printf("%s", comment);
+  }
+  for (auto p : vec)
+  {
+    if (p > 0)
+    {
+      printf("%d ", p);
     }
+    else
+    {
+      printf("X ");
+    }
+  }
+  printf("\n");
 }
 
+void set_array(double *a1, double *a2, int a2_length, int b)
+{
+  int i;
+
+  for (i = 0; i < a2_length; i++)
+  {
+    a1[b + i] = a2[i];
+  }
+}
