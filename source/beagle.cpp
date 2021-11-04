@@ -423,7 +423,7 @@ int main(int argc, char **argv)
         || (Length(gml_files) > 0) || (Length(gdl_files) > 0)
         || (Length(tree_files) > 0) || (Length(dottree_files) > 0)
         || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
-        eventlist = MakeLList();
+        g_eventlist = MakeLList();
     #ifdef HAPLOTYPE_BLOCKS
     if (haploblock_file != NULL){
         haploblocks = (int **)xmalloc((g->length - 1) * sizeof(int *));
@@ -485,7 +485,7 @@ int main(int argc, char **argv)
         || (Length(tree_files) > 0) || (Length(dottree_files) > 0)
         || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0)){
         if (comprehensive_bound >= 0){
-            eventlist	= beagle_randomised(g, NULL, comprehensive_bound, t);
+            g_eventlist	= beagle_randomised(g, NULL, comprehensive_bound, t);
             beagle_deallocate_hashtable(t);
         }
         while ((fp = (FILE *)Pop(history_files)) != NULL){
@@ -579,10 +579,10 @@ int main(int argc, char **argv)
             }
             arg_destroy(arg);
         }
-        if (eventlist != NULL){
-            while (Length(eventlist) > 0)
-                free(Pop(eventlist));
-            DestroyLList(eventlist);
+        if (g_eventlist != NULL){
+            while (Length(g_eventlist) > 0)
+                free(Pop(g_eventlist));
+            DestroyLList(g_eventlist);
         }
         }
         

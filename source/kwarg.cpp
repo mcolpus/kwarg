@@ -716,7 +716,7 @@ int main(int argc, char **argv)
         || (Length(gml_files) > 0) || (Length(gdl_files) > 0)
         || (Length(tree_files) > 0) || (Length(dottree_files) > 0)
         || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0)) {
-        eventlist = MakeLList();
+        g_eventlist = MakeLList();
         multruns = 0;
 	cost_in = 1;
 	T_in = 1;
@@ -822,22 +822,22 @@ int main(int argc, char **argv)
                 // Copy the data and set up the tracking lists
                 h = copy_genes(g);
                 seq_numbering = h->n;
-                elements = elist_make();
-                sites = {};
+                g_sequence_labels = elist_make();
+                g_site_labels = {};
                 // Initialise list of sequences
                 if ((gene_knownancestor) && (seqtype != GENE_BINARY)) {
                     for(i=0; i < h->n; i++) {
-                        elist_append(elements, (void *)(i+1));
+                        elist_append(g_sequence_labels, (void *)(i+1));
                     }
                 } else {
                     for(i=0; i < h->n; i++) {
-                        elist_append(elements, (void *)i);
+                        elist_append(g_sequence_labels, (void *)i);
                     }
                 }
                 
                 // Initialise the list of sites
                 for(i=0; i < h->length; i++) {
-                    sites.push_back(i);
+                    g_site_labels.push_back(i);
                 }
                 
                 // Get a history
@@ -850,9 +850,9 @@ int main(int argc, char **argv)
                 
                 // Tidy up for the next run
                 free_genes(h);
-                elist_destroy(elements);
-                elements = NULL;
-                sites.clear();
+                elist_destroy(g_sequence_labels);
+                g_sequence_labels = NULL;
+                g_site_labels.clear();
                 r_seed = 0;
                 
             }
@@ -960,10 +960,10 @@ int main(int argc, char **argv)
         } 
     
     
-        if (eventlist != NULL){
-            while (Length(eventlist) > 0)
-                free(Pop(eventlist));
-            DestroyLList(eventlist);
+        if (g_eventlist != NULL){
+            while (Length(g_eventlist) > 0)
+                free(Pop(g_eventlist));
+            DestroyLList(g_eventlist);
         }
     }
     

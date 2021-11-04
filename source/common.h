@@ -7,7 +7,7 @@
 #include "gene.h"
 #include "arg.h"
 
-// #define VERBOSE
+#define ENABLE_VERBOSE
 
 // These definitions are passed when kwarg is created using make file
 #define HAPLOTYPE_BLOCKS
@@ -37,9 +37,9 @@ extern LListCounter *representativeness_counter;
 extern int **haploblocks;
 void explode_local(int **local, LList *r, int n);
 #endif
-extern LList *eventlist;
-extern EList *elements;
-extern std::vector<int> sites;
+extern LList *g_eventlist;
+extern EList *g_sequence_labels;
+extern std::vector<int> g_site_labels;
 extern EList *lookup;
 extern int seq_numbering;
 extern double se_cost;
