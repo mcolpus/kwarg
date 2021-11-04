@@ -1711,7 +1711,7 @@ double scoring_function(Genes *g)
     // If we have not reached the end, score the move as usual.
     else
     {
-        if (false) //_maxam < 75)
+        if (_maxam < 75)
         {
             _noexp_rmin();
             lb = _greedy_rmin;

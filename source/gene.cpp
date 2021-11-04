@@ -2719,52 +2719,52 @@ int remove_siamesetwins(Genes *g)
             }
 
         // Updated list of sites, labelling the master sites with -(number of columns collapsed).
-        // if(sites != NULL) {
-        k = 0;
-        for (i = 0; i < n; i++)
-        {
-            s = -sites[state[i].master];
-            if (s <= 0)
+        if(!sites.empty()) {
+            k = 0;
+            for (i = 0; i < n; i++)
             {
-                s = 1;
+                s = -sites[state[i].master];
+                if (s <= 0)
+                {
+                    s = 1;
+                }
+                for (j = state[i].start; j < state[i].master; j++)
+                {
+                    //                     printf("Merging Siamese twin columns %d -> %d\n", j, state[i].master);
+                    p = sites[j - k];
+                    if (p < 0)
+                    {
+                        s = s - p;
+                    }
+                    else
+                    {
+                        s++;
+                    }
+                    sites.erase(sites.begin() + j - k);
+                    k++;
+                }
+                kk = k;
+                for (j = state[i].master + 1; j <= state[i].end; j++)
+                {
+                    //                     printf("Merging Siamese twin columns %d <- %d\n", state[i].master, j);
+                    p = sites[j - k];
+                    if (p < 0)
+                    {
+                        s = s - p;
+                    }
+                    else
+                    {
+                        s++;
+                    }
+                    sites.erase(sites.begin() + j - k);
+                    k++;
+                }
+                // Master site is now at position state[i].start
+                // Change this to be -(number of columns collapsed)
+                //                 printf("%d %d\n", state[i].master-kk, -s);
+                sites[state[i].master - kk] = -s;
             }
-            for (j = state[i].start; j < state[i].master; j++)
-            {
-                //                     printf("Merging Siamese twin columns %d -> %d\n", j, state[i].master);
-                p = sites[j - k];
-                if (p < 0)
-                {
-                    s = s - p;
-                }
-                else
-                {
-                    s++;
-                }
-                sites.erase(sites.begin() + j - k);
-                k++;
-            }
-            kk = k;
-            for (j = state[i].master + 1; j <= state[i].end; j++)
-            {
-                //                     printf("Merging Siamese twin columns %d <- %d\n", state[i].master, j);
-                p = sites[j - k];
-                if (p < 0)
-                {
-                    s = s - p;
-                }
-                else
-                {
-                    s++;
-                }
-                sites.erase(sites.begin() + j - k);
-                k++;
-            }
-            // Master site is now at position state[i].start
-            // Change this to be -(number of columns collapsed)
-            //                 printf("%d %d\n", state[i].master-kk, -s);
-            sites[state[i].master - kk] = -s;
         }
-        //}
 
 #ifdef ENABLE_VERBOSE
         if (verbose())
