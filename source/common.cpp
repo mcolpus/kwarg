@@ -46,7 +46,7 @@ double g_rr_cost;
 LList *g_eventlist;
 std::vector<int> g_sequence_labels;
 std::vector<int> g_site_labels;
-EList *g_lookup;
+std::vector<int> g_lookup;
 int g_seq_numbering;
 int g_howverbose = 0;
 double g_recombinations;

@@ -863,13 +863,13 @@ int main(int argc, char **argv)
             g_rec_max = 1000; // TODO What should this be
         }
         // Will store SE + RM in a g_lookup list with index = number of recombinations
-        g_lookup = elist_make();
+        g_lookup = {};
         for (i = 0; i <= g_rec_max; i++)
         {
-            elist_append(g_lookup, (void *)INT_MAX);
+            g_lookup.push_back(INT_MAX);
         }
         // We need 0 se/rm for g_rec_max recombinations
-        elist_change(g_lookup, g_rec_max, (void *)0);
+        g_lookup[g_rec_max] = 0;
     }
 
     for (l = 0; l < T_in; l++)
@@ -1060,10 +1060,6 @@ int main(int argc, char **argv)
     }
 
     /* Clean up */
-    if (g_lookup != NULL)
-    {
-        elist_destroy(g_lookup);
-    }
 
     if (g_greedy_beaglereusable != NULL)
     {

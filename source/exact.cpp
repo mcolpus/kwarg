@@ -1780,25 +1780,24 @@ static int (*_choice_function)(double);
  * 5 recombinations and 10 RMs but has not yet resolved all incompatibilities, then
  * this solution will be sub-optimal and can be abandoned.
  */
-void update_lookup(EList *lku, int index, int bd)
+void update_lookup(std::vector<int> &lku, int index, int bd)
 {
-    int i, j, k;
+    int i, k;
     // Let S = number of SE + RM in the solution
     // Let R = number of recombinations in the solution
     // Then lookup[R] = S, lookup[R + 1 : R + 2*S] <= S, lookup[R + 2*S : end] = 0
-    k = (lku->count - 1 > index + 2 * bd ? index + 2 * bd : lku->count - 1);
-    elist_change(lku, index, (void *)bd);
+    k = (lku.size() - 1 > index + 2 * bd ? index + 2 * bd : lku.size() - 1);
+    lku[index] = bd;
     for (i = index + 1; i <= k; i++)
     {
-        j = (intptr_t)elist_get(lku, i);
-        if (j > bd)
+        if (lku[i] > bd)
         {
-            elist_change(lku, i, (void *)bd);
+            lku[i] = bd;
         }
     }
-    for (i = k + 1; i < lku->count; i++)
+    for (i = k + 1; i < lku.size(); i++)
     {
-        elist_change(lku, i, (void *)0);
+        lku[i] = 0;
     }
 }
 
@@ -1855,9 +1854,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         }
         printf("%d sequences with %d sites after reducing\n", g->n, g->length);
     }
-    if (g_lookup != NULL)
+    if (!g_lookup.empty())
     {
-        if ((intptr_t)elist_get(g_lookup, 0) == INT_MAX)
+        if (g_lookup[0] == INT_MAX)
             update_lookup(g_lookup, 0, g->n * g->length);
     }
 
@@ -2167,9 +2166,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
         // Can also abandon the run if the number of SE+RM when we have r recombinations is greater than what we've
         // seen in earlier solutions.
-        if (g_rec_max != INT_MAX && g_lookup != NULL)
+        if (g_rec_max != INT_MAX && !g_lookup.empty())
         {
-            if (seflips + rmflips > (intptr_t)elist_get(g_lookup, recombs))
+            if (seflips + rmflips > g_lookup[recombs])
             {
                 bad_soln = 1;
                 break;
@@ -2214,9 +2213,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         {
             fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", g_run_seed, g_Temp, g_se_cost, rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
-        if (g_lookup != NULL)
+        if (!g_lookup.empty())
         {
-            if (seflips + rmflips < (intptr_t)elist_get(g_lookup, recombs))
+            if (seflips + rmflips < g_lookup[recombs])
             {
                 // If found a better bound r < g_rec_max for Rmin, update.
                 if (seflips + rmflips == 0)

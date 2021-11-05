@@ -41,7 +41,7 @@ void explode_local(int **local, LList *r, int n);
 extern LList *g_eventlist;
 extern std::vector<int> g_sequence_labels;
 extern std::vector<int> g_site_labels;
-extern EList *g_lookup;
+extern std::vector<int> g_lookup;
 extern int g_seq_numbering;
 extern double g_se_cost;
 extern double rm_cost;
