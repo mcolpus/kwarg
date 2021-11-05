@@ -27,9 +27,10 @@ void set_verbose(int v);
 #endif
 
 #ifdef HAPLOTYPE_BLOCKS
-typedef struct _SuperColumn {
-  int left;
-  int right;
+typedef struct _SuperColumn
+{
+    int left;
+    int right;
 } SuperColumn;
 
 extern LList *g_representativeness;
@@ -82,11 +83,25 @@ void set_array(double *a1, double *a2, int a2_length, int b);
 /**
  * swaps the values at i and j in the vector
  */
-template<typename T>
-void vector_swap_elements(std::vector<T> &vec, int i, int j)
+template <typename T>
+inline void vector_swap_elements(std::vector<T> &vec, int i, int j)
 {
-  T temp = vec[i];
-  vec[i] = vec[j];
-  vec[j] = temp;
+    T temp = vec[i];
+    vec[i] = vec[j];
+    vec[j] = temp;
+}
+
+/**
+ * append source to destination by moving elements (source left empty)
+ */
+template <typename T>
+inline void vector_append(std::vector<T> &destination, const std::vector<T> &source)
+{
+    if (destination.empty())
+        destination = std::move(source);
+    else
+        destination.insert(std::end(destination),
+                           std::make_move_iterator(std::begin(source)),
+                           std::make_move_iterator(std::end(source)));
 }
 #endif

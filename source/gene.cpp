@@ -3472,19 +3472,19 @@ int force_mutations(Genes *g)
 }
 
 /* For each mutation possible in g, force it and insert the resulting
- * set of sequences in an EList that is returned. A character can be
+ * set of sequences in a vector that is returned. A character can be
  * mutated if it is the only occurence of that type in its site and
  * there is at least one occurrence of the other type. If event is not
  * NULL the recombinations are appended to this EList in the same
- * order as the resulting configurations are stored in the EList
+ * order as the resulting configurations are stored in the vector
  * returned.
  */
-EList *force_mutation(Genes *g, EList *event)
+std::vector<Genes *> force_mutation(Genes *g, EList *event)
 {
     int i, j, k, w0, w1, index, block, blocks = divblocksize(g->n - 1) + 1;
     Sites *s = genes2sites(g);
     Genes *h;
-    EList *forced = elist_make();
+    std::vector<Genes *> forced = {};
     Event *e;
 
     for (i = 0; i < g->length; i++)
@@ -3516,7 +3516,7 @@ EList *force_mutation(Genes *g, EList *event)
             }
 #endif
             h->data[k + mulblocksize(j)].type[block] &= ~((unsigned long)1 << index);
-            elist_append(forced, h);
+            forced.push_back(h);
             if (event != NULL)
             {
                 /* Insert corresponding event in list of events */
@@ -3547,7 +3547,7 @@ EList *force_mutation(Genes *g, EList *event)
             }
 #endif
             h->data[k + mulblocksize(j)].type[block] |= ((unsigned long)1 << index);
-            elist_append(forced, h);
+            forced.push_back(h);
             if (event != NULL)
             {
                 /* Insert corresponding event in list of events */
@@ -3764,10 +3764,10 @@ int compatible(Genes *g, int a, int b)
 }
 
 /* Returns list of sites where sequences a and b are incompatible */
-EList *incompatible_sites(Genes *g, int a, int b)
+std::vector<int> incompatible_sites(Genes *g, int a, int b)
 {
     int i, j, k, blocks = divblocksize(g->length - 1) + 1;
-    EList *l = elist_make();
+    std::vector<int> incompatibilities = {};
     unsigned long incomp;
 
     for (i = 0; i < blocks; i++)
@@ -3780,17 +3780,17 @@ EList *incompatible_sites(Genes *g, int a, int b)
              */
             k = mulblocksize(i);
             j = lsb(incomp);
-            elist_append(l, (void *)(k + j));
+            incompatibilities.push_back(k + j);
             incomp ^= (unsigned long)1 << j;
             for (j++; incomp != 0; j++)
                 if ((((unsigned long)1 << j) & incomp) != 0)
                 {
-                    elist_append(l, (void *)(k + j));
+                    incompatibilities.push_back(k + j);
                     incomp ^= (unsigned long)1 << j;
                 }
         }
 
-    return l;
+    return incompatibilities;
 }
 
 /* Determines whether sequence a is subsumed in sequence b */
@@ -4094,11 +4094,11 @@ void coalesce(Genes *g, int a, int b)
  * in the same order as the resulting configurations are stored in the
  * EList returned.
  */
-EList *force_coalesce(Genes *g, EList *event)
+std::vector<Genes *> force_coalesce(Genes *g, EList *event)
 {
     int i, j;
     Genes *h;
-    EList *forced = elist_make();
+    std::vector<Genes *> forced = {};
     Event *e;
 
     for (i = 0; i < g->n - 1; i++)
@@ -4114,7 +4114,7 @@ EList *force_coalesce(Genes *g, EList *event)
 #endif
                 h = copy_genes(g);
                 coalesce(h, i, j);
-                elist_append(forced, h);
+                forced.push_back(h);
                 if (event != NULL)
                 {
                     /* Insert corresponding event in list of events */
@@ -4220,11 +4220,11 @@ void split(Genes *g, int a, int i)
  * appended to this EList in the same order as the resulting
  * configurations are stored in the EList returned.
  */
-EList *force_split(Genes *g, int a, EList *event)
+std::vector<Genes *> force_split(Genes *g, int a, EList *event)
 {
     int i, index = 0, block = 0;
     Genes *h;
-    EList *forced = elist_make();
+    std::vector<Genes *> forced = {};
     Event *e;
 
     /* No point in splitting before the first site carrying ancestral material */
@@ -4264,7 +4264,7 @@ EList *force_split(Genes *g, int a, EList *event)
 #endif
             h = copy_genes(g);
             _split(h, a, index, block);
-            elist_append(forced, h);
+            forced.push_back(h);
             if (event != NULL)
             {
                 /* Insert corresponding event in list of events */

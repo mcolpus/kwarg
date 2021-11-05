@@ -112,7 +112,7 @@ static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
 {
   int i, j;
   Genes *h;
-  EList *forced;
+  std::vector<Genes *> forced;
 
   /* Try all possible coalesces */
   for (i = 0; i < g->n - 1; i++)
@@ -139,12 +139,11 @@ static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
 #ifdef ENABLE_VERBOSE
   set_verbose(verbose() + 1);
 #endif
-  for (i = 0; i < elist_length(forced); i++)
+  for (i = 0; i < forced.size(); i++)
   {
-    h = elist_get(forced, i);
+    h = forced[i];
     handle_ancestralstate(h, n, lower, t, states);
   }
-  elist_destroy(forced);
 
   if (n > 0)
     /* Try all possible recombinations */
@@ -157,12 +156,11 @@ static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
 #ifdef ENABLE_VERBOSE
       set_verbose(verbose() + 1);
 #endif
-      for (j = 0; j < elist_length(forced); j++)
+      for (j = 0; j < forced.size(); j++)
       {
-        h = elist_get(forced, j);
+        h = forced[j];
         handle_ancestralstate(h, n - 1, lower - 1, t, states);
       }
-      elist_destroy(forced);
     }
 }
 
