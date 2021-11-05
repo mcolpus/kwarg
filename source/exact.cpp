@@ -374,11 +374,7 @@ static void _coalesce_cande_recursion(LList *stack, EList *component, Genes *g,
                     h = copy_genes(g);
                     if (g_eventlist != NULL)
                         g_eventlist = MakeLList();
-                    if (g_sequence_labels != NULL)
-                    {
-                        g_sequence_labels = elist_make();
-                        elist_safeextend(g_sequence_labels, oldelements);
-                    }
+                    g_sequence_labels = oldelements;
                     g_site_labels = oldsites;
                 }
                 coalesce(h, components[i] - 1, i);
@@ -1906,12 +1902,12 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             f->elements = g_sequence_labels;
             f->sites = g_site_labels;
             f->action = ac;
-            if (g_sequence_labels != NULL && g->n != 0 && g->n != elist_length(g_sequence_labels))
+            if (!g_sequence_labels.empty() && g->n != 0 && g->n != g_sequence_labels.size())
             {
-                fprintf(stderr, "Error: number of sequence labels in g_sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", elist_length(g_sequence_labels), g->n, g_recombinations);
+                fprintf(stderr, "Error: number of sequence labels in g_sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", g_sequence_labels.size(), g->n, g_recombinations);
                 exit(0);
             }
-            if (g_sequence_labels != NULL && g->length > 0 && g->length != g_site_labels.size())
+            if (!g_sequence_labels.empty() && g->length > 0 && g->length != g_site_labels.size())
             {
                 fprintf(stderr, "Error: number of site labels in sites not equal to current size of dataset.");
                 exit(0);
@@ -2042,8 +2038,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
             // Set the tracking lists to NULL for the score computation, and destroy the old g_sequence_labels/sites
             g_eventlist = NULL;
-            elist_destroy(g_sequence_labels);
-            g_sequence_labels = NULL;
+            g_sequence_labels.clear();
             g_site_labels.clear();
             reset();
 
@@ -2085,7 +2080,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 {
                     fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->recombinations);
                     output_genes(f->g, print_progress, NULL);
-                    print_elist(f->elements, "Sequences: ");
+                    print_int_vector(f->elements, "Sequences: ");
                     print_int_vector(f->sites, "Sites: ");
                     fprintf(print_progress, "Predecessor score: %.0f \n\n",
                             (printscore == -DBL_MAX ? -INFINITY : (printscore == DBL_MAX ? INFINITY : printscore)));

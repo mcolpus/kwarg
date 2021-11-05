@@ -909,22 +909,18 @@ int main(int argc, char **argv)
                 // Copy the data and set up the tracking lists
                 h = copy_genes(g);
                 g_seq_numbering = h->n;
-                g_sequence_labels = elist_make();
+                g_sequence_labels = {};
                 g_site_labels = {};
                 // Initialise list of sequences
                 if ((gene_knownancestor) && (seqtype != GENE_BINARY))
                 {
                     for (i = 0; i < h->n; i++)
-                    {
-                        elist_append(g_sequence_labels, (void *)(i + 1));
-                    }
+                        g_sequence_labels.push_back(i+1);
                 }
                 else
                 {
                     for (i = 0; i < h->n; i++)
-                    {
-                        elist_append(g_sequence_labels, (void *)i);
-                    }
+                        g_sequence_labels.push_back(i);
                 }
 
                 // Initialise the list of sites
@@ -943,8 +939,7 @@ int main(int argc, char **argv)
 
                 // Tidy up for the next run
                 free_genes(h);
-                elist_destroy(g_sequence_labels);
-                g_sequence_labels = NULL;
+                g_sequence_labels.clear();
                 g_site_labels.clear();
                 g_run_seed = 0;
             }

@@ -15,6 +15,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <vector>
+
 #include "common.h"
 #include "gene.h"
 #include "llist.h"
@@ -42,7 +44,7 @@ double rm_cost;
 double g_r_cost;
 double g_rr_cost;
 LList *g_eventlist;
-EList *g_sequence_labels;
+std::vector<int> g_sequence_labels;
 std::vector<int> g_site_labels;
 EList *g_lookup;
 int g_seq_numbering;

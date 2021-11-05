@@ -55,7 +55,7 @@ struct HistoryFragment {
 		       * configuration to end configuration.
 		       */
   double recombinations; /* Number of recombination events */
-  EList *elements;
+  std::vector<int> elements;
   std::vector<int> sites;
   Action action;
 
@@ -71,9 +71,6 @@ struct HistoryFragment {
       while (Length(event) != 0)
         free(Pop(event));
       DestroyLList(event);
-    }
-    if(elements != NULL) {
-      elist_destroy(elements);
     }
   }
 };

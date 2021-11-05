@@ -39,7 +39,7 @@ void explode_local(int **local, LList *r, int n);
 #endif
 
 extern LList *g_eventlist;
-extern EList *g_sequence_labels;
+extern std::vector<int> g_sequence_labels;
 extern std::vector<int> g_site_labels;
 extern EList *g_lookup;
 extern int g_seq_numbering;
@@ -79,4 +79,14 @@ void print_elist(EList *e, char *comment);
 void print_int_vector(std::vector<int> vec, char *comment);
 void set_array(double *a1, double *a2, int a2_length, int b);
 
+/**
+ * swaps the values at i and j in the vector
+ */
+template<typename T>
+void vector_swap_elements(std::vector<T> &vec, int i, int j)
+{
+  T temp = vec[i];
+  vec[i] = vec[j];
+  vec[j] = temp;
+}
 #endif

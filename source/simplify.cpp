@@ -118,21 +118,17 @@ int main(int argc, char **argv)
     g = a->g;
 
     // Initialise the g_sequence_labels array (this will track the number of recombinations which each of the sequences has undergone)
-    g_sequence_labels = elist_make();
+    g_sequence_labels = {};
     g_site_labels = {};
     if ((gene_knownancestor) && (seqtype != GENE_BINARY))
     {
         for (i = 0; i < g->n; i++)
-        {
-            elist_append(g_sequence_labels, (void *)(i + 1));
-        }
+            g_sequence_labels.push_back(i+1);
     }
     else
     {
         for (i = 0; i < g->n; i++)
-        {
-            elist_append(g_sequence_labels, (void *)i);
-        }
+            g_sequence_labels.push_back(i);
     }
     // Initialise the list of sites
     for (i = 0; i < g->length; i++)
@@ -153,7 +149,7 @@ int main(int argc, char **argv)
     output_genes(g, fp, NULL);
 
     printf("Sequences:\n");
-    print_elist(g_sequence_labels, NULL);
+    print_int_vector(g_sequence_labels, NULL);
 
     printf("Sites:\n");
     print_int_vector(g_site_labels, NULL);
