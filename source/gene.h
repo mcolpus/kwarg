@@ -7,7 +7,6 @@
 #include <functional>
 #include <memory>
 
-#include "elist.h"
 #include "llist.h"
 #include "hashtable.h"
 
@@ -199,7 +198,7 @@ int no_recombinations_required(Genes *g);
 void force_safeevents(Genes *g);
 int force_mutations(Genes *g);
 int mutate(Genes *g, int pos, int mutant);
-std::vector<Genes *> force_mutation(Genes *g, EList *event);
+std::vector<Genes *> force_mutation(Genes *g, std::vector<Event> &events);
 int segregating_site(Genes *g, int i);
 int conflicting_sites(Genes *g);
 int next_ancestral(Genes *g, int a, int i);
@@ -214,10 +213,10 @@ std::vector<int> one_sequences(Sites *s, int i);
 int find_safe_coalescence(Genes *g, int a);
 int entangled(Genes *g, int a, int b);
 void coalesce(Genes *g, int a, int b);
-std::vector<Genes *> force_coalesce(Genes *g, EList *event);
+std::vector<Genes *> force_coalesce(Genes *g, std::vector<Event> &events);
 int coalescence_amleft(Genes *g, int a, int b);
 void split(Genes *g, int a, int i);
-std::vector<Genes *> force_split(Genes *g, int a, EList *event);
+std::vector<Genes *> force_split(Genes *g, int a, std::vector<Event> &events);
 void split_coalesceprefix(Genes *g, int a, int index, int block, int b);
 void split_coalescepostfix(Genes *g, int a, int index, int block, int b);
 void splitafter_coalescepostfix(Genes *g, int a, int index, int block, int b);

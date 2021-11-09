@@ -1348,9 +1348,8 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
     int reuse = 1, i, j, *permutation;
     Genes *h;
     LList *tmp = g_eventlist, *history;
-    EList *events;
+    std::vector<Event> events = {};
     std::vector<Genes *> configurations;
-    Event *e;
     g_eventlist = NULL;
 
     /* Allocate hash table for ancestral configurations encountered if
@@ -1373,7 +1372,6 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
      * in history.
      */
     history = MakeLList();
-    events = elist_make();
     h = copy_genes(g);
     while (h->n > 1)
     {
@@ -1392,7 +1390,7 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
         {
             for (i = j; i > 1; i--)
             {
-                e = (Event *)xmalloc(sizeof(Event));
+                Event *e = (Event *)xmalloc(sizeof(Event));
                 e->type = COALESCENCE;
                 e->event.c.s1 = unbiased_random(i);
                 j = unbiased_random(i - 1);
@@ -1430,7 +1428,7 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
             j = unbiased_random(configurations.size() - i);
             free_genes(h);
             h = configurations[permutation[i + j]];
-            e = (Event *)elist_get(events, permutation[i + j]);
+            Event *e = &(events[permutation[i + j]]);
             if (beagle_reusable_bounded(h, NULL, 0, r - (e->type == RECOMBINATION), t) <= r - (e->type == RECOMBINATION))
             {
                 /* Found next configuration */
@@ -1443,18 +1441,15 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
                 for (i++; i < configurations.size(); i++)
                 {
                     free_genes( configurations[permutation[i]] );
-                    free(elist_get(events, permutation[i]));
                 }
                 /* Clean up */
                 configurations.clear();
-                events->count = 0;
                 free(permutation);
                 break;
             }
             else
             {
                 /* This direction would lead to excess recombinations */
-                free(elist_get(events, permutation[i + j]));
                 permutation[i + j] = permutation[i];
                 if (i == configurations.size() - 1)
                 {
@@ -1467,7 +1462,6 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
     }
 
     /* Clean up */
-    elist_destroy(events);
     free_genes(h);
     g_eventlist = tmp;
 

@@ -3476,11 +3476,11 @@ int force_mutations(Genes *g)
  * set of sequences in a vector that is returned. A character can be
  * mutated if it is the only occurence of that type in its site and
  * there is at least one occurrence of the other type. If event is not
- * NULL the recombinations are appended to this EList in the same
+ * NULL the recombinations are appended to this vector in the same
  * order as the resulting configurations are stored in the vector
  * returned.
  */
-std::vector<Genes *> force_mutation(Genes *g, EList *event)
+std::vector<Genes *> force_mutation(Genes *g, std::vector<Event> &events)
 {
     int i, j, k, w0, w1, index, block, blocks = divblocksize(g->n - 1) + 1;
     Sites *s = genes2sites(g);
@@ -3518,15 +3518,13 @@ std::vector<Genes *> force_mutation(Genes *g, EList *event)
 #endif
             h->data[k + mulblocksize(j)].type[block] &= ~((unsigned long)1 << index);
             forced.push_back(h);
-            if (event != NULL)
-            {
-                /* Insert corresponding event in list of events */
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = SUBSTITUTION;
-                e->event.s.seq = k + mulblocksize(j);
-                e->event.s.site = i;
-                elist_append(event, e);
-            }
+            
+            /* Insert corresponding event in list of events */
+            Event e;
+            e.type = SUBSTITUTION;
+            e.event.s.seq = k + mulblocksize(j);
+            e.event.s.site = i;
+            events.push_back(std::move(e));
         }
         if (!gene_knownancestor && (w0 == 1) && (w1 > 0))
         {
@@ -3549,15 +3547,12 @@ std::vector<Genes *> force_mutation(Genes *g, EList *event)
 #endif
             h->data[k + mulblocksize(j)].type[block] |= ((unsigned long)1 << index);
             forced.push_back(h);
-            if (event != NULL)
-            {
-                /* Insert corresponding event in list of events */
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = SUBSTITUTION;
-                e->event.s.seq = k + mulblocksize(j);
-                e->event.s.site = i;
-                elist_append(event, e);
-            }
+            /* Insert corresponding event in list of events */
+            Event e;
+            e.type = SUBSTITUTION;
+            e.event.s.seq = k + mulblocksize(j);
+            e.event.s.site = i;
+            events.push_back(std::move(e));
         }
     }
 
@@ -4090,12 +4085,12 @@ void coalesce(Genes *g, int a, int b)
 }
 
 /* For each pair of compatible sequences of g, coalesce them and
- * insert the resulting set of sequences in an EList that is returned.
- * If event is not NULL the coalesces are appended to this EList
+ * insert the resulting set of sequences in an vector that is returned.
+ * If events is not NULL the coalesces are appended to this vector
  * in the same order as the resulting configurations are stored in the
- * EList returned.
+ * vector returned.
  */
-std::vector<Genes *> force_coalesce(Genes *g, EList *event)
+std::vector<Genes *> force_coalesce(Genes *g, std::vector<Event> &events)
 {
     int i, j;
     Genes *h;
@@ -4116,15 +4111,12 @@ std::vector<Genes *> force_coalesce(Genes *g, EList *event)
                 h = copy_genes(g);
                 coalesce(h, i, j);
                 forced.push_back(h);
-                if (event != NULL)
-                {
-                    /* Insert corresponding event in list of events */
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = COALESCENCE;
-                    e->event.c.s1 = i;
-                    e->event.c.s2 = j;
-                    elist_append(event, e);
-                }
+                /* Insert corresponding event in list of events */
+                Event e;
+                e.type = COALESCENCE;
+                e.event.c.s1 = i;
+                e.event.c.s2 = j;
+                events.push_back(std::move(e));
             }
 
     return std::move(forced);
@@ -4217,11 +4209,11 @@ void split(Genes *g, int a, int i)
 
 /* For each split in sequence a of g leading to a unique _new set of
  * sequences, force it and insert the resulting set of sequences in an
- * EList that is returned. If event is not NULL the recombinations are
- * appended to this EList in the same order as the resulting
- * configurations are stored in the EList returned.
+ * vector that is returned. If event is not NULL the recombinations are
+ * appended to this vector in the same order as the resulting
+ * configurations are stored in the vector returned.
  */
-std::vector<Genes *> force_split(Genes *g, int a, EList *event)
+std::vector<Genes *> force_split(Genes *g, int a, std::vector<Event> &events)
 {
     int i, index = 0, block = 0;
     Genes *h;
@@ -4266,15 +4258,12 @@ std::vector<Genes *> force_split(Genes *g, int a, EList *event)
             h = copy_genes(g);
             _split(h, a, index, block);
             forced.push_back(h);
-            if (event != NULL)
-            {
-                /* Insert corresponding event in list of events */
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = RECOMBINATION;
-                e->event.r.seq = a;
-                e->event.r.pos = index + mulblocksize(block);
-                elist_append(event, e);
-            }
+            /* Insert corresponding event in list of events */
+            Event e;
+            e.type = RECOMBINATION;
+            e.event.r.seq = a;
+            e.event.r.pos = index + mulblocksize(block);
+            events.push_back(std::move(e));
         }
     }
 
