@@ -86,22 +86,27 @@ void set_array(double *a1, double *a2, int a2_length, int b);
 template <typename T>
 inline void vector_swap_elements(std::vector<T> &vec, int i, int j)
 {
-    T temp = vec[i];
-    vec[i] = vec[j];
-    vec[j] = temp;
+    T temp = std::move(vec[i]);
+    vec[i] = std::move(vec[j]);
+    vec[j] = std::move(temp);
 }
 
 /**
  * append source to destination by moving elements (source left empty)
  */
 template <typename T>
-inline void vector_append(std::vector<T> &destination, const std::vector<T> &source)
+inline void vector_append(std::vector<T> &destination, std::vector<T> &source)
 {
     if (destination.empty())
         destination = std::move(source);
     else
-        destination.insert(std::end(destination),
-                           std::make_move_iterator(std::begin(source)),
-                           std::make_move_iterator(std::end(source)));
+    {
+        std::move(std::begin(source), std::end(source), std::back_inserter(destination));
+        // destination.insert(std::end(destination),
+        //                    std::make_move_iterator(std::begin(source)),
+        //                    std::make_move_iterator(std::end(source)));
+    }
+
 }
+
 #endif

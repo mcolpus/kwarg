@@ -111,6 +111,20 @@ static void permute_elist(EList *elist)
     }
 }
 
+/* Permute the elements in a vector */
+template <typename T>
+static void permute_vector(std::vector<T> &vec)
+{
+    int i, j;
+
+    for (i = vec.size(); i > 1;)
+    {
+        j = unbiased_random(i);
+        i--;
+        vector_swap_elements(vec, i , j);
+    }
+}
+
 /* Transfer the ancestral states in genes to the array splits (that
  * should be sufficiently large to hold all transfered ancestral
  * states). For each ancestral state it is checked whether it has
@@ -120,7 +134,7 @@ static void permute_elist(EList *elist)
  * ancestral states transferred is added to n.
  */
 static int transfer2splitinformation(BeagleSplitInformation *splits,
-                                     EList *genes, int base, int *n,
+                                     std::vector<std::unique_ptr<HistoryFragment>> &genes, int base, int *n,
                                      HashTable *t, int target)
 {
     int i, prevtarget, bound;
@@ -130,12 +144,12 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
     Event *e;
 
     /* Insert all feasible branches from genes into splits */
-    for (i = 0; i < elist_length(genes); i++)
+    for (i = 0; i < genes.size(); i++)
     {
         /* Check whether we have already encountered this ancestral state
          * with the same, or larger, target.
          */
-        splits[*n].g = static_cast<HistoryFragment *>(elist_get(genes, i));
+        splits[*n].g = genes[i].release();
         g = splits[*n].g->g;
 
         p = pack_genes(g);
@@ -164,9 +178,9 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                     free(splits[*n].g);
                     /* We found a solution - eliminate all candidates */
                     free_genes(g);
-                    for (i++; i < elist_length(genes); i++)
+                    for (i++; i < genes.size(); i++)
                     {
-                        splits[*n].g = (HistoryFragment *)elist_get(genes, i);
+                        splits[*n].g = genes[i].release();
                         if (g_eventlist != NULL)
                         {
                             while (Length(splits[*n].g->event) > 0)
@@ -187,7 +201,6 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                         }
                         free(splits[i].g);
                     }
-                    elist_destroy(genes);
                     free(splits);
                     return 1;
                 }
@@ -261,48 +274,48 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
         (*n)++;
     }
 
-    elist_destroy(genes);
     return 0;
 }
 
 /* Free the memory used by the sequence sets stored in elist as well
  * as by elist itself.
  */
-static void free_elist_elements(EList *elist)
-{
-    int i;
-    HistoryFragment *s;
+//TODO: Not needed now as HistoryFragment has destructor
+// static void free_elist_elements(std::vector<HistoryFragment *> elist)
+// {
+//     int i;
+//     HistoryFragment *s;
 
-    for (i = 0; i < elist_length(elist); i++)
-    {
-        s = (HistoryFragment *)elist_get(elist, i);
-        if ((g_eventlist != NULL) && (s->event != NULL))
-        {
-            while (Length(s->event) > 0)
-                free(Pop(s->event));
-            DestroyLList(s->event);
-        }
-        free_genes(s->g);
-        free(s);
-    }
+//     for (i = 0; i < elist.size(); i++)
+//     {
+//         s = elist[i];
+//         if ((g_eventlist != NULL) && (s->event != NULL))
+//         {
+//             while (Length(s->event) > 0)
+//                 free(Pop(s->event));
+//             DestroyLList(s->event);
+//         }
+//         free_genes(s->g);
+//         free(s);
+//     }
 
-    elist_destroy(elist);
-}
+//     elist_destroy(elist);
+// }
 
 /* Check whether any of the set of sequences in genes can be explained
  * without using recombinations. If so, free the memory used by the
  * sequence sets stored in genes as well as by genes itself and return
  * 1; otherwise return 0.
  */
-static int check_for_bottom(EList *genes)
+static int check_for_bottom(const std::vector<std::unique_ptr<HistoryFragment>> &genes)
 {
     int i;
     Genes *g;
     HistoryFragment *s;
 
-    for (i = 0; i < elist_length(genes); i++)
+    for (i = 0; i < genes.size(); i++)
     {
-        s = (HistoryFragment *)elist_get(genes, i);
+        s = genes[i].get();
         g = s->g;
         if (no_recombinations_required(g))
         {
@@ -319,7 +332,6 @@ static int check_for_bottom(EList *genes)
                 Append(g_eventlist, s->event);
                 s->event = NULL;
             }
-            free_elist_elements(genes);
             return 1;
         }
     }
@@ -567,20 +579,20 @@ static void _coalesce_compatibleandentangled_map(Genes *g, F f)
  * are in the same set and insert all resulting HistoryFragments in a
  * list that is returned.
  */
-static EList *_coalesce_compatibleandentangled_states;
+static std::vector<std::unique_ptr<HistoryFragment>> _coalesce_compatibleandentangled_states = {};
 static void _coalesce_compatibleandentangled_f(Genes *g)
 {
-    HistoryFragment *f = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
+    auto f = std::make_unique<HistoryFragment>();
 
     f->g = g;
     f->event = g_eventlist;
-    elist_append(_coalesce_compatibleandentangled_states, f);
+    _coalesce_compatibleandentangled_states.push_back(std::move(f));
 }
-static EList *_coalesce_compatibleandentangled(Genes *g)
+static std::vector<std::unique_ptr<HistoryFragment>> _coalesce_compatibleandentangled(Genes *g)
 {
-    _coalesce_compatibleandentangled_states = elist_make();
+    _coalesce_compatibleandentangled_states.clear();
     _coalesce_compatibleandentangled_map(g, _coalesce_compatibleandentangled_f);
-    return _coalesce_compatibleandentangled_states;
+    return std::move(_coalesce_compatibleandentangled_states);
 }
 
 /* Recursion actually implementing the branch&bound procedure of
@@ -602,7 +614,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
 {
     int i, j, n;
     Index *start, *end;
-    EList *coalesced, *prefix, *postfix, *infix, *overlap;
+    std::vector<std::unique_ptr<HistoryFragment>> coalesced, prefix, postfix, infix, overlap;
     BeagleSplitInformation *splits;
 #ifdef ENABLE_VERBOSE
     int v = verbose();
@@ -617,7 +629,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
          * other but where the ancestral material is still entangled.
          */
         coalesced = _coalesce_compatibleandentangled(g);
-        n = elist_length(coalesced);
+        n = coalesced.size();
         if (check_for_bottom(coalesced))
         {
 #ifdef ENABLE_VERBOSE
@@ -633,6 +645,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
     }
     else
         n = 0;
+    
     i = 0;
     if (target > 0)
     {
@@ -651,7 +664,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
             free(start);
             free(end);
             if (try_coalesces)
-                free_elist_elements(coalesced);
+                coalesced.clear();
 #ifdef ENABLE_VERBOSE
             if (v)
             {
@@ -666,20 +679,20 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         /* If a random solution is required, we need to randomise the splits */
         if (exact_randomise)
         {
-            elist_extend(postfix, prefix);
-            permute_elist(postfix);
-            n += elist_length(postfix);
+            vector_append(postfix, prefix);
+            permute_vector(postfix);
+            n += postfix.size();
         }
         else
-            n += elist_length(prefix) + elist_length(postfix);
+            n += prefix.size() + postfix.size();
         if (check_for_bottom(postfix))
         {
             free(start);
             free(end);
             if (try_coalesces)
-                free_elist_elements(coalesced);
+                coalesced.clear();
             if (!exact_randomise)
-                free_elist_elements(prefix);
+                prefix.clear();
 #ifdef ENABLE_VERBOSE
             if (v)
             {
@@ -702,9 +715,9 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                 free(start);
                 free(end);
                 if (try_coalesces)
-                    free_elist_elements(coalesced);
-                free_elist_elements(prefix);
-                free_elist_elements(postfix);
+                    coalesced.clear();
+                prefix.clear();
+                postfix.clear();
 #ifdef ENABLE_VERBOSE
                 if (v)
                 {
@@ -719,24 +732,24 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
             /* If a random solution is required, we need to randomise the splits */
             if (exact_randomise)
             {
-                elist_extend(overlap, infix);
-                permute_elist(overlap);
-                n += elist_length(overlap);
+                vector_append(overlap, infix);
+                permute_vector(overlap);
+                n += overlap.size();
             }
             else
-                n += elist_length(infix) + elist_length(overlap);
+                n += infix.size() + overlap.size();
 
             if (check_for_bottom(overlap))
             {
                 free(start);
                 free(end);
                 if (try_coalesces)
-                    free_elist_elements(coalesced);
-                free_elist_elements(postfix);
+                    coalesced.clear();
+                postfix.clear();
                 if (!exact_randomise)
                 {
-                    free_elist_elements(prefix);
-                    free_elist_elements(infix);
+                    prefix.clear();
+                    infix.clear();
                 }
 #ifdef ENABLE_VERBOSE
                 if (v)
@@ -761,10 +774,10 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                     free(start);
                     free(end);
                     if (try_coalesces)
-                        free_elist_elements(coalesced);
-                    free_elist_elements(prefix);
-                    free_elist_elements(postfix);
-                    free_elist_elements(overlap);
+                        coalesced.clear();
+                    prefix.clear();
+                    postfix.clear();
+                    overlap.clear();
 #ifdef ENABLE_VERBOSE
                     if (v)
                     {
@@ -780,10 +793,10 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                     free(start);
                     free(end);
                     if (try_coalesces)
-                        free_elist_elements(coalesced);
+                        coalesced.clear();
                     if (!exact_randomise)
-                        free_elist_elements(prefix);
-                    free_elist_elements(postfix);
+                        prefix.clear();
+                    postfix.clear();
 #ifdef ENABLE_VERBOSE
                     if (v)
                     {
@@ -798,12 +811,6 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                     return 1;
                 }
             }
-            else
-            {
-                if (!exact_randomise)
-                    elist_destroy(infix);
-                elist_destroy(overlap);
-            }
         }
         else if (n > 0)
         {
@@ -817,8 +824,8 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                 free(start);
                 free(end);
                 if (try_coalesces)
-                    free_elist_elements(coalesced);
-                free_elist_elements(postfix);
+                    coalesced.clear();
+                postfix.clear();
 #ifdef ENABLE_VERBOSE
                 if (v)
                 {
@@ -834,7 +841,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                 free(start);
                 free(end);
                 if (try_coalesces)
-                    free_elist_elements(coalesced);
+                    coalesced.clear();
 #ifdef ENABLE_VERBOSE
                 if (v)
                 {
@@ -849,24 +856,18 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                 return 1;
             }
         }
-        else
-        {
-            if (!exact_randomise)
-                elist_destroy(prefix);
-            elist_destroy(postfix);
-        }
 
         /* Clean up */
         free(start);
         free(end);
     }
-    else if (try_coalesces && (elist_length(coalesced) > 0))
+    else if (try_coalesces && (coalesced.size() > 0))
         splits = (BeagleSplitInformation *)
-            xmalloc(elist_length(coalesced) * sizeof(BeagleSplitInformation));
+            xmalloc(coalesced.size() * sizeof(BeagleSplitInformation));
 
     if (try_coalesces)
     {
-        if (elist_length(coalesced) > 0)
+        if (coalesced.size() > 0)
         {
             if (transfer2splitinformation(splits, coalesced, 0, &i, t, target))
             {
@@ -881,8 +882,6 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                 return 1;
             }
         }
-        else
-            elist_destroy(coalesced);
     }
 
     /* We now have all the ancestral states that could sensibly lead to
@@ -1411,10 +1410,15 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
         /* Determine configurations reachable by mutation */
         configurations = force_mutation(h, events);
         /* Determine configurations reachable by coalescence */
-        vector_append(configurations, force_coalesce(h, events));
+
+        auto new_configs = force_coalesce(h, events);
+        vector_append(configurations, new_configs);
         /* Determine configurations reachable by recombinations */
-        for (i = 0; i < h->n; i++)
-            vector_append(configurations, force_split(h, i, events));
+        for (i = 0; i < h->n; i++) {
+            new_configs = force_split(h, i, events);
+            vector_append(configurations, new_configs);
+        }
+            
         /* Go through configurations in randomly permuted order and choose
          * first that does not exceed recombination allowance.
          */

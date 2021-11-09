@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <functional>
+#include <memory>
 
 #include "elist.h"
 #include "llist.h"
@@ -53,13 +54,99 @@ typedef struct _Index {
   int block;
 } Index;
 
-
 /* Global variable for specifying whether the common ancestral
  * sequence is known or not.
  */
 extern int gene_knownancestor;
 /* Prototypes */
 void free_genes(Genes *g);
+
+// Moved from backtrack to avoid cyclic references
+typedef enum
+{
+    SUBSTITUTION,
+    COALESCENCE,
+    RECOMBINATION,
+    REMOVE,
+    COLLAPSE,
+    SWAP,
+    LOOKUP,
+    SEFLIP,
+    RMFLIP
+} EventType;
+typedef enum
+{
+    COAL,
+    SE,
+    RM,
+    RECOMB1,
+    RECOMB2
+} Action;
+
+typedef struct _Event
+{
+    EventType type;
+    union
+    {
+        struct
+        {
+            int seq;
+            int site;
+        } s;
+        struct
+        {
+            int s1;
+            int s2;
+        } c;
+        struct
+        {
+            int seq;
+            int pos;
+        } r;
+        struct
+        {
+            int s1;
+            int s2;
+        } swap;
+        struct
+        {
+            int seq;
+            int site;
+        } flip;
+        int collapse;
+        int remove;
+        int lookup;
+    } event;
+} Event;
+
+struct HistoryFragment {
+  Genes *g;           /* End configuration */
+  LList *event;       /* List of events leading from start
+		       * configuration to end configuration.
+		       */
+  double recombinations; /* Number of recombination events */
+  std::vector<int> elements;
+  std::vector<int> sites;
+  Action action;
+
+  HistoryFragment() = default;
+
+  HistoryFragment(HistoryFragment const &) = delete;
+  HistoryFragment& operator=(HistoryFragment const &) = delete;
+
+  ~HistoryFragment() {
+    if(g != NULL)
+      free_genes(g);
+    if (event != NULL) {
+      while (Length(event) != 0)
+        free(Pop(event));
+      DestroyLList(event);
+    }
+  }
+};
+
+#include "backtrack.h"
+
 Genes *make_genes();
 void free_annotatedgenes(AnnotatedGenes *g);
 void free_sites(Sites *s);
@@ -121,9 +208,9 @@ int compatible(Genes *g, int a, int b);
 std::vector<int> incompatible_sites(Genes *g, int a, int b);
 int subsumed_sequence(Genes *g, int a, int b);
 int subsumed_site(Sites *s, int a, int b);
-EList *ancestral_sites(Genes *g, int a);
-EList *zero_sequences(Sites *s, int i);
-EList *one_sequences(Sites *s, int i);
+std::vector<int> ancestral_sites(Genes *g, int a);
+std::vector<int> zero_sequences(Sites *s, int i);
+std::vector<int> one_sequences(Sites *s, int i);
 int find_safe_coalescence(Genes *g, int a);
 int entangled(Genes *g, int a, int b);
 void coalesce(Genes *g, int a, int b);
@@ -149,18 +236,18 @@ Index *maximumsubsumedprefixs(Genes *g);
 Index *maximumsubsumedpostfixs(Genes *g);
 Index *maximumsubsumedprefix(Genes *g, int s);
 Index *maximumsubsumedpostfix(Genes *g, int s);
-EList *maximal_prefix_coalesces(Genes *g, Index *a, Index *b);
+std::vector<std::unique_ptr<HistoryFragment>> maximal_prefix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
 				    std::function<void (Genes *)> f);
-EList *maximal_postfix_coalesces(Genes *g, Index *a, Index *b);
+std::vector<std::unique_ptr<HistoryFragment>> maximal_postfix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
 				     std::function<void (Genes *)> f);
 void seqerror_flips(Genes* g, std::function<void (Genes *)> f);
 void recmut_flips(Genes* g, std::function<void (Genes *)> f);
-EList *maximal_infix_coalesces(Genes *g, Index *a, Index *b);
+std::vector<std::unique_ptr<HistoryFragment>> maximal_infix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
 				  std::function<void (Genes *)> f);
-EList *maximal_overlap_coalesces(Genes *g, Index *a, Index *b);
+std::vector<std::unique_ptr<HistoryFragment>> maximal_overlap_coalesces(Genes *g, Index *a, Index *b);
 void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
 				     std::function<void (Genes *)>);
 int compare_sequences(Genes *g, int a, int b);
@@ -175,7 +262,6 @@ void init_geneshashtable(HashTable *table, int bits);
 HashTable *new_packedgeneshashtable(int bits);
 void init_packedgeneshashtable(HashTable *table, int bits);
 
-/* Postpone this inclusion until data types have been defined */
-#include "backtrack.h"
+
 
 #endif

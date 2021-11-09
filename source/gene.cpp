@@ -20,6 +20,7 @@
 
 #include <vector>
 #include <functional>
+#include <memory>
 
 #include "gene.h"
 #include "llist.h"
@@ -3828,16 +3829,16 @@ int subsumed_site(Sites *s, int a, int b)
 }
 
 /* Return list of indeces of ancestral sites in sequence a */
-EList *ancestral_sites(Genes *g, int a)
+std::vector<int> ancestral_sites(Genes *g, int a)
 {
     int i, block = 0;
     unsigned long index = 1;
-    EList *sites = elist_make();
+    std::vector<int> sites = {};
 
     for (i = 0; i < g->length; i++)
     {
         if (g->data[a].ancestral[block] & index)
-            elist_append(sites, (void *)i);
+            sites.push_back(i);
         if ((index <<= 1) == 0)
         {
             /* End of block - continue with next block */
@@ -3850,10 +3851,10 @@ EList *ancestral_sites(Genes *g, int a)
 }
 
 /* Return list of indeces of sequences carrying a 0 in site i */
-EList *zero_sequences(Sites *s, int i)
+std::vector<int> zero_sequences(Sites *s, int i)
 {
     int h, j, k, blocks = divblocksize(s->n - 1) + 1;
-    EList *l = elist_make();
+    std::vector<int> l = {};
     unsigned long zeros;
 
     for (h = 0; h < blocks; h++)
@@ -3866,12 +3867,12 @@ EList *zero_sequences(Sites *s, int i)
              */
             k = mulblocksize(h);
             j = lsb(zeros);
-            elist_append(l, (void *)(k + j));
+            l.push_back(k + j);
             zeros ^= (unsigned long)1 << j;
             for (j++; zeros != 0; j++)
                 if ((((unsigned long)1 << j) & zeros) != 0)
                 {
-                    elist_append(l, (void *)(k + j));
+                    l.push_back(k + j);
                     zeros ^= (unsigned long)1 << j;
                 }
         }
@@ -3880,10 +3881,10 @@ EList *zero_sequences(Sites *s, int i)
 }
 
 /* Return list of indeces of sequences carrying a 1 in site i */
-EList *one_sequences(Sites *s, int i)
+std::vector<int> one_sequences(Sites *s, int i)
 {
     int h, j, k, blocks = divblocksize(s->n - 1) + 1;
-    EList *l = elist_make();
+    std::vector<int> l = {};
     unsigned long ones;
 
     for (h = 0; h < blocks; h++)
@@ -3896,12 +3897,12 @@ EList *one_sequences(Sites *s, int i)
              */
             k = mulblocksize(h);
             j = lsb(ones);
-            elist_append(l, (void *)(k + j));
+            l.push_back(k + j);
             ones ^= (unsigned long)1 << j;
             for (j++; ones != 0; j++)
                 if ((((unsigned long)1 << j) & ones) != 0)
                 {
-                    elist_append(l, (void *)(k + j));
+                    l.push_back(k + j);
                     ones ^= (unsigned long)1 << j;
                 }
         }
@@ -4126,7 +4127,7 @@ std::vector<Genes *> force_coalesce(Genes *g, EList *event)
                 }
             }
 
-    return forced;
+    return std::move(forced);
 }
 
 /* Computes the amount of ancestral material left after coalescing the
@@ -4277,7 +4278,7 @@ std::vector<Genes *> force_split(Genes *g, int a, EList *event)
         }
     }
 
-    return forced;
+    return std::move(forced);
 }
 
 /* Split sequence a before site given by index and block and
@@ -5321,20 +5322,20 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
  * resulting configurations are returned as a list of
  * HistoryFragments.
  */
-static EList *_maximal_prefix_coalesces_list;
+static std::vector<std::unique_ptr<HistoryFragment>> _maximal_prefix_coalesces_list = {};
 static void _maximal_prefix_coalesces_f(Genes *g)
 {
-    HistoryFragment *f = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
+    auto f = std::make_unique<HistoryFragment>();
 
     f->g = g;
     f->event = g_eventlist;
-    elist_append(_maximal_prefix_coalesces_list, f);
+    _maximal_prefix_coalesces_list.push_back(std::move(f));
 }
-EList *maximal_prefix_coalesces(Genes *g, Index *a, Index *b)
+std::vector<std::unique_ptr<HistoryFragment>> maximal_prefix_coalesces(Genes *g, Index *a, Index *b)
 {
-    _maximal_prefix_coalesces_list = elist_make();
+    _maximal_prefix_coalesces_list.clear();
     maximal_prefix_coalesces_map(g, a, b, _maximal_prefix_coalesces_f);
-    return _maximal_prefix_coalesces_list;
+    return std::move(_maximal_prefix_coalesces_list);
 }
 
 /* Find all postfixes of sequences in g that are maximally compatible
@@ -5675,20 +5676,20 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
  * ancestral material in s, a is larger than zero, and b is smaller
  * than the sequence length.
  */
-static EList *_maximal_postfix_coalesces_list;
+static std::vector<std::unique_ptr<HistoryFragment>> _maximal_postfix_coalesces_list = {};
 static void _maximal_postfix_coalesces_f(Genes *g)
 {
-    HistoryFragment *f = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
+    auto f = std::make_unique<HistoryFragment>();
 
     f->g = g;
     f->event = g_eventlist;
-    elist_append(_maximal_postfix_coalesces_list, f);
+    _maximal_postfix_coalesces_list.push_back(std::move(f));
 }
-EList *maximal_postfix_coalesces(Genes *g, Index *a, Index *b)
+std::vector<std::unique_ptr<HistoryFragment>> maximal_postfix_coalesces(Genes *g, Index *a, Index *b)
 {
-    _maximal_postfix_coalesces_list = elist_make();
+    _maximal_postfix_coalesces_list.clear();
     maximal_postfix_coalesces_map(g, a, b, _maximal_postfix_coalesces_f);
-    return _maximal_postfix_coalesces_list;
+    return std::move(_maximal_postfix_coalesces_list);
 }
 
 /* Initialise subsumed to be those sequences that agree with the
@@ -6552,20 +6553,20 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
  * imploded gene, i.e. sites a and b carry ancestral material in s, a
  * is larger than zero, and b is smaller than the sequence length.
  */
-static EList *_maximal_infix_coalesces_list;
+static std::vector<std::unique_ptr<HistoryFragment>> _maximal_infix_coalesces_list = {};
 static void _maximal_infix_coalesces_f(Genes *g)
 {
-    HistoryFragment *f = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
+    auto f = std::make_unique<HistoryFragment>();
 
     f->g = g;
     f->event = g_eventlist;
-    elist_append(_maximal_infix_coalesces_list, f);
+    _maximal_infix_coalesces_list.push_back(std::move(f));
 }
-EList *maximal_infix_coalesces(Genes *g, Index *a, Index *b)
+std::vector<std::unique_ptr<HistoryFragment>> maximal_infix_coalesces(Genes *g, Index *a, Index *b)
 {
-    _maximal_infix_coalesces_list = elist_make();
+    _maximal_infix_coalesces_list.clear();
     maximal_infix_coalesces_map(g, a, b, _maximal_infix_coalesces_f);
-    return _maximal_infix_coalesces_list;
+    return std::move(_maximal_infix_coalesces_list);
 }
 
 /* Check whether there are any incompatibilities between s1 and s2 in
@@ -6872,20 +6873,20 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
  * is smaller than the sequence length. A list containing the
  * resulting HistoryFragments is returned.
  */
-static EList *_maximal_overlap_coalesces_list;
+static std::vector<std::unique_ptr<HistoryFragment>> _maximal_overlap_coalesces_list = {};
 static void _maximal_overlap_coalesces_f(Genes *g)
 {
-    HistoryFragment *f = (HistoryFragment *)xmalloc(sizeof(HistoryFragment));
+    auto f = std::make_unique<HistoryFragment>();
 
     f->g = g;
     f->event = g_eventlist;
-    elist_append(_maximal_overlap_coalesces_list, f);
+    _maximal_overlap_coalesces_list.push_back(std::move(f));
 }
-EList *maximal_overlap_coalesces(Genes *g, Index *a, Index *b)
+std::vector<std::unique_ptr<HistoryFragment>> maximal_overlap_coalesces(Genes *g, Index *a, Index *b)
 {
-    _maximal_overlap_coalesces_list = elist_make();
+    _maximal_overlap_coalesces_list.clear();
     maximal_overlap_coalesces_map(g, a, b, _maximal_overlap_coalesces_f);
-    return _maximal_overlap_coalesces_list;
+    return std::move(_maximal_overlap_coalesces_list);
 }
 
 typedef struct _HashGenesParameters
