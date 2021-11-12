@@ -38,7 +38,8 @@ int main(int argc, char **argv)
     FILE *fp;
     fp = stdout;
 
-    g_eventlist = MakeLList();
+    g_eventlist.clear();
+    g_use_eventlist = true;
 
 /* Analyse command line options */
 #define SIMPLIFY_OPTIONS "b::kofanQhH?"
@@ -155,12 +156,7 @@ int main(int argc, char **argv)
     print_int_vector(g_site_labels, NULL);
 
     // Tidying
-    if (g_eventlist != NULL)
-    {
-        while (Length(g_eventlist) > 0)
-            free(Pop(g_eventlist));
-        DestroyLList(g_eventlist);
-    }
+    g_eventlist.clear();
     free_annotatedgenes(a);
 
     return 0;

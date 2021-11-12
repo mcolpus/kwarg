@@ -6,51 +6,69 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include <list>
 
 #include "llist.h"
 #include "hashtable.h"
 
 /* Datatypes */
-typedef struct _Gene {
-  unsigned long *type;      /* Type bit vector */
-  unsigned long *ancestral; /* Ancestral site bit vector */
+typedef struct _Gene
+{
+    unsigned long *type;      /* Type bit vector */
+    unsigned long *ancestral; /* Ancestral site bit vector */
 } Gene;
 
-typedef struct _Genes {
-  int n;      /* Number of sequences */
-  int length; /* Length of sequences */
-  Gene *data; /* Sequences */
+typedef struct _Genes
+{
+    int n;      /* Number of sequences */
+    int length; /* Length of sequences */
+    Gene *data; /* Sequences */
 } Genes;
 
-typedef struct _AnnotatedGenes {
-  Genes *g;         /* Data */
-  LList *positions; /* Site labels */
-  LList *sequences; /* Sequence labels */
+typedef struct _AnnotatedGenes
+{
+    Genes *g;         /* Data */
+    LList *positions; /* Site labels */
+    LList *sequences; /* Sequence labels */
 } AnnotatedGenes;
 
-typedef enum { GENE_ANY, GENE_BEAGLE, GENE_FASTA } Gene_Format;
-typedef enum { GENE_BINARY, GENE_NUCLEIC, GENE_AMINO } Gene_SeqType;
+typedef enum
+{
+    GENE_ANY,
+    GENE_BEAGLE,
+    GENE_FASTA
+} Gene_Format;
+typedef enum
+{
+    GENE_BINARY,
+    GENE_NUCLEIC,
+    GENE_AMINO
+} Gene_SeqType;
 
-typedef struct _PackedGenes {
-  int n;               /* Number of sequences */
-  int length;          /* Length of sequences */
-  unsigned int *data; /* Sequences */
+typedef struct _PackedGenes
+{
+    int n;              /* Number of sequences */
+    int length;         /* Length of sequences */
+    unsigned int *data; /* Sequences */
 } PackedGenes;
 
-typedef struct _Site {
-  unsigned long *type;      /* Type bit vector */
-  unsigned long *ancestral; /* Ancestral sequence bit vector */
+typedef struct _Site
+{
+    unsigned long *type;      /* Type bit vector */
+    unsigned long *ancestral; /* Ancestral sequence bit vector */
 } Site;
 
-typedef struct _Sites {
-  int n;      /* Number of sequences */
-  int length; /* Length of sequences */
-  Site *data; /* Sites */
+typedef struct _Sites
+{
+    int n;      /* Number of sequences */
+    int length; /* Length of sequences */
+    Site *data; /* Sites */
 } Sites;
 
-typedef struct _Index {
-  int index;
-  int block;
+typedef struct _Index
+{
+    int index;
+    int block;
 } Index;
 
 /* Global variable for specifying whether the common ancestral
@@ -118,30 +136,27 @@ typedef struct _Event
     } event;
 } Event;
 
-struct HistoryFragment {
-  Genes *g;           /* End configuration */
-  LList *event;       /* List of events leading from start
-		       * configuration to end configuration.
-		       */
-  double recombinations; /* Number of recombination events */
-  std::vector<int> elements;
-  std::vector<int> sites;
-  Action action;
+struct HistoryFragment
+{
+    Genes *g;                /* End configuration */
+    std::list<Event> events; /* List of events leading from start
+                              * configuration to end configuration.
+                              */
+    double recombinations;   /* Number of recombination events */
+    std::vector<int> elements;
+    std::vector<int> sites;
+    Action action;
 
-  HistoryFragment() = default;
+    HistoryFragment() = default;
 
-  HistoryFragment(HistoryFragment const &) = delete;
-  HistoryFragment& operator=(HistoryFragment const &) = delete;
+    HistoryFragment(HistoryFragment const &) = delete;
+    HistoryFragment &operator=(HistoryFragment const &) = delete;
 
-  ~HistoryFragment() {
-    if(g != NULL)
-      free_genes(g);
-    if (event != NULL) {
-      while (Length(event) != 0)
-        free(Pop(event));
-      DestroyLList(event);
+    ~HistoryFragment()
+    {
+        if (g != NULL)
+            free_genes(g);
     }
-  }
 };
 
 #include "backtrack.h"
@@ -239,18 +254,18 @@ Index *maximumsubsumedprefix(Genes *g, int s);
 Index *maximumsubsumedpostfix(Genes *g, int s);
 std::vector<std::unique_ptr<HistoryFragment>> maximal_prefix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
-				    std::function<void (Genes *)> f);
+                                  std::function<void(Genes *)> f);
 std::vector<std::unique_ptr<HistoryFragment>> maximal_postfix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
-				     std::function<void (Genes *)> f);
-void seqerror_flips(Genes* g, std::function<void (Genes *)> f);
-void recmut_flips(Genes* g, std::function<void (Genes *)> f);
+                                   std::function<void(Genes *)> f);
+void seqerror_flips(Genes *g, std::function<void(Genes *)> f);
+void recmut_flips(Genes *g, std::function<void(Genes *)> f);
 std::vector<std::unique_ptr<HistoryFragment>> maximal_infix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
-				  std::function<void (Genes *)> f);
+                                 std::function<void(Genes *)> f);
 std::vector<std::unique_ptr<HistoryFragment>> maximal_overlap_coalesces(Genes *g, Index *a, Index *b);
 void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
-				     std::function<void (Genes *)>);
+                                   std::function<void(Genes *)>);
 int compare_sequences(Genes *g, int a, int b);
 int compare_sites(Sites *s, int a, int b);
 int compare_genes(Genes *g, Genes *h);
@@ -262,7 +277,5 @@ HashTable *new_geneshashtable(int bits);
 void init_geneshashtable(HashTable *table, int bits);
 HashTable *new_packedgeneshashtable(int bits);
 void init_packedgeneshashtable(HashTable *table, int bits);
-
-
 
 #endif

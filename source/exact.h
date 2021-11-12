@@ -11,7 +11,7 @@ int beagle_bounded(Genes *g, FILE *print_progress, int lower, int upper);
 int beagle_reusable(Genes *g, FILE *print_progress, HashTable *t);
 int beagle_reusable_bounded(Genes *g, FILE *print_progress, int lower,
 			    int upper, HashTable *t);
-LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t);
+std::list<Event> beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t);
 HashTable *beagle_allocate_hashtable(Genes *g, int table_size);
 void beagle_deallocate_hashtable(HashTable *t);
 double scoring_function(Genes *g);

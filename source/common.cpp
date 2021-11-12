@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include <vector>
+#include <list>
 
 #include "common.h"
 #include "gene.h"
@@ -43,7 +44,8 @@ double g_se_cost;
 double rm_cost;
 double g_r_cost;
 double g_rr_cost;
-LList *g_eventlist;
+std::list<Event> g_eventlist;
+bool g_use_eventlist = true;
 std::vector<int> g_sequence_labels;
 std::vector<int> g_site_labels;
 std::vector<int> g_lookup;

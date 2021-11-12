@@ -456,7 +456,7 @@ int main(int argc, char **argv)
     if (comprehensive_bound >= 0)
         t = beagle_allocate_hashtable(g, -1);
     else if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
-        g_eventlist = MakeLList();
+        g_eventlist.clear();
 #ifdef HAPLOTYPE_BLOCKS
     if (haploblock_file != NULL)
     {
@@ -629,12 +629,7 @@ int main(int argc, char **argv)
             }
             arg_destroy(arg);
         }
-        if (g_eventlist != NULL)
-        {
-            while (Length(g_eventlist) > 0)
-                free(Pop(g_eventlist));
-            DestroyLList(g_eventlist);
-        }
+        g_eventlist.clear();
     }
 
     /* Clean up */

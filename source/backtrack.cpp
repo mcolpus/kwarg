@@ -43,9 +43,9 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
 {
     int i, j, k, l, n = a->g->n, next_seq = a->g->n, *edges, n_se = 0, n_rm = 0, n_re = 0;
     LList *positions, *sequences, *tmp;
-    LListCounter *lcounter, *lpos, *lseq, *lc;
+    std::list<Event> tmp_g_eventlist;
+    LListCounter *lpos, *lseq, *lc;
     Genes *g = NULL, *h = copy_genes(a->g);
-    Event *e, *f;
     char *pfix, *s, *t, **sequence, c;
     ARG *arg = NULL;
     ARGNode *node;
@@ -55,13 +55,14 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
     Genes *old;
 #endif
 
-    if ((g_eventlist != NULL) && (Length(g_eventlist) > 0))
+    if (g_eventlist.size() > 0)
     {
         /* Determine number of nodes in ARG */
-        lcounter = MakeCounter(g_eventlist, FIRST);
-        while ((e = (Event *)Next(lcounter)) != NULL)
-            if (e->type == RECOMBINATION)
+        for(const auto &evt : g_eventlist)
+        {
+            if (evt.type == RECOMBINATION)
                 n++;
+        }
         /* Create initial ARG information */
         arg = arg_new();
         sequence = genes2string(a->g);
@@ -120,11 +121,12 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
         lpos = MakeCounter(positions, FIRST);
         lseq = MakeCounter(sequences, FIRST);
         lc = MakeCounter(positions, FIRST);
-        InitCounter(lcounter, g_eventlist, FIRST);
 
         /* Go through the events recorded */
-        while ((e = (Event *)Next(lcounter)) != NULL)
+        // while ((e = (Event *)Next(lcounter)) != NULL)
+        for (std::list<Event>::iterator it = g_eventlist.begin(); it != g_eventlist.end(); ++it)
         {
+            auto it_next = std::next(it, 1);
 #ifdef DEBUG
             old = copy_genes(h);
 #endif
@@ -132,13 +134,13 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
              * previous round, delete it unless this event is also a
              * REMOVE.
              */
-            if ((g != NULL) && (e->type != REMOVE))
+            if ((g != NULL) && (it->type != REMOVE))
             {
                 free_genes(g);
                 g = NULL;
             }
 
-            switch (e->type)
+            switch (it->type)
             {
             case SWAP:
                 /* Sanity check - all SWAPs should be handled under
@@ -151,13 +153,13 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 /* Next event was a collapse of neighbouring siamese twins;
                  * merge the two corresponding position lists.
                  */
-                SetCounter(lpos, e->event.collapse + 1);
+                SetCounter(lpos, it->event.collapse + 1);
                 tmp = (LList *)RemoveMoveLeft(positions, lpos);
                 Append((LList *)Current(lpos), tmp);
                 break;
             case SUBSTITUTION:
                 /* Next event is a mutation of a singleton */
-                SetCounter(lpos, e->event.s.site);
+                SetCounter(lpos, it->event.s.site);
                 tmp = (LList *)RemoveMoveRight(positions, lpos);
                 /* Make sure to carry out the mutation in all original
                  * positions that has been collapsed into this position in the
@@ -213,8 +215,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 DestroyLList(tmp);
                 break;
             case SEFLIP:
-                i = (intptr_t)SetCounter(lseq, e->event.flip.seq);   // sequence
-                tmp = (LList *)SetCounter(lpos, e->event.flip.site); // get all the collapsed sites
+                i = (intptr_t)SetCounter(lseq, it->event.flip.seq);   // sequence
+                tmp = (LList *)SetCounter(lpos, it->event.flip.site); // get all the collapsed sites
                 if (Length(tmp) > 1)
                 {
                     if (g_howverbose != -1 && output != NULL)
@@ -271,12 +273,12 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     if (sequence[i][j] == '0')
                     {
                         sequence[i][j] = '1';
-                        set_genes_character(h, e->event.flip.seq, j, 1);
+                        set_genes_character(h, it->event.flip.seq, j, 1);
                     }
                     else if (sequence[i][j] == '1')
                     {
                         sequence[i][j] = '0';
-                        set_genes_character(h, e->event.flip.seq, j, 0);
+                        set_genes_character(h, it->event.flip.seq, j, 0);
                     }
                     edge = getedge(arg, edges[i]);
                     if (j == 0)
@@ -290,8 +292,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 }
                 break;
             case RMFLIP:
-                i = (intptr_t)SetCounter(lseq, e->event.flip.seq);   // sequence
-                tmp = (LList *)SetCounter(lpos, e->event.flip.site); // get all the collapsed sites
+                i = (intptr_t)SetCounter(lseq, it->event.flip.seq);   // sequence
+                tmp = (LList *)SetCounter(lpos, it->event.flip.site); // get all the collapsed sites
                 if (Length(tmp) > 1)
                 {
                     if (g_howverbose != -1 && output != NULL)
@@ -348,12 +350,12 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     if (sequence[i][j] == '0')
                     {
                         sequence[i][j] = '1';
-                        set_genes_character(h, e->event.flip.seq, j, 1);
+                        set_genes_character(h, it->event.flip.seq, j, 1);
                     }
                     else if (sequence[i][j] == '1')
                     {
                         sequence[i][j] = '0';
-                        set_genes_character(h, e->event.flip.seq, j, 0);
+                        set_genes_character(h, it->event.flip.seq, j, 0);
                     }
                     edge = getedge(arg, edges[i]);
                     if (j == 0)
@@ -368,7 +370,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 break;
             case COALESCENCE:
                 /* Next event is a coalescence of two compatible sequences */
-                if (e->event.c.s1 == -1)
+                if (it->event.c.s1 == -1)
                 {
                     /* When coalescing two sequences where one is subsumed in
                      * the other we did not always know the sequence subsuming
@@ -376,13 +378,13 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                      * siamese twins may alter the picture.
                      */
                     g = copy_genes(h);
-                    tmp = g_eventlist;
-                    g_eventlist = NULL;
+                    tmp_g_eventlist = std::move(g_eventlist);
+                    g_eventlist.clear();
                     remove_nonsegregating(g);
                     if (g->length > 0)
                     {
                         remove_siamesetwins(g);
-                        e->event.c.s1 = find_safe_coalescence(g, e->event.c.s2);
+                        it->event.c.s1 = find_safe_coalescence(g, it->event.c.s2);
                     }
                     else
                         /* We should never get in this situation - if all
@@ -390,13 +392,13 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                          * should be a sequences of coalescences with the first
                          * sequence and the next remaining sequence.
                          */
-                        e->event.c.s1 = (e->event.c.s2 == 0 ? 1 : 0);
-                    g_eventlist = tmp;
+                        it->event.c.s1 = (it->event.c.s2 == 0 ? 1 : 0);
+                    g_eventlist = std::move(tmp_g_eventlist);
                     free_genes(g);
                     g = NULL;
                 }
-                i = (intptr_t)SetCounter(lseq, e->event.c.s1);
-                j = (intptr_t)SetCounter(lseq, e->event.c.s2);
+                i = (intptr_t)SetCounter(lseq, it->event.c.s1);
+                j = (intptr_t)SetCounter(lseq, it->event.c.s2);
                 if (output != NULL)
                 {
                     /* Print coalescence to output */
@@ -459,7 +461,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                  */
                 Prev(lseq);
                 Dequeue(sequences);
-                coalesce(h, e->event.c.s1, e->event.c.s2);
+                coalesce(h, it->event.c.s1, it->event.c.s2);
                 //                         output_genes(h, output, "New:\n");
                 break;
             case REMOVE:
@@ -472,6 +474,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                  * the entire block of sequences following the disappearing
                  * sequence is moved one place up.
                  */
+                
+
                 if (g == NULL)
                 {
                     /* We do not have a reduced state from previous round,
@@ -484,25 +488,29 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                      * case no further reductions should be made.
                      */
                     g = copy_genes(h);
-                    tmp = g_eventlist;
-                    g_eventlist = NULL;
+
+                    //TODO: may need to move out of if statement
+                    tmp_g_eventlist = std::move(g_eventlist);
+                    g_eventlist.clear();
                     remove_nonsegregating(g);
                     if (g->length > 0)
                         remove_siamesetwins(g);
                 }
                 /* Determine sequence the removed sequence is subsumed in */
                 if (g->length > 0)
-                    i = find_safe_coalescence(g, e->event.remove);
+                    i = find_safe_coalescence(g, it->event.remove);
                 else
+                {
                     /* We should never get in this situation - if all
                      * informative columns are removed, the remaining events
                      * should be a sequences of coalescences with the first
                      * sequence and the next remaining sequence.
                      */
-                    i = (e->event.remove == 0 ? 1 : 0);
-                g_eventlist = tmp;
+                    i = (it->event.remove == 0 ? 1 : 0);
+                }
+                g_eventlist = std::move(tmp_g_eventlist);
                 j = (intptr_t)SetCounter(lseq, i);
-                k = (intptr_t)SetCounter(lseq, e->event.remove);
+                k = (intptr_t)SetCounter(lseq, it->event.remove);
                 if (output != NULL)
                 {
                     s = NULL;
@@ -544,14 +552,14 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     }
                 }
                 /* Now remove subsumed sequence and compact sequence set */
-                coalesce(h, i, e->event.remove);
-                if (e->event.remove < h->n - 1)
-                    memmove(&(h->data[e->event.remove]), &(h->data[e->event.remove + 1]),
-                            (h->n - e->event.remove) * sizeof(Gene));
-                coalesce(g, i, e->event.remove); /* Also remove it in reduced copy */
-                if (e->event.remove < g->n - 1)
-                    memmove(&(g->data[e->event.remove]), &(g->data[e->event.remove + 1]),
-                            (g->n - e->event.remove) * sizeof(Gene));
+                coalesce(h, i, it->event.remove);
+                if (it->event.remove < h->n - 1)
+                    memmove(&(h->data[it->event.remove]), &(h->data[it->event.remove + 1]),
+                            (h->n - it->event.remove) * sizeof(Gene));
+                coalesce(g, i, it->event.remove); /* Also remove it in reduced copy */
+                if (it->event.remove < g->n - 1)
+                    memmove(&(g->data[it->event.remove]), &(g->data[it->event.remove + 1]),
+                            (g->n - it->event.remove) * sizeof(Gene));
                 RemoveMoveLeft(sequences, lseq);
                 /* Update ARG */
                 s = (char *)xmalloc((a->g->length + 1) * sizeof(char));
@@ -572,9 +580,9 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                  * sequence while the postfix is inserted at the end of the
                  * list of existing sequences.
                  */
-                i = (intptr_t)Top((LList *)SetCounter(lpos, e->event.r.pos));
-                j = (intptr_t)SetCounter(lseq, e->event.r.seq);
-                split(h, e->event.r.seq, i);
+                i = (intptr_t)Top((LList *)SetCounter(lpos, it->event.r.pos));
+                j = (intptr_t)SetCounter(lseq, it->event.r.seq);
+                split(h, it->event.r.seq, i);
                 Enqueue(sequences, (void *)next_seq);
                 /* Update ARG */
                 s = (char *)xmalloc((a->g->length + 1) * sizeof(char));
@@ -587,11 +595,11 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                  * change whether the prefix or postfix retains the place of
                  * the old sequence.
                  */
-                f = (Event *)Next(lcounter);
-                if ((f != NULL) && (f->type == SWAP))
+
+                if (it_next->type == SWAP)
                 {
                     pfix = "pre";
-                    swap_genes(h, f->event.swap.s1, f->event.swap.s2);
+                    swap_genes(h, it_next->event.swap.s1, it_next->event.swap.s2);
                     /* Update sequences for ARG reconstruction */
                     for (k = 0; k < i; k++)
                         sequence[j][k] = 'x';
@@ -604,7 +612,6 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 else
                 {
                     pfix = "suf";
-                    Prev(lcounter);
                     /* Update sequences for ARG reconstruction */
                     for (k = 0; k < i; k++)
                         sequence[next_seq][k] = 'x';
@@ -669,19 +676,19 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     output_genes_indexed(h, output);
                     fprintf(output,
                             "found in lookup table; it requires %d recombinations\n",
-                            e->event.lookup);
+                            it->event.lookup);
                 }
                 break;
             }
 #ifdef DEBUG
             /* Sanity check - did we see this ancestral state in the forward pass? */
-            if ((ancestral_state_trace != NULL) && (e->type != RECOMBINATION))
+            if ((ancestral_state_trace != NULL) && (it->type != RECOMBINATION))
             {
-                tmp = g_eventlist;
-                g_eventlist = NULL;
+                auto tmp = std::move(g_eventlist);
+                g_eventlist.clear();
                 g = copy_genes(h);
                 implode_genes(g);
-                g_eventlist = tmp;
+                g_eventlist = std::move(tmp);
                 if (!no_recombinations_required(g))
                 {
                     p = pack_genes(g);
@@ -701,6 +708,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
             free_genes(old);
 #endif
         }
+        
+
         if (g_howverbose != -1 && output != stdout && output != NULL)
         {
             fprintf(output, "Total: %d sequencing errors, %d recurrent mutations, %d recombinations.\n", n_se, n_rm, n_re);
@@ -764,7 +773,6 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
         }
         DestroyLList(positions);
         DestroyLList(sequences);
-        DestroyCounter(lcounter);
         DestroyCounter(lseq);
         DestroyCounter(lpos);
         DestroyCounter(lc);

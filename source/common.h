@@ -7,6 +7,9 @@
 #include "gene.h"
 #include "arg.h"
 
+#include <vector>
+#include <list>
+
 #define ENABLE_VERBOSE
 
 // These definitions are passed when kwarg is created using make file
@@ -16,7 +19,7 @@
 #define ENUMERATE_DONOTSTORELEAVES
 #define ENUMERATE_HAPLOTYPEHEURISTIC
 
-#include <vector>
+
 
 /* Function prototypes; a brief explanation of each function should be
  * provided prior to its implementation in common.c.
@@ -39,7 +42,8 @@ extern int **g_haploblocks;
 void explode_local(int **local, LList *r, int n);
 #endif
 
-extern LList *g_eventlist;
+extern std::list<Event> g_eventlist;
+extern bool g_use_eventlist;
 extern std::vector<int> g_sequence_labels;
 extern std::vector<int> g_site_labels;
 extern std::vector<int> g_lookup;
