@@ -16,7 +16,6 @@
 #include "bounds.h"
 #include "exact.h"
 #include "llist.h"
-#include "elist.h"
 #include "bitfunctions.h"
 #ifdef IPBOUNDS
 #include "lpinterface.h"

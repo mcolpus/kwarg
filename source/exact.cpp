@@ -24,7 +24,6 @@
 #include "mergesort.h"
 #include "bounds.h"
 #include "llist.h"
-#include "elist.h"
 #include "exact.h"
 #include "hashtable.h"
 #include "bitfunctions.h"
@@ -95,19 +94,6 @@ static void permute(BeagleSplitInformation *splits, int n)
             memcpy(splits + i, splits + j, sizeof(BeagleSplitInformation));
             memcpy(splits + j, &tmp, sizeof(BeagleSplitInformation));
         }
-    }
-}
-
-/* Permute the elements in elist */
-static void permute_elist(EList *elist)
-{
-    int i, j;
-
-    for (i = elist_length(elist); i > 1;)
-    {
-        j = unbiased_random(i);
-        i--;
-        elist_swap(elist, i, j);
     }
 }
 
@@ -349,13 +335,13 @@ typedef struct _NodeClass
  * _coalesce_compatibleandentangled. The nodes stored on stack still
  * needs to be considered, the nodes stored in component are in current
  * component, E is array of edge lists for each node in the entangled
- * graph, C is array of edge lists for each node in the compatible
+ * graph (so length is g->n), C is array of edge lists for each node in the compatible
  * graph, components is an array containing current assignment, and
  * states is the list new ancestral states are stored in.
  */
 template <typename F>
-static void _coalesce_cande_recursion(LList *stack, EList *component, Genes *g,
-                                      EList *E, int **C, int *components,
+static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component, Genes *g,
+                                      std::vector<int> E[], int **C, int *components,
                                       F f)
 {
     int i, j, n = 0, old;
@@ -429,29 +415,29 @@ static void _coalesce_cande_recursion(LList *stack, EList *component, Genes *g,
             if (current->_class - 1 != current->node)
             {
                 /* Current node does not initiate new component */
-                for (i = 0; i < elist_length(component); i++)
-                    if (!C[current->node][(intptr_t)elist_get(component, i)])
+                for (i = 0; i < component.size(); i++)
+                    if (!C[current->node][component[i]])
                         break;
             }
             else
             {
                 /* Current node does initiate new component */
-                component = elist_make();
+                component = {};
                 i = 0;
             }
-            if (i == elist_length(component))
+            if (i == component.size())
             {
                 /* Add current node to current component */
                 components[current->node] = current->_class;
-                elist_append(component, (void *)current->node);
+                component.push_back(current->node);
                 /* Add neighbours to stack */
-                if (elist_length(E + current->node) > 0)
+                if (E[current->node].size() > 0)
                 {
                     tmp = (NodeClass *)
-                        xmalloc(elist_length(E + current->node) * sizeof(NodeClass));
-                    for (i = 0; i < elist_length(E + current->node); i++)
+                        xmalloc(E[current->node].size() * sizeof(NodeClass));
+                    for (i = 0; i < E[current->node].size(); i++)
                     {
-                        j = (intptr_t)elist_get(E + current->node, i);
+                        j = E[current->node][i];
                         /* Check whether a decision has been already been mode for
                          * this neighbour to avoid sequences of superfluous pushes and
                          * pops - without this check the checks would still be carried
@@ -460,7 +446,7 @@ static void _coalesce_cande_recursion(LList *stack, EList *component, Genes *g,
                          */
                         if ((components[j] <= 0) && (components[j] != current->_class))
                         {
-                            tmp[n].node = (intptr_t)elist_get(E + current->node, i);
+                            tmp[n].node = E[current->node][i];
                             tmp[n]._class = current->_class;
                             Push(stack, tmp + n);
                             n++;
@@ -469,7 +455,7 @@ static void _coalesce_cande_recursion(LList *stack, EList *component, Genes *g,
                 }
                 _coalesce_cande_recursion(stack, component, g, E, C, components, f);
                 /* Clean up */
-                if (elist_length(E + current->node) > 0)
+                if (E[current->node].size() > 0)
                 {
                     for (i = 0; i < n; i++)
                         Pop(stack);
@@ -477,10 +463,10 @@ static void _coalesce_cande_recursion(LList *stack, EList *component, Genes *g,
                 }
                 if (current->_class - 1 == current->node)
                     /* This node initiated a new component */
-                    elist_destroy(component);
+                    component.clear();
                 else
                     /* Did not! */
-                    elist_removelast(component);
+                    component.pop_back();
             }
 
             /* Leave current node out of current component if component is
@@ -519,8 +505,8 @@ template <typename F>
 static void _coalesce_compatibleandentangled_map(Genes *g, F f)
 {
     int i, j;
-    EList *component = elist_make();
-    EList *E = (EList *)xmalloc(g->n * sizeof(EList));
+    std::vector<int> component = {};
+    std::vector<int> E[g->n];
     int **C = (int **)xmalloc(g->n * sizeof(int *));
     LList *stack = MakeLList();
     int *components = (int *)xcalloc(g->n, sizeof(int));
@@ -531,7 +517,7 @@ static void _coalesce_compatibleandentangled_map(Genes *g, F f)
      */
     for (i = 0; i < g->n; i++)
     {
-        elist_init(E + i);
+        E[i] = {};
         C[i] = (int *)xcalloc(g->n, sizeof(int));
         /* Also use loop to insert each node in stack with itself as _class */
         tmp[i].node = i;
@@ -549,8 +535,8 @@ static void _coalesce_compatibleandentangled_map(Genes *g, F f)
                  */
                 if (entangled(g, i, j))
                 {
-                    elist_append(E + i, (void *)j);
-                    elist_append(E + j, (void *)i);
+                    E[i].push_back(j);
+                    E[j].push_back(i);
                 }
             }
 
@@ -560,12 +546,9 @@ static void _coalesce_compatibleandentangled_map(Genes *g, F f)
     /* Clean up */
     for (i = 0; i < g->n; i++)
     {
-        elist_free(E + i);
         free(C[i]);
     }
-    free(E);
     free(C);
-    elist_destroy(component);
     free(components);
     free(tmp);
     DestroyLList(stack);

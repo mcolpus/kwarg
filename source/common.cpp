@@ -453,29 +453,6 @@ void delete_by_value(int *array, int v, int array_length)
   }
 }
 
-void print_elist(EList *e, char *comment)
-{
-  int i;
-  int p;
-  if (comment != NULL)
-  {
-    printf("%s", comment);
-  }
-  for (i = 0; i < e->count; i++)
-  {
-    p = (intptr_t)(elist_get(e, i));
-    if (p > 0)
-    {
-      printf("%d ", p);
-    }
-    else
-    {
-      printf("X ");
-    }
-  }
-  printf("\n");
-}
-
 void print_int_vector(std::vector<int> vec, char *comment)
 {
   if (comment != NULL)

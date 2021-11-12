@@ -21,6 +21,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include <optional>
 
 #include "gene.h"
 #include "llist.h"
@@ -3480,7 +3481,7 @@ int force_mutations(Genes *g)
  * order as the resulting configurations are stored in the vector
  * returned.
  */
-std::vector<Genes *> force_mutation(Genes *g, std::vector<Event> &events)
+std::vector<Genes *> _force_mutation(Genes *g, bool use_events, std::vector<Event> *events)
 {
     int i, j, k, w0, w1, index, block, blocks = divblocksize(g->n - 1) + 1;
     Sites *s = genes2sites(g);
@@ -3520,11 +3521,14 @@ std::vector<Genes *> force_mutation(Genes *g, std::vector<Event> &events)
             forced.push_back(h);
             
             /* Insert corresponding event in list of events */
-            Event e;
-            e.type = SUBSTITUTION;
-            e.event.s.seq = k + mulblocksize(j);
-            e.event.s.site = i;
-            events.push_back(std::move(e));
+            if(use_events){
+                Event e;
+                e.type = SUBSTITUTION;
+                e.event.s.seq = k + mulblocksize(j);
+                e.event.s.site = i;
+                events->push_back(std::move(e));
+            }
+            
         }
         if (!gene_knownancestor && (w0 == 1) && (w1 > 0))
         {
@@ -3548,11 +3552,13 @@ std::vector<Genes *> force_mutation(Genes *g, std::vector<Event> &events)
             h->data[k + mulblocksize(j)].type[block] |= ((unsigned long)1 << index);
             forced.push_back(h);
             /* Insert corresponding event in list of events */
-            Event e;
-            e.type = SUBSTITUTION;
-            e.event.s.seq = k + mulblocksize(j);
-            e.event.s.site = i;
-            events.push_back(std::move(e));
+            if(use_events){
+                Event e;
+                e.type = SUBSTITUTION;
+                e.event.s.seq = k + mulblocksize(j);
+                e.event.s.site = i;
+                events->push_back(std::move(e));
+            }
         }
     }
 
@@ -3560,6 +3566,16 @@ std::vector<Genes *> force_mutation(Genes *g, std::vector<Event> &events)
     free_sites(s);
 
     return forced;
+}
+
+std::vector<Genes *> force_mutation(Genes *g)
+{
+    return _force_mutation(g, false, nullptr);
+}
+
+std::vector<Genes *> force_mutation(Genes *g, std::vector<Event> &events)
+{
+    return _force_mutation(g, true, &events);
 }
 
 /* Find a character in position pos that can undergo a substitution,
@@ -4213,7 +4229,7 @@ void split(Genes *g, int a, int i)
  * appended to this vector in the same order as the resulting
  * configurations are stored in the vector returned.
  */
-std::vector<Genes *> force_split(Genes *g, int a, std::vector<Event> &events)
+std::vector<Genes *> _force_split(Genes *g, int a, bool use_events, std::vector<Event> *events)
 {
     int i, index = 0, block = 0;
     Genes *h;
@@ -4259,15 +4275,28 @@ std::vector<Genes *> force_split(Genes *g, int a, std::vector<Event> &events)
             _split(h, a, index, block);
             forced.push_back(h);
             /* Insert corresponding event in list of events */
-            Event e;
-            e.type = RECOMBINATION;
-            e.event.r.seq = a;
-            e.event.r.pos = index + mulblocksize(block);
-            events.push_back(std::move(e));
+            if(use_events)
+            {
+                Event e;
+                e.type = RECOMBINATION;
+                e.event.r.seq = a;
+                e.event.r.pos = index + mulblocksize(block);
+                events->push_back(std::move(e));
+            }            
         }
     }
 
     return std::move(forced);
+}
+
+std::vector<Genes *> force_split(Genes *g, int a)
+{
+    return _force_split(g, a, false, nullptr);
+}
+
+std::vector<Genes *> force_split(Genes *g, int a, std::vector<Event> &events)
+{
+    return _force_split(g, a, true, &events);
 }
 
 /* Split sequence a before site given by index and block and

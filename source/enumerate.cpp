@@ -11,7 +11,6 @@
 #include <limits.h>
 
 #include "enumerate.h"
-#include "elist.h"
 #include "common.h"
 #include "bounds.h"
 #include "exact.h"
@@ -135,7 +134,7 @@ static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
 #ifdef ENABLE_VERBOSE
   set_verbose(verbose() - 1);
 #endif
-  forced = force_mutation(g, NULL);
+  forced = force_mutation(g);
 #ifdef ENABLE_VERBOSE
   set_verbose(verbose() + 1);
 #endif
@@ -152,7 +151,7 @@ static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
 #ifdef ENABLE_VERBOSE
       set_verbose(verbose() - 1);
 #endif
-      forced = force_split(g, i, NULL);
+      forced = force_split(g, i);
 #ifdef ENABLE_VERBOSE
       set_verbose(verbose() + 1);
 #endif
