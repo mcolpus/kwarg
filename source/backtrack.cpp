@@ -208,7 +208,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     else
                         sequence[j][i] = '0';
                     edge = getedge(arg, edges[j]);
-                    Enqueue(edge->mutations, (void *)(i));
+                    edge->mutations.push_back(i);
                 }
                 //                         output_genes(h, output, "New:\n");
                 /* Position has now been removed from working copy */
@@ -283,11 +283,11 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     edge = getedge(arg, edges[i]);
                     if (j == 0)
                     {
-                        Enqueue(edge->mutations, (void *)(-INT_MAX));
+                        edge->mutations.push_back(-INT_MAX);
                     }
                     else
                     {
-                        Enqueue(edge->mutations, (void *)(-j));
+                        edge->mutations.push_back(-j);
                     }
                 }
                 break;
@@ -360,11 +360,11 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     edge = getedge(arg, edges[i]);
                     if (j == 0)
                     {
-                        Enqueue(edge->mutations, (void *)(-INT_MAX));
+                        edge->mutations.push_back(-INT_MAX);
                     }
                     else
                     {
-                        Enqueue(edge->mutations, (void *)(-j));
+                        edge->mutations.push_back(-j);
                     }
                 }
                 break;
@@ -748,7 +748,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
             if (edges[i] != -1)
             {
                 edge = getedge(arg, edges[i]);
-                if (Length(edge->mutations) > 0)
+                if (edge->mutations.size() > 0)
                 {
                     /* Mutations have appeared on this edge since its
                      * introduction - terminate it with a ANCESTOR node.
