@@ -34,6 +34,44 @@ static ARGEdge *getedge(ARG &arg, int edge)
         return &node->predecessor.one;
 }
 
+void output_g_eventlist_as_text(FILE *output)
+{
+    for(const Event &e : g_eventlist)
+    {
+        switch (e.type)
+        {
+        case EventType::SUBSTITUTION:
+            fprintf(output, "event SUBSTITUTION seq: %d, site: %d\n", e.event.s.seq, e.event.s.site);
+            break;
+        case EventType::COALESCENCE:
+            fprintf(output, "event COALESCENCE s1: %d, s2: %d\n", e.event.c.s1, e.event.c.s2);
+            break;
+        case EventType::RECOMBINATION:
+            fprintf(output, "event RECOMBINATION seq: %d, pos: %d\n", e.event.r.seq, e.event.r.pos);
+            break;
+        case EventType::REMOVE:
+            fprintf(output, "event REMOVE remove: %d\n", e.event.remove);
+            break;
+        case EventType::COLLAPSE:
+            fprintf(output, "event COLLAPSE col: %d\n", e.event.collapse);
+            break;
+        case EventType::SWAP:
+            fprintf(output, "event SWAP s1: %d, s2: %d\n", e.event.swap.s1, e.event.swap.s2);
+            break;
+        case EventType::LOOKUP:
+            fprintf(output, "event LOOKUP lookup: %d\n", e.event.lookup);
+            break;
+        case EventType::SEFLIP:
+            fprintf(output, "event SEFLIP seq: %d, site: %d\n", e.event.flip.seq, e.event.flip.site);
+            break;
+        case EventType::RMFLIP:
+            fprintf(output, "event RMFLIP seq: %d, site: %d\n", e.event.flip.seq, e.event.flip.site);
+            break;
+        }
+    }
+    fprintf(output, "done");
+}
+
 /* Create an evolutionary history from the sequence of events
  * resulting in a minimum number of recombinations. The history is
  * returned as an ancestral recombination graph (ARG). If output is
@@ -41,6 +79,9 @@ static ARGEdge *getedge(ARG &arg, int edge)
  */
 ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
 {
+    output_g_eventlist_as_text(output);
+    return nullptr;
+    
     int i, j, k, l, n = a->g->n, next_seq = a->g->n, *edges, n_se = 0, n_rm = 0, n_re = 0;
     LList *positions, *sequences, *tmp;
     std::list<Event> tmp_g_eventlist;
@@ -58,7 +99,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
     if (g_eventlist.size() > 0)
     {
         /* Determine number of nodes in ARG */
-        for(const auto &evt : g_eventlist)
+        for (const auto &evt : g_eventlist)
         {
             if (evt.type == RECOMBINATION)
                 n++;
@@ -473,7 +514,6 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                  * the entire block of sequences following the disappearing
                  * sequence is moved one place up.
                  */
-                
 
                 if (g == NULL)
                 {
@@ -488,7 +528,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                      */
                     g = copy_genes(h);
 
-                    //TODO: may need to move out of if statement
+                    // TODO: may need to move out of if statement
                     tmp_g_eventlist = std::move(g_eventlist);
                     g_eventlist.clear();
                     remove_nonsegregating(g);
@@ -707,7 +747,6 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
             free_genes(old);
 #endif
         }
-        
 
         if (g_howverbose != -1 && output != stdout && output != NULL)
         {
