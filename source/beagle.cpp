@@ -539,7 +539,7 @@ int main(int argc, char **argv)
                 }
             /* Only remember last ARG constructed (they should all be the same) */
             if (arg != NULL)
-                arg_destroy(arg);
+                free(arg);
             arg = eventlist2history(a, fp);
         }
         if (arg == NULL)
@@ -553,7 +553,7 @@ int main(int argc, char **argv)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                arg_output(arg, a, fp, ARGDOT, nodelabel, edgelabel, generate_id);
+                arg_output(*arg, a, fp, ARGDOT, nodelabel, edgelabel, generate_id);
                 if (fp != stdout)
                     fclose(fp);
             }
@@ -564,7 +564,7 @@ int main(int argc, char **argv)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                arg_output(arg, a, fp, ARGGML, nodelabel, edgelabel, generate_id);
+                arg_output(*arg, a, fp, ARGGML, nodelabel, edgelabel, generate_id);
                 if (fp != stdout)
                     fclose(fp);
             }
@@ -575,7 +575,7 @@ int main(int argc, char **argv)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                arg_output(arg, a, fp, ARGGDL, nodelabel, edgelabel, generate_id);
+                arg_output(*arg, a, fp, ARGGDL, nodelabel, edgelabel, generate_id);
                 if (fp != stdout)
                     fclose(fp);
             }
@@ -586,7 +586,7 @@ int main(int argc, char **argv)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                arg_output(arg, a, fp, TREENEWICK, nodelabel, edgelabel, generate_id,
+                arg_output(*arg, a, fp, TREENEWICK, nodelabel, edgelabel, generate_id,
                            intervals);
                 if (fp != stdout)
                     fclose(fp);
@@ -598,7 +598,7 @@ int main(int argc, char **argv)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                arg_output(arg, a, fp, TREEDOT, nodelabel, edgelabel, generate_id,
+                arg_output(*arg, a, fp, TREEDOT, nodelabel, edgelabel, generate_id,
                            intervals);
                 if (fp != stdout)
                     fclose(fp);
@@ -610,7 +610,7 @@ int main(int argc, char **argv)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                arg_output(arg, a, fp, TREEGML, nodelabel, edgelabel, generate_id,
+                arg_output(*arg, a, fp, TREEGML, nodelabel, edgelabel, generate_id,
                            intervals);
                 if (fp != stdout)
                     fclose(fp);
@@ -622,12 +622,12 @@ int main(int argc, char **argv)
                     /* Open named file for output */
                     if ((fp = fopen((char *)fp, "w")) == NULL)
                         fprintf(stderr, "Could not open file %s for output\n", (char *)fp);
-                arg_output(arg, a, fp, TREEGDL, nodelabel, edgelabel, generate_id,
+                arg_output(*arg, a, fp, TREEGDL, nodelabel, edgelabel, generate_id,
                            intervals);
                 if (fp != stdout)
                     fclose(fp);
             }
-            arg_destroy(arg);
+            free(arg);
         }
         g_eventlist.clear();
     }

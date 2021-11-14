@@ -19,7 +19,7 @@
 #include "gene.h"
 
 /* Return edge indicated by edge */
-static ARGEdge *getedge(ARG *arg, int edge)
+static ARGEdge *getedge(ARG &arg, int edge)
 {
     ARGNode *node = arg_getnode(arg, edge >> 1);
 
@@ -47,7 +47,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
     LListCounter *lpos, *lseq, *lc;
     Genes *g = NULL, *h = copy_genes(a->g);
     char *pfix, *s, *t, **sequence, c;
-    ARG *arg = NULL;
+    ARG arg;
     ARGNode *node;
     ARGEdge *edge;
     PackedGenes *p;
@@ -64,7 +64,6 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 n++;
         }
         /* Create initial ARG information */
-        arg = arg_new();
         sequence = genes2string(a->g);
         sequence = (char **)xrealloc(sequence, n * sizeof(char *));
         for (i = a->g->n; i < n; i++)
@@ -719,7 +718,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
         if (g != NULL)
             free_genes(g);
         /* Finalise ARG */
-        for (i = a->g->n; i < arg->n; i++)
+        for (i = a->g->n; i < arg.size(); i++)
         {
             node = arg_getnode(arg, i);
             if (node->type == ARGRECOMBINATION)
@@ -782,5 +781,5 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
 
     free_genes(h);
 
-    return arg;
+    return &arg;
 }

@@ -14,6 +14,8 @@
 #include "mystring.h"
 
 #include <list>
+#include <vector>
+#include <string>
 
 typedef enum
 {
@@ -39,26 +41,14 @@ typedef struct _ARGEdge
 {
     int target;
     std::list<int> mutations;
-
-    _ARGEdge()
-    {
-        target = 0;
-        mutations = {};
-    }
-
-    ~_ARGEdge()
-    {
-
-    }
-
 } ARGEdge;
 
 typedef struct _ARGNode
 {
     ARGNodeType type;
-    char *label;
-    char *sequence;
-    union _predecessor
+    std::string label;
+    std::string sequence;
+    struct _predecessor
     {
         ARGEdge one;
         struct
@@ -68,23 +58,17 @@ typedef struct _ARGNode
             int position;
         } two;
 
-        _predecessor ()
-        {
-
-        }
-
-        ~_predecessor ()
-        {
-
-        }
     } predecessor;
-
 } ARGNode;
 
 typedef struct _ARG
 {
-    int n;
-    ARGNode *nodes;
+    std::vector<ARGNode> nodes;
+
+    int size(){
+        return nodes.size();
+    }
+
 } ARG;
 
 typedef enum
@@ -103,12 +87,11 @@ typedef enum
 #include "gene.h"
 
 /* Prototypes */
-ARG *arg_new();
-void arg_destroy(ARG *arg);
-int arg_addnode(ARG *arg, ARGNodeType type, char *label, char *s, ...);
-ARGNode *arg_getnode(ARG *arg, int i);
-void arg_finalise(ARG *arg);
-void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
+int arg_addnode(ARG &arg, ARGNodeType type, std::string label, std::string seq);
+int arg_addnode(ARG &arg, ARGNodeType type, std::string label, std::string seq, int pos);
+ARGNode *arg_getnode(ARG &arg, int i);
+void arg_finalise(ARG &arg);
+void arg_output(ARG &arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
                 ARGLabels nodelabels, int annotate_edges, int generate_id,
                 ...);
 #endif

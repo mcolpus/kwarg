@@ -10,50 +10,16 @@
 #include <stdarg.h>
 #include <string.h>
 #include <limits.h>
+
+#include <list>
+#include <vector>
+#include <string>
+
 #include "bitfunctions.h"
 #include "llist.h"
 #include "arg.h"
 #include "common.h"
 
-/* arg_new(): create an empty ARG */
-ARG *arg_new()
-{
-    ARG *arg = (ARG *)xmalloc(sizeof(ARG));
-
-    arg->nodes = (ARGNode *)xmalloc(sizeof(ARGNode));
-    arg->n = 0;
-
-    return arg;
-}
-
-/* Destroy arg and free all memory used by it */
-void arg_destroy(ARG *arg)
-{
-    int i;
-
-    for (i = 0; i < arg->n; i++)
-    {
-        switch (arg->nodes[i].type)
-        {
-        case ARGSAMPLE:
-        case ARGCOALESCENCE:
-            /* This node has one outgoing edge */
-            break;
-        case ARGRECOMBINATION:
-            /* This node has two outgoing edges */
-            break;
-        case ARGANCESTOR:
-            /* This node has no outgoing edges */
-            break;
-        }
-        if (arg->nodes[i].label != NULL)
-            free(arg->nodes[i].label);
-        if (arg->nodes[i].sequence != NULL)
-            free(arg->nodes[i].sequence);
-    }
-    free(arg->nodes);
-    free(arg);
-}
 
 /* Add a type node to arg, with label and s as label and sequence. If
  * type is ARGRECOMBINATION, an extra argument specifying the first
@@ -61,79 +27,82 @@ void arg_destroy(ARG *arg)
  * provided. Return value is index of new node. The strings supplied
  * for label and sequence will be deallocated by arg_destroy.
  */
-int arg_addnode(ARG *arg, ARGNodeType type, char *label, char *s, ...)
+int arg_addnode(ARG &arg, ARGNodeType type, std::string label, std::string seq, int pos)
 {
     va_list args;
 
-    if (weight(arg->n) == 1)
-        /* Ran out of space for nodes - double size of array */
-        arg->nodes = (ARGNode *)xrealloc(arg->nodes, 2 * arg->n * sizeof(ARGNode));
+    ARGNode new_node;
 
-    arg->nodes[arg->n].type = type;
-    arg->nodes[arg->n].label = label;
-    arg->nodes[arg->n].sequence = s;
+    new_node.type = type;
+    new_node.label = label;
+    new_node.sequence = seq;
 
     switch (type)
     {
     case ARGSAMPLE:
     case ARGCOALESCENCE:
         /* These types of nodes have one predecessor */
-        arg->nodes[arg->n].predecessor.one.mutations = {};
-        arg->nodes[arg->n].predecessor.one.target = -1;
+        new_node.predecessor.one.mutations = {};
+        new_node.predecessor.one.target = -1;
         break;
     case ARGRECOMBINATION:
         /* These types of nodes have two predecessors */
-        arg->nodes[arg->n].predecessor.two.prefix.mutations = {};
-        arg->nodes[arg->n].predecessor.two.prefix.target = -1;
-        arg->nodes[arg->n].predecessor.two.suffix.target = -1;
-        va_start(args, s);
-        arg->nodes[arg->n].predecessor.two.position = (int)va_arg(args, int);
-        va_end(args);
-        arg->nodes[arg->n].predecessor.two.suffix.mutations = {};
+        new_node.predecessor.two.prefix.mutations = {};
+        new_node.predecessor.two.prefix.target = -1;
+        new_node.predecessor.two.suffix.target = -1;
+        new_node.predecessor.two.position = pos;
+        new_node.predecessor.two.suffix.mutations = {};
         break;
     case ARGANCESTOR:
         /* These types of nodes have no predecessors */
         break;
     }
 
-    return (arg->n)++;
+    arg.nodes.push_back(new_node);
+
+    return arg.size();
+}
+
+int arg_addnode(ARG &arg, ARGNodeType type, std::string label, std::string seq)
+{
+    return arg_addnode(arg, type, label, seq, 0);
 }
 
 /* Return node with index i in arg */
-ARGNode *arg_getnode(ARG *arg, int i)
+ARGNode *arg_getnode(ARG &arg, int i)
 {
-    return arg->nodes + i;
+    return &(arg.nodes[i]);
 }
 
 /* Finalise arg, changing nodes with non-terminated outgoing edges to
  * ANCESTOR type.
  */
-void arg_finalise(ARG *arg)
+void arg_finalise(ARG &arg)
 {
     int i;
 
-    for (i = 0; i < arg->n; i++)
+    for (i = 0; i < arg.size(); i++)
     {
-        switch (arg->nodes[i].type)
+        switch (arg.nodes[i].type)
         {
         case ARGSAMPLE:
         case ARGCOALESCENCE:
-            if (arg->nodes[i].predecessor.one.target == -1)
+            if (arg.nodes[i].predecessor.one.target == -1)
             {
                 /* Sanity check */
-                if (arg->nodes[i].predecessor.one.mutations.size() > 0)
+                if (arg.nodes[i].predecessor.one.mutations.size() > 0)
                 {
                     fprintf(stderr, "Something is wrong in ARG finalisation - please email error report\n");
                     exit(1);
                 }
-                arg->nodes[i].type = ARGANCESTOR;
+                arg.nodes[i].type = ARGANCESTOR;
             }
             break;
         case ARGRECOMBINATION:
-            if (arg->nodes[i].predecessor.two.prefix.target == -1)
-                arg->nodes[i].predecessor.two.prefix.target = arg_addnode(arg, ARGANCESTOR, NULL, NULL);
-            if (arg->nodes[i].predecessor.two.suffix.target == -1)
-                arg->nodes[i].predecessor.two.suffix.target = arg_addnode(arg, ARGANCESTOR, NULL, NULL);
+            if (arg.nodes[i].predecessor.two.prefix.target == -1)
+                arg.nodes[i].predecessor.two.prefix.target = arg_addnode(arg, ARGANCESTOR, "NULL", "NULL");
+            if (arg.nodes[i].predecessor.two.suffix.target == -1)
+                arg.nodes[i].predecessor.two.suffix.target = arg_addnode(arg, ARGANCESTOR, "NULL", "NULL");
             break;
         case ARGANCESTOR:
             break;
@@ -210,18 +179,18 @@ static void transfer_mutations(LList *from, LList *to, int startsite,
     free(lcounter);
 }
 
-static void visit(ARG *arg, ARG *tree, int current, int (*descendant)[2],
+static void visit(ARG &arg, ARG &tree, int current, int (*descendant)[2],
                   int *tree_node, int startsite, int endsite)
 {
-    switch (arg->nodes[current].type)
+    switch (arg.nodes[current].type)
     {
     case ARGSAMPLE:
-        update_descendant(descendant + arg->nodes[current].predecessor.one.target,
+        update_descendant(descendant + arg.nodes[current].predecessor.one.target,
                           current);
-        transfer_mutations(arg->nodes[current].predecessor.one.mutations,
-                           tree->nodes[tree_node[current]].predecessor.one.mutations,
+        transfer_mutations(arg.nodes[current].predecessor.one.mutations,
+                           tree.nodes[tree_node[current]].predecessor.one.mutations,
                            startsite, endsite);
-        visit(arg, tree, arg->nodes[current].predecessor.one.target, descendant,
+        visit(arg, tree, arg.nodes[current].predecessor.one.target, descendant,
               tree_node, startsite, endsite);
         break;
     case ARGCOALESCENCE:
@@ -234,39 +203,40 @@ static void visit(ARG *arg, ARG *tree, int current, int (*descendant)[2],
             if (tree_node[descendant[current][1]] != -1)
             {
                 /* Both descendants are part of tree */
-                memcpy(tree->nodes + tree->n, arg->nodes + current, sizeof(ARGNode));
-                tree->nodes[tree_node[descendant[current][0]]].predecessor.one.target = tree->n;
-                tree->nodes[tree_node[descendant[current][1]]].predecessor.one.target = tree->n;
-                if (arg->nodes[current].type != ARGANCESTOR)
+                tree.nodes.push_back(arg.nodes[current]);
+                // memcpy(tree.nodes + tree.size(), arg.nodes + current, sizeof(ARGNode));
+                tree.nodes[tree_node[descendant[current][0]]].predecessor.one.target = tree.size();
+                tree.nodes[tree_node[descendant[current][1]]].predecessor.one.target = tree.size();
+                if (arg.nodes[current].type != ARGANCESTOR)
                 {
-                    tree->nodes[tree->n].predecessor.one.mutations = {};
-                    transfer_mutations(arg->nodes[current].predecessor.one.mutations,
-                                       tree->nodes[tree->n].predecessor.one.mutations,
+                    tree.nodes[tree.size()].predecessor.one.mutations = {};
+                    transfer_mutations(arg.nodes[current].predecessor.one.mutations,
+                                       tree.nodes[tree.size()].predecessor.one.mutations,
                                        startsite, endsite);
-                    update_descendant(descendant + arg->nodes[current].predecessor.one.target, current);
+                    update_descendant(descendant + arg.nodes[current].predecessor.one.target, current);
                 }
-                tree_node[current] = (tree->n)++;
+                tree_node[current] = tree.size();
             }
             else
             {
                 /* Only first descendant is part of tree */
-                if (arg->nodes[current].type == ARGANCESTOR)
+                if (arg.nodes[current].type == ARGANCESTOR)
                 {
                     /* First descendant is common ancestor of all samples */
-                    tree->nodes[tree_node[descendant[current][0]]].type = ARGANCESTOR;
+                    tree.nodes[tree_node[descendant[current][0]]].type = ARGANCESTOR;
                 }
                 else
                 {
                     /* Descendant of ancestor to current node in tree is first
                      * descendant to current node.
                      */
-                    update_descendant(descendant + arg->nodes[current].predecessor.one.target,
+                    update_descendant(descendant + arg.nodes[current].predecessor.one.target,
                                       descendant[current][0]);
                     /* Copy relevant mutations from edge to predecessor in ARG
                      * to edge from first descendant in marginal tree.
                      */
-                    transfer_mutations(arg->nodes[current].predecessor.one.mutations,
-                                       tree->nodes[tree_node[descendant[current][0]]].predecessor.one.mutations,
+                    transfer_mutations(arg.nodes[current].predecessor.one.mutations,
+                                       tree.nodes[tree_node[descendant[current][0]]].predecessor.one.mutations,
                                        startsite, endsite);
                 }
             }
@@ -276,76 +246,76 @@ static void visit(ARG *arg, ARG *tree, int current, int (*descendant)[2],
             if (tree_node[descendant[current][1]] != -1)
             {
                 /* Only second descendant is part of tree */
-                if (arg->nodes[current].type == ARGANCESTOR)
+                if (arg.nodes[current].type == ARGANCESTOR)
                 {
                     /* Second descendant is common ancestor of all samples */
-                    tree->nodes[tree_node[descendant[current][1]]].type = ARGANCESTOR;
+                    tree.nodes[tree_node[descendant[current][1]]].type = ARGANCESTOR;
                 }
                 else
                 {
                     /* Descendant of ancestor to current node in tree is second
                      * descendant to current node.
                      */
-                    update_descendant(descendant + arg->nodes[current].predecessor.one.target,
+                    update_descendant(descendant + arg.nodes[current].predecessor.one.target,
                                       descendant[current][1]);
                     /* Copy relevant mutations from edge to predecessor in ARG
                      * to edge from first descendant in marginal tree.
                      */
-                    transfer_mutations(arg->nodes[current].predecessor.one.mutations,
-                                       tree->nodes[tree_node[descendant[current][1]]].predecessor.one.mutations,
+                    transfer_mutations(arg.nodes[current].predecessor.one.mutations,
+                                       tree.nodes[tree_node[descendant[current][1]]].predecessor.one.mutations,
                                        startsite, endsite);
                 }
             }
             else
                 /* None of the descendants are part of the tree */
-                update_descendant(descendant + arg->nodes[current].predecessor.one.target, current);
+                update_descendant(descendant + arg.nodes[current].predecessor.one.target, current);
         }
-        if (arg->nodes[current].type != ARGANCESTOR)
-            visit(arg, tree, arg->nodes[current].predecessor.one.target, descendant,
+        if (arg.nodes[current].type != ARGANCESTOR)
+            visit(arg, tree, arg.nodes[current].predecessor.one.target, descendant,
                   tree_node, startsite, endsite);
         break;
     case ARGRECOMBINATION:
-        if (startsite < arg->nodes[current].predecessor.two.position)
+        if (startsite < arg.nodes[current].predecessor.two.position)
         {
             /* Predecessor providing prefix is predecessor at this site */
-            update_descendant(descendant + arg->nodes[current].predecessor.two.prefix.target,
+            update_descendant(descendant + arg.nodes[current].predecessor.two.prefix.target,
                               descendant[current][0]);
             /* Copy relevant mutations from edge to predecessor in ARG
              * to edge from first descendant in marginal tree.
              */
             if (tree_node[descendant[current][0]] != -1)
             {
-                transfer_mutations(arg->nodes[current].predecessor.two.prefix.mutations,
-                                   tree->nodes[tree_node[descendant[current][0]]].predecessor.one.mutations,
+                transfer_mutations(arg.nodes[current].predecessor.two.prefix.mutations,
+                                   tree.nodes[tree_node[descendant[current][0]]].predecessor.one.mutations,
                                    startsite, endsite);
             }
 
-            visit(arg, tree, arg->nodes[current].predecessor.two.prefix.target,
+            visit(arg, tree, arg.nodes[current].predecessor.two.prefix.target,
                   descendant, tree_node, startsite, endsite);
             /* Visit non-predecessor */
-            update_descendant(descendant + arg->nodes[current].predecessor.two.suffix.target,
+            update_descendant(descendant + arg.nodes[current].predecessor.two.suffix.target,
                               current);
-            visit(arg, tree, arg->nodes[current].predecessor.two.suffix.target,
+            visit(arg, tree, arg.nodes[current].predecessor.two.suffix.target,
                   descendant, tree_node, startsite, endsite);
         }
         else
         {
             /* Predecessor providing suffix is predecessor at this site */
-            update_descendant(descendant + arg->nodes[current].predecessor.two.suffix.target,
+            update_descendant(descendant + arg.nodes[current].predecessor.two.suffix.target,
                               descendant[current][0]);
             /* Copy relevant mutations from edge to predecessor in ARG
              * to edge from first descendant in marginal tree.
              */
             if (tree_node[descendant[current][0]] != -1)
-                transfer_mutations(arg->nodes[current].predecessor.two.suffix.mutations,
-                                   tree->nodes[tree_node[descendant[current][0]]].predecessor.one.mutations,
+                transfer_mutations(arg.nodes[current].predecessor.two.suffix.mutations,
+                                   tree.nodes[tree_node[descendant[current][0]]].predecessor.one.mutations,
                                    startsite, endsite);
-            visit(arg, tree, arg->nodes[current].predecessor.two.suffix.target,
+            visit(arg, tree, arg.nodes[current].predecessor.two.suffix.target,
                   descendant, tree_node, startsite, endsite);
             /* Visit non-predecessor */
-            update_descendant(descendant + arg->nodes[current].predecessor.two.prefix.target,
+            update_descendant(descendant + arg.nodes[current].predecessor.two.prefix.target,
                               current);
-            visit(arg, tree, arg->nodes[current].predecessor.two.prefix.target,
+            visit(arg, tree, arg.nodes[current].predecessor.two.prefix.target,
                   descendant, tree_node, startsite, endsite);
         }
         break;
@@ -365,35 +335,35 @@ static void check_positions(int site, int *quote, LList *labels)
                 *quote = 1;
 }
 
-static void newick_visit(ARG *tree, int node, AnnotatedGenes *a,
+static void newick_visit(ARG &tree, int node, AnnotatedGenes *a,
                          ARGLabels nodelabels, int annotate_edges,
-                         int generate_id, MyString **parts, MyString *subtree)
+                         int generate_id, std::string parts[], std::string subtree)
 {
     int i, j, single_quotes;
-    char *label = tree->nodes[node].label;
+    std::string label = tree.nodes[node].label;
     LListCounter *lcounter;
 
-    if ((tree->nodes[node].type == ARGSAMPLE) || (parts[node] != NULL))
+    if ((tree.nodes[node].type == ARGSAMPLE) || (parts[node] != "NULL"))
     {
         /* Last visit to this node */
-        if (tree->nodes[node].type != ARGSAMPLE)
+        if (tree.nodes[node].type != ARGSAMPLE)
         {
             /* Finish construction of bifucating node */
-            mystring_addend(parts[node], ',');
+            parts[node] += ',';
             if (annotate_edges)
                 /* Add space between nodes to improve readability */
-                mystring_addend(parts[node], ' ');
-            mystring_concat(parts[node], subtree);
-            mystring_addend(parts[node], ')');
+                parts[node] += ' ';
+            parts[node] += subtree;
+            parts[node] += ')';
         }
 
         /* Add label to node */
-        if (((label != NULL) || ((tree->nodes[node].type == ARGSAMPLE) && (generate_id))) && (nodelabels != ARGNONE) && (nodelabels != ARGSEQUENCE) && ((nodelabels != ARGSEQUENCEFIRST) || (tree->nodes[node].sequence == NULL)))
+        if (((!label.empty()) || ((tree.nodes[node].type == ARGSAMPLE) && (generate_id))) && (nodelabels != ARGNONE) && (nodelabels != ARGSEQUENCE) && ((nodelabels != ARGSEQUENCEFIRST) || (tree.nodes[node].sequence == "NULL")))
         {
             /* The label of the node is used for actual labelling */
             /* If label contains single quotes we need to escape them */
             single_quotes = 0;
-            if (label != NULL)
+            if (!label.empty())
             {
                 /* Genuine label */
                 for (i = 0; label[i] != '\0'; i++)
@@ -418,46 +388,41 @@ static void newick_visit(ARG *tree, int node, AnnotatedGenes *a,
             }
 
             /* Add label annotation to Newick representation */
-            if (((nodelabels == ARGBOTH) && (tree->nodes[node].sequence != NULL)) || (single_quotes > 0))
+            if (((nodelabels == ARGBOTH) && (!tree.nodes[node].sequence.empty())) || (single_quotes > 0))
                 /* Node label needs to be quoted */
-                mystring_addend(parts[node], '\'');
-            mystring_append(parts[node], tree->nodes[node].label);
-            if ((nodelabels == ARGBOTH) && (tree->nodes[node].sequence != NULL))
+                parts[node] += '\'';
+            parts[node] += tree.nodes[node].label;
+            if ((nodelabels == ARGBOTH) && (!tree.nodes[node].sequence.empty()))
             {
                 /* Both label and sequence should be used as annotation */
-                mystring_addend(parts[node], ';');
-                mystring_append(parts[node], tree->nodes[node].sequence);
-                mystring_addend(parts[node], '\'');
+                parts[node] += ';' + tree.nodes[node].sequence + '\'';
             }
             else if (single_quotes > 0)
                 /* End label quote */
-                mystring_addend(parts[node], '\'');
+                parts[node] += '\'';
 
-            /* Clean up */
-            if (tree->nodes[node].label == NULL)
-                free(label);
         }
-        else if ((tree->nodes[node].sequence != NULL) &&
+        else if ((tree.nodes[node].sequence != "NULL") &&
                  (nodelabels != ARGNONE) && (nodelabels != ARGLABEL))
         {
             /* The sequence of the node is used for labelling */
-            mystring_append(parts[node], tree->nodes[node].sequence);
+            parts[node] += tree.nodes[node].sequence;
         }
 
-        if (tree->nodes[node].type != ARGANCESTOR)
+        if (tree.nodes[node].type != ARGANCESTOR)
         {
             if (annotate_edges)
             {
                 /* Add mutations on edge from node to predecessor */
-                if (tree->nodes[node].predecessor.one.mutations.size() > 0)
+                if (tree.nodes[node].predecessor.one.mutations.size() > 0)
                 {
-                    mystring_addend(parts[node], ':');
+                    parts[node] += ':';
 
                     /* Check whether list of mutations needs to be quoted */
                     single_quotes = 0;
                     if (a->positions != NULL)
                     {
-                        for (const int mut : tree->nodes[node].predecessor.one.mutations)
+                        for (const int mut : tree.nodes[node].predecessor.one.mutations)
                         {
                             check_positions(mut, &single_quotes, a->positions);
                         }
@@ -465,15 +430,15 @@ static void newick_visit(ARG *tree, int node, AnnotatedGenes *a,
 
                     if (single_quotes)
                         /* It does */
-                        mystring_addend(parts[node], '\'');
+                        parts[node] += '\'';
                     /* Add each mutation to 'length' of this node's ancestral edge */
 
                     bool first_loop = true;
-                    for (const int j : tree->nodes[node].predecessor.one.mutations)
+                    for (const int j : tree.nodes[node].predecessor.one.mutations)
                     {
                         if (first_loop)
                         {
-                            mystring_addend(parts[node], ';');
+                            parts[node] += ';';
                             first_loop = false;
                         }
 
@@ -484,66 +449,66 @@ static void newick_visit(ARG *tree, int node, AnnotatedGenes *a,
                             {
                                 /* Quote the single quotes in each site label */
                                 label = (char *)GetByIndex(a->positions, j);
-                                for (int i = 0; i < strlen(label); i++)
+                                for (int i = 0; i < label.size(); i++)
                                 {
-                                    mystring_addend(parts[node], label[i]);
+                                    parts[node] += label[i];
                                     if (label[i] == '\'')
-                                        mystring_addend(parts[node], '\'');
+                                        parts[node] += '\'';
                                 }
                             }
                             else
-                                mystring_append(parts[node], (char *)GetByIndex(a->positions, j));
+                                parts[node] += (char *)GetByIndex(a->positions, j);
                         }
                         else
                         {
                             label = i2a(j + 1);
-                            mystring_append(parts[node], label);
-                            free(label);
+                            parts[node] += label;
                         }
                     }
                 }
             }
 
             /* Recurse on parent node */
-            if (tree->nodes[node].predecessor.one.target < tree->n)
+            if (tree.nodes[node].predecessor.one.target < tree.size())
             {
-                newick_visit(tree, tree->nodes[node].predecessor.one.target, a, nodelabels, annotate_edges, generate_id, parts, parts[node]);
+                newick_visit(tree, tree.nodes[node].predecessor.one.target, a, nodelabels, annotate_edges, generate_id, parts, parts[node]);
             }
         }
     }
     else
     {
         /* First visit to bifucating node - initialise construction */
-        parts[node] = mystring_str2mystr("(");
-        mystring_concat(parts[node], subtree);
+        parts[node] = "(";
+        parts[node] += subtree;
     }
 }
 
-static void newick_output(ARG *tree, AnnotatedGenes *a, FILE *fp,
+static void newick_output(ARG &tree, AnnotatedGenes *a, FILE *fp,
                           ARGLabels nodelabels, int annotate_edges,
                           int generate_id, char *label)
 {
     int i;
-    MyString **parts = new MyString *[tree->n];
-    char *s;
+    std::string parts[tree.size()];
+    //MyString **parts = new MyString *[tree.size()];
+    std::string s;
 
     /* Initialise parts */
-    for (i = 0; i < tree->n; i++)
-        if (tree->nodes[i].type == ARGSAMPLE)
-            parts[i] = mystring_init();
+    for (i = 0; i < tree.size(); i++)
+        if (tree.nodes[i].type == ARGSAMPLE)
+            parts[i] = "";
         else
-            parts[i] = NULL;
+            parts[i] = "NULL";
 
     /* Generate newick representation */
-    for (i = 0; i < tree->n; i++)
-        if (tree->nodes[i].type == ARGSAMPLE)
+    for (i = 0; i < tree.size(); i++)
+        if (tree.nodes[i].type == ARGSAMPLE)
             newick_visit(tree, i, a, nodelabels, annotate_edges, generate_id, parts,
                          NULL);
 
     /* Output Newick representation */
     /* Ancestor should always be last node in ARG structure */
-    s = mystring_mystr2str(parts[tree->n - 1]);
-    fputs(s, fp);
+    s = parts[tree.size() - 1];
+    fputs(s.c_str(), fp);
     if (label != NULL)
         fputs(label, fp);
     putc(';', fp);
@@ -554,18 +519,14 @@ static void newick_output(ARG *tree, AnnotatedGenes *a, FILE *fp,
      * concatenations to other MyStrings, except for the one at the
      * ancestor.
      */
-    mystring_free(parts[tree->n - 1]);
-    free(parts);
-    free(s);
 }
 
-static void marginal_trees(ARG *arg, AnnotatedGenes *a, FILE *fp,
+static void marginal_trees(ARG &arg, AnnotatedGenes *a, FILE *fp,
                            ARGFormat format, ARGLabels nodelabels,
                            int annotate_edges, int generate_id, int intervals,
                            char *label)
 {
     int i, j, next, *starts, *tree_node, (*descendant)[2];
-    ARG *tree;
     char *t;
     MyString *s;
 
@@ -574,9 +535,9 @@ static void marginal_trees(ARG *arg, AnnotatedGenes *a, FILE *fp,
         /* Start by determining the recombination free intervals */
         starts = (int *)xcalloc(a->g->length, sizeof(int));
         starts[0] = 1;
-        for (i = 0; i < arg->n; i++)
-            if (arg->nodes[i].type == ARGRECOMBINATION)
-                starts[arg->nodes[i].predecessor.two.position] = 1;
+        for (i = 0; i < arg.size(); i++)
+            if (arg.nodes[i].type == ARGRECOMBINATION)
+                starts[arg.nodes[i].predecessor.two.position] = 1;
         /* Convert Booleans to index of next interval start */
         next = a->g->length;
         for (i = a->g->length - 1; i >= 0; i--)
@@ -597,52 +558,49 @@ static void marginal_trees(ARG *arg, AnnotatedGenes *a, FILE *fp,
     /* Generate and output evolutionary tree(s) for each recombination
      * free interval.
      */
-    tree = (ARG *)xmalloc(sizeof(ARG));
-    tree->nodes = new ARGNode[2 * a->g->n - 1];
-    tree->n = 0;
+    ARG tree;
     i = 0;
-    tree_node = (int *)xmalloc(arg->n * sizeof(int));
-    descendant = (int(*)[2])xmalloc(arg->n * sizeof(int[2]));
+    tree_node = (int *)xmalloc(arg.size() * sizeof(int));
+    descendant = (int(*)[2])xmalloc(arg.size() * sizeof(int[2]));
     /* We need to copy all sample nodes to the marginal tree first to
      * have generate_id have the desired effect.
      */
-    for (j = 0; j < arg->n; j++)
-        if (arg->nodes[j].type == ARGSAMPLE)
+    for (j = 0; j < arg.size(); j++)
+        if (arg.nodes[j].type == ARGSAMPLE)
         {
-            memcpy(tree->nodes + tree->n, arg->nodes + j, sizeof(ARGNode));
-            tree->nodes[tree->n].predecessor.one.mutations = {};
-            tree_node[j] = (tree->n)++;
+            tree.nodes.push_back(arg.nodes[j]);
+            // memcpy(tree.nodes + tree.size(), arg.nodes + j, sizeof(ARGNode));
+            tree.nodes[tree.size()].predecessor.one.mutations = {};
+            tree_node[j] = tree.size();
         }
 
     /* Continue until we reach the end of the sequences */
     while (i < a->g->length)
     {
         /* Wipe all non-sample nodes from tree */
-        tree->n = a->g->n;
+        // tree.n = a->g->n;
         /* Initialise arrays of descendants of a node and for mapping from
          * ARG nodes to marginal tree nodes.
          */
-        for (j = 0; j < arg->n; j++)
-            if (arg->nodes[j].type != ARGSAMPLE)
+        for (j = 0; j < arg.size(); j++)
+            if (arg.nodes[j].type != ARGSAMPLE)
             {
                 descendant[j][0] = descendant[j][1] = -1;
                 tree_node[j] = -1;
             }
 
         /* Start traversal back to root from each sample node */
-        for (j = 0; j < arg->n; j++)
-            if (arg->nodes[j].type == ARGSAMPLE)
+        for (j = 0; j < arg.size(); j++)
+            if (arg.nodes[j].type == ARGSAMPLE)
                 visit(arg, tree, j, descendant, tree_node, i, starts[i]);
 
         /* Copy sequence to tree nodes */
-        for (j = 0; j < arg->n; j++)
-            if ((tree_node[j] != -1) && (arg->nodes[j].sequence != NULL))
+        for (j = 0; j < arg.size(); j++)
+            if ((tree_node[j] != -1) && (arg.nodes[j].sequence != "NULL"))
             {
                 /* Copy relevant part of the sequence from ARG node to tree node */
-                tree->nodes[tree_node[j]].sequence = (char *)xmalloc((starts[i] - i + 1) * sizeof(char));
-                strncpy(tree->nodes[tree_node[j]].sequence, arg->nodes[j].sequence,
-                        starts[i] - i);
-                tree->nodes[tree_node[j]].sequence[starts[i] - i] = '\0';
+                tree.nodes[tree_node[j]].sequence = (char *)xmalloc((starts[i] - i + 1) * sizeof(char));
+                tree.nodes[tree_node[j]].sequence = arg.nodes[j].sequence;
             }
         /* Output current tree */
         /* GDL: graph can vaere et element i en anden graph; title: text angiver
@@ -688,23 +646,20 @@ static void marginal_trees(ARG *arg, AnnotatedGenes *a, FILE *fp,
         /* Clear everything but non-site specific information of sample
          * nodes from marginal tree data structure.
          */
-        for (j = 0; j < tree->n; j++)
+        for (j = 0; j < tree.size(); j++)
         {
-            free(tree->nodes[j].sequence);
-            if (tree->nodes[j].type != ARGANCESTOR)
+            if (tree.nodes[j].type != ARGANCESTOR)
             {
-                tree->nodes[j].predecessor.one.mutations.clear();
+                tree.nodes[j].predecessor.one.mutations.clear();
             }
         }
         i = starts[i];
     }
 
     /* Clean up */
-    for (j = 0; j < tree->n; j++)
-        if (tree->nodes[j].type == ARGSAMPLE)
-            tree->nodes[j].predecessor.one.mutations.clear();
-    free(tree->nodes);
-    free(tree);
+    for (j = 0; j < tree.size(); j++)
+        if (tree.nodes[j].type == ARGSAMPLE)
+            tree.nodes[j].predecessor.one.mutations.clear();
     free(starts);
     free(tree_node);
     free(descendant);
@@ -721,7 +676,7 @@ static void marginal_trees(ARG *arg, AnnotatedGenes *a, FILE *fp,
  * for every site (if argument is false) or one tree for every
  * recombination free interval (if argument is true) should be output.
  */
-void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
+void arg_output(ARG &arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
                 ARGLabels nodelabels, int annotate_edges, int generate_id, ...)
 {
     int i, maiden;
@@ -767,7 +722,7 @@ void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
         break;
     }
     /* Output nodes and their edges */
-    for (i = 0; i < arg->n; i++)
+    for (i = 0; i < arg.size(); i++)
     {
         /* Output node i */
         maiden = 1;
@@ -784,30 +739,30 @@ void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
             break;
         }
         /* Generate node label */
-        if (((arg->nodes[i].label != NULL) || ((arg->nodes[i].type == ARGSAMPLE) && generate_id)) && ((nodelabels == ARGLABEL) || (nodelabels == ARGBOTH) || (nodelabels == ARGLABELFIRST) || ((nodelabels == ARGSEQUENCEFIRST) && (arg->nodes[i].sequence == NULL))))
+        if (((arg.nodes[i].label != "NULL") || ((arg.nodes[i].type == ARGSAMPLE) && generate_id)) && ((nodelabels == ARGLABEL) || (nodelabels == ARGBOTH) || (nodelabels == ARGLABELFIRST) || ((nodelabels == ARGSEQUENCEFIRST) && (arg.nodes[i].sequence == "NULL"))))
         {
-            if (arg->nodes[i].label != NULL)
-                fprintf(fp, "%s", arg->nodes[i].label);
+            if (arg.nodes[i].label != "NULL")
+                fprintf(fp, "%s", arg.nodes[i].label);
             else
                 fprintf(fp, "%d", i + 1);
             maiden = 0;
         }
-        if ((arg->nodes[i].sequence != NULL) && ((nodelabels == ARGSEQUENCE) || (nodelabels == ARGBOTH) || (nodelabels == ARGSEQUENCEFIRST) || ((nodelabels == ARGLABELFIRST) && maiden)))
+        if ((arg.nodes[i].sequence != "NULL") && ((nodelabels == ARGSEQUENCE) || (nodelabels == ARGBOTH) || (nodelabels == ARGSEQUENCEFIRST) || ((nodelabels == ARGLABELFIRST) && maiden)))
         {
             if (!maiden)
-                fprintf(fp, "; %s", arg->nodes[i].sequence);
+                fprintf(fp, "; %s", arg.nodes[i].sequence);
             else
-                fprintf(fp, "%s", arg->nodes[i].sequence);
+                fprintf(fp, "%s", arg.nodes[i].sequence);
             maiden = 0;
         }
         if (maiden)
         {
             /* No node label printed */
-            if ((arg->nodes[i].type == ARGRECOMBINATION) && (arg->nodes[i].label != NULL))
+            if ((arg.nodes[i].type == ARGRECOMBINATION) && (arg.nodes[i].label != "NULL"))
                 /* If a recombination node is still unlabeled, label it (label
                  * should be recombination point) if possible.
                  */
-                fprintf(fp, "%s\"", arg->nodes[i].label);
+                fprintf(fp, "%s\"", arg.nodes[i].label);
             else
             {
                 switch (format)
@@ -838,7 +793,7 @@ void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
             fprintf(fp, "\n    graphics [\n      outline \"");
             break;
         }
-        switch (arg->nodes[i].type)
+        switch (arg.nodes[i].type)
         {
         case ARGSAMPLE:
             fprintf(fp, "red");
@@ -870,7 +825,7 @@ void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
             break;
         }
         /* Output edges out of this node */
-        switch (arg->nodes[i].type)
+        switch (arg.nodes[i].type)
         {
         case ARGSAMPLE:
         case ARGCOALESCENCE:
@@ -878,20 +833,20 @@ void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
             switch (format)
             {
             case ARGDOT:
-                fprintf(fp, "  %d -> %d", arg->nodes[i].predecessor.one.target, i);
+                fprintf(fp, "  %d -> %d", arg.nodes[i].predecessor.one.target, i);
                 break;
             case ARGGDL:
                 fprintf(fp, "  edge: { sourcename: \"%d\" targetname: \"%d\"",
-                        arg->nodes[i].predecessor.one.target, i);
+                        arg.nodes[i].predecessor.one.target, i);
                 break;
             case ARGGML:
                 fprintf(fp,
                         "  edge [\n    linestyle \"solid\"\n    source %d\n    target %d",
-                        arg->nodes[i].predecessor.one.target, i);
+                        arg.nodes[i].predecessor.one.target, i);
                 break;
             }
             /* Output edge label */
-            if (annotate_edges && arg->nodes[i].predecessor.one.mutations.size() > 0)
+            if (annotate_edges && arg.nodes[i].predecessor.one.mutations.size() > 0)
             {
                 switch (format)
                 {
@@ -905,7 +860,7 @@ void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
                     fprintf(fp, "\n    label \"");
                     break;
                 }
-                output_edgelabels(arg->nodes[i].predecessor.one.mutations, a, true, fp);
+                output_edgelabels(arg.nodes[i].predecessor.one.mutations, a, true, fp);
                 fprintf(fp, "\"");
                 if (format == ARGDOT)
                     fprintf(fp, "]");
@@ -930,22 +885,22 @@ void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
             {
             case ARGDOT:
                 fprintf(fp, "  %d -> %d [label=\"P",
-                        arg->nodes[i].predecessor.two.prefix.target, i);
+                        arg.nodes[i].predecessor.two.prefix.target, i);
                 break;
             case ARGGDL:
                 fprintf(fp,
                         "  edge: { sourcename: \"%d\" targetname: \"%d\" label: \"P",
-                        arg->nodes[i].predecessor.two.prefix.target, i);
+                        arg.nodes[i].predecessor.two.prefix.target, i);
                 break;
             case ARGGML:
                 fprintf(fp,
                         "  edge [\n    linestyle \"solid\"\n    source %d\n    target %d\n    label \"P",
-                        arg->nodes[i].predecessor.two.prefix.target, i);
+                        arg.nodes[i].predecessor.two.prefix.target, i);
                 break;
             }
 
-            if (annotate_edges && arg->nodes[i].predecessor.two.prefix.mutations.size() > 0)
-                output_edgelabels(arg->nodes[i].predecessor.two.prefix.mutations, a, false, fp);
+            if (annotate_edges && arg.nodes[i].predecessor.two.prefix.mutations.size() > 0)
+                output_edgelabels(arg.nodes[i].predecessor.two.prefix.mutations, a, false, fp);
 
             switch (format)
             {
@@ -964,22 +919,22 @@ void arg_output(ARG *arg, AnnotatedGenes *a, FILE *fp, ARGFormat format,
             {
             case ARGDOT:
                 fprintf(fp, "  %d -> %d [label=\"S",
-                        arg->nodes[i].predecessor.two.suffix.target, i);
+                        arg.nodes[i].predecessor.two.suffix.target, i);
                 break;
             case ARGGDL:
                 fprintf(fp,
                         "  edge: { sourcename: \"%d\" targetname: \"%d\" label: \"S",
-                        arg->nodes[i].predecessor.two.suffix.target, i);
+                        arg.nodes[i].predecessor.two.suffix.target, i);
                 break;
             case ARGGML:
                 fprintf(fp,
                         "  edge [\n    linestyle \"solid\"\n    source %d\n    target %d\n    label \"S",
-                        arg->nodes[i].predecessor.two.suffix.target, i);
+                        arg.nodes[i].predecessor.two.suffix.target, i);
                 break;
             }
 
-            if (annotate_edges && arg->nodes[i].predecessor.two.suffix.mutations.size() > 0)
-                output_edgelabels(arg->nodes[i].predecessor.two.suffix.mutations, a, false, fp);
+            if (annotate_edges && arg.nodes[i].predecessor.two.suffix.mutations.size() > 0)
+                output_edgelabels(arg.nodes[i].predecessor.two.suffix.mutations, a, false, fp);
 
             switch (format)
             {
