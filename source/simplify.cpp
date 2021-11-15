@@ -39,6 +39,8 @@ int main(int argc, char **argv)
     fp = stdout;
 
     g_eventlist = MakeLList();
+    g_eventlist_is_null = false;
+    g_use_eventlist = true;
 
 /* Analyse command line options */
 #define SIMPLIFY_OPTIONS "b::kofanQhH?"

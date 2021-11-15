@@ -788,9 +788,12 @@ int main(int argc, char **argv)
     g = a->g;
 
     /* Set up structures for computation */
+    g_use_eventlist = false;
     if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
     {
         g_eventlist = MakeLList();
+        g_use_eventlist = true;
+        g_eventlist_is_null = false;
         multruns = 0;
         cost_in = 1;
         T_in = 1;

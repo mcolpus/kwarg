@@ -453,10 +453,17 @@ int main(int argc, char **argv)
 #endif
 
     /* Set up structures for computation */
+    g_use_eventlist = false;
+    g_eventlist_is_null = true;
     if (comprehensive_bound >= 0)
         t = beagle_allocate_hashtable(g, -1);
     else if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
+    {
         g_eventlist = MakeLList();
+        g_use_eventlist = true;
+        g_eventlist_is_null = false;
+    }    
+
 #ifdef HAPLOTYPE_BLOCKS
     if (haploblock_file != NULL)
     {
@@ -526,6 +533,7 @@ int main(int argc, char **argv)
         if (comprehensive_bound >= 0)
         {
             g_eventlist = beagle_randomised(g, NULL, comprehensive_bound, t);
+            g_eventlist_is_null = g_eventlist == NULL;
             beagle_deallocate_hashtable(t);
         }
         while ((fp = (FILE *)Pop(history_files)) != NULL)

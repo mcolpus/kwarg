@@ -44,6 +44,8 @@ double rm_cost;
 double g_r_cost;
 double g_rr_cost;
 LList *g_eventlist;
+bool g_use_eventlist;
+bool g_eventlist_is_null;
 std::vector<int> g_sequence_labels;
 std::vector<int> g_site_labels;
 std::vector<int> g_lookup;

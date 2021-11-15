@@ -97,7 +97,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
     Genes *old;
 #endif
 
-    if ((g_eventlist != NULL) && (Length(g_eventlist) > 0))
+    if ((g_use_eventlist && g_eventlist != NULL) && (Length(g_eventlist) > 0))
     {
         /* Determine number of nodes in ARG */
         lcounter = MakeCounter(g_eventlist, FIRST);
@@ -420,6 +420,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     g = copy_genes(h);
                     tmp = g_eventlist;
                     g_eventlist = NULL;
+                    g_eventlist_is_null = true;
                     remove_nonsegregating(g);
                     if (g->length > 0)
                     {
@@ -427,13 +428,16 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                         e->event.c.s1 = find_safe_coalescence(g, e->event.c.s2);
                     }
                     else
+                    {
                         /* We should never get in this situation - if all
                          * informative columns are removed, the remaining events
                          * should be a sequences of coalescences with the first
                          * sequence and the next remaining sequence.
                          */
                         e->event.c.s1 = (e->event.c.s2 == 0 ? 1 : 0);
+                    }
                     g_eventlist = tmp;
+                    g_eventlist_is_null = g_eventlist == NULL;
                     free_genes(g);
                     g = NULL;
                 }
@@ -528,6 +532,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     g = copy_genes(h);
                     tmp = g_eventlist;
                     g_eventlist = NULL;
+                    g_eventlist_is_null = true;
                     remove_nonsegregating(g);
                     if (g->length > 0)
                         remove_siamesetwins(g);
@@ -536,13 +541,16 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 if (g->length > 0)
                     i = find_safe_coalescence(g, e->event.remove);
                 else
+                {
                     /* We should never get in this situation - if all
                      * informative columns are removed, the remaining events
                      * should be a sequences of coalescences with the first
                      * sequence and the next remaining sequence.
                      */
                     i = (e->event.remove == 0 ? 1 : 0);
+                }
                 g_eventlist = tmp;
+                g_eventlist_is_null = g_eventlist == NULL;
                 j = (intptr_t)SetCounter(lseq, i);
                 k = (intptr_t)SetCounter(lseq, e->event.remove);
                 if (output != NULL)
@@ -721,9 +729,11 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
             {
                 tmp = g_eventlist;
                 g_eventlist = NULL;
+                g_eventlist_is_null = true;
                 g = copy_genes(h);
                 implode_genes(g);
                 g_eventlist = tmp;
+                g_eventlist_is_null = g_eventlist == NULL;
                 if (!no_recombinations_required(g))
                 {
                     p = pack_genes(g);

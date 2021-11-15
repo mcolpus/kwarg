@@ -40,6 +40,8 @@ void explode_local(int **local, LList *r, int n);
 #endif
 
 extern LList *g_eventlist;
+extern bool g_use_eventlist;
+extern bool g_eventlist_is_null;
 extern std::vector<int> g_sequence_labels;
 extern std::vector<int> g_site_labels;
 extern std::vector<int> g_lookup;
