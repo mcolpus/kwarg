@@ -117,12 +117,14 @@ typedef struct _Event
         int remove;
         int lookup;
     } event;
+
+
 } Event;
 
 typedef struct _EVENTLIST
 {
     bool in_use; // set to false when not wanting to record some section of computation
-    std::list<Event *> events;
+    std::list<Event> events;
 
     _EVENTLIST()
     {
@@ -134,16 +136,16 @@ typedef struct _EVENTLIST
     {
         if(!in_use)
         {
-            fprintf(stderr, "EVENTLIST is not in use!");
+            fprintf(stderr, "EventList is not in use!");
         }
         return events.size();
     }
 
-    void push_back(Event *e)
+    void push_back(const Event &e)
     {
         if(!in_use)
         {
-            fprintf(stderr, "EVENTLIST is not in use!");
+            fprintf(stderr, "EventList is not in use!");
         }
         events.push_back(e);
     }
@@ -174,18 +176,14 @@ typedef struct _EVENTLIST
 
     void destroy()
     {
-        for (Event *e : events)
-        {
-            free(e);
-        }
         in_use = false;
     }
 
-} EVENTLIST;
+} EventList;
 
 struct HistoryFragment {
   Genes *g;           /* End configuration */
-  EVENTLIST events;       /* List of events leading from start
+  EventList events;       /* List of events leading from start
 		       * configuration to end configuration.
 		       */
   double recombinations; /* Number of recombination events */

@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     FILE *fp;
     fp = stdout;
 
-    g_eventlist_new.reset();
+    g_eventlist.reset();
     g_use_eventlist = true;
 
 /* Analyse command line options */
@@ -156,9 +156,9 @@ int main(int argc, char **argv)
     print_int_vector(g_site_labels, NULL);
 
     // Tidying
-    if (g_eventlist_new.in_use)
+    if (g_eventlist.in_use)
     {
-        g_eventlist_new.destroy();
+        g_eventlist.destroy();
     }
     free_annotatedgenes(a);
 

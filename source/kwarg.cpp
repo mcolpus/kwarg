@@ -792,8 +792,7 @@ int main(int argc, char **argv)
     g_use_eventlist = false;
     if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
     {
-        g_eventlist_new.reset();
-        g_eventlist = MakeLList();
+        g_eventlist.reset();
         g_use_eventlist = true;
         multruns = 0;
         cost_in = 1;
@@ -1059,15 +1058,9 @@ int main(int argc, char **argv)
             arg_destroy(arg);
         }
 
-        if (g_eventlist_new.in_use)
+        if (g_eventlist.in_use)
         {
-            g_eventlist_new.destroy();
-        }
-        if (!g_eventlist != NULL)
-        {
-            while (Length(g_eventlist) > 0)
-                free(Pop(g_eventlist));
-            DestroyLList(g_eventlist);
+            g_eventlist.destroy();
         }
     }
 

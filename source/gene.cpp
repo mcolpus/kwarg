@@ -2699,24 +2699,24 @@ int remove_siamesetwins(Genes *g)
         else
             g->length = mulblocksize(mblock);
 
-        if (g_use_eventlist && g_eventlist_new.in_use)
+        if (g_use_eventlist && g_eventlist.in_use)
             /* Insert collapse of Siamese twins into list of events */
             for (i = n - 1; i >= 0; i--)
             {
                 /* Collapse into master */
                 for (j = state[i].master; j < state[i].end; j++)
                 {
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = COLLAPSE;
-                    e->event.collapse = state[i].master;
-                    g_eventlist_new.push_back(e);
+                    Event e;
+                    e.type = COLLAPSE;
+                    e.event.collapse = state[i].master;
+                    g_eventlist.push_back(e);
                 }
                 for (j = state[i].master - 1; j >= state[i].start; j--)
                 {
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = COLLAPSE;
-                    e->event.collapse = j;
-                    g_eventlist_new.push_back(e);
+                    Event e;
+                    e.type = COLLAPSE;
+                    e.event.collapse = j;
+                    g_eventlist.push_back(e);
                 }
             }
 
@@ -2892,13 +2892,13 @@ int remove_uninformative(Genes *g)
                     }
 #endif
 
-                    if (g_use_eventlist && g_eventlist_new.in_use && ((gene_knownancestor ? one1 : one0 & one1) & index))
+                    if (g_use_eventlist && g_eventlist.in_use && ((gene_knownancestor ? one1 : one0 & one1) & index))
                     {
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = SUBSTITUTION;
-                        e->event.s.seq = -1;
-                        e->event.s.site = mulblocksize(i) + j - n;
-                        g_eventlist_new.push_back(e);
+                        Event e;
+                        e.type = SUBSTITUTION;
+                        e.event.s.seq = -1;
+                        e.event.s.site = mulblocksize(i) + j - n;
+                        g_eventlist.push_back(e);
                     }
                     if (!g_site_labels.empty())
                     {
@@ -2979,14 +2979,14 @@ int remove_uninformative(Genes *g)
         if (g->length == 0)
         {
             /* Everything was removed */
-            if (g_use_eventlist && g_eventlist_new.in_use)
+            if (g_use_eventlist && g_eventlist.in_use)
                 for (i = 1; i < g->n; i++)
                 {
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = COALESCENCE;
-                    e->event.c.s1 = 0;
-                    e->event.c.s2 = 1;
-                    g_eventlist_new.push_back(e);
+                    Event e;
+                    e.type = COALESCENCE;
+                    e.event.c.s1 = 0;
+                    e.event.c.s2 = 1;
+                    g_eventlist.push_back(e);
                 }
             for (i = 0; i < g->n; i++)
             {
@@ -3136,14 +3136,14 @@ int remove_nonsegregating(Genes *g)
         if (g->length == 0)
         {
             /* Everything was removed */
-            if (g_use_eventlist && g_eventlist_new.in_use)
+            if (g_use_eventlist && g_eventlist.in_use)
                 for (i = 1; i < g->n; i++)
                 {
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = COALESCENCE;
-                    e->event.c.s1 = 0;
-                    e->event.c.s2 = 1;
-                    g_eventlist_new.push_back(e);
+                    Event e;
+                    e.type = COALESCENCE;
+                    e.event.c.s1 = 0;
+                    e.event.c.s2 = 1;
+                    g_eventlist.push_back(e);
                 }
             for (i = 0; i < g->n; i++)
             {
@@ -3281,12 +3281,12 @@ int coalesce_subsumed(Genes *g)
         {
             g_sequence_labels.erase(g_sequence_labels.begin() + i);
         }
-        if (g_use_eventlist && g_eventlist_new.in_use)
+        if (g_use_eventlist && g_eventlist.in_use)
         {
-            e = (Event *)xmalloc(sizeof(Event));
-            e->type = REMOVE;
-            e->event.remove = i;
-            g_eventlist_new.push_back(e);
+            Event e;
+            e.type = REMOVE;
+            e.event.remove = i;
+            g_eventlist.push_back(e);
         }
         for (j = i + 1; j < g->n; j++)
             if (g->data[j].type != NULL)
@@ -3301,12 +3301,12 @@ int coalesce_subsumed(Genes *g)
                 {
                     g_sequence_labels.erase(g_sequence_labels.begin() + i);
                 }
-                if (g_use_eventlist && g_eventlist_new.in_use)
+                if (g_use_eventlist && g_eventlist.in_use)
                 {
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = REMOVE;
-                    e->event.remove = i;
-                    g_eventlist_new.push_back(e);
+                    Event e;
+                    e.type = REMOVE;
+                    e.event.remove = i;
+                    g_eventlist.push_back(e);
                 }
             }
         /* Update g */
@@ -3359,17 +3359,17 @@ int no_recombinations_required(Genes *g)
     Event *e;
     if (g->n < (gene_knownancestor ? 3 : 4))
     {
-        if (g_use_eventlist && g_eventlist_new.in_use)
+        if (g_use_eventlist && g_eventlist.in_use)
         {
             if (g->length > 0)
                 remove_uninformative(g);
             for (i = 1; i < g->n; i++)
             {
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = COALESCENCE;
-                e->event.c.s1 = 0;
-                e->event.c.s2 = 1;
-                g_eventlist_new.push_back(e);
+                Event e;
+                e.type = COALESCENCE;
+                e.event.c.s1 = 0;
+                e.event.c.s2 = 1;
+                g_eventlist.push_back(e);
             }
         }
         /* Too few sequences to form segregating sites */
@@ -3378,14 +3378,14 @@ int no_recombinations_required(Genes *g)
 
     if (!ancestral_material_overlap(g))
     {
-        if (g_use_eventlist && g_eventlist_new.in_use)
+        if (g_use_eventlist && g_eventlist.in_use)
             for (i = 1; i < g->n; i++)
             {
-                e = (Event *)xmalloc(sizeof(Event));
-                e->type = COALESCENCE;
-                e->event.c.s1 = 0;
-                e->event.c.s2 = 1;
-                g_eventlist_new.push_back(e);
+                Event e;
+                e.type = COALESCENCE;
+                e.event.c.s1 = 0;
+                e.event.c.s2 = 1;
+                g_eventlist.push_back(e);
             }
         /* Only one sequence carrying ancestral material in each site */
         return 1;
@@ -3417,7 +3417,7 @@ void force_safeevents(Genes *g)
 }
 
 /* Force mutations everywhere possible, but do not remove columns as
- * is done in remove_uninformative. No events are registered in g_eventlist_new.
+ * is done in remove_uninformative. No events are registered in g_eventlist.
  */
 int force_mutations(Genes *g)
 {
@@ -4148,8 +4148,8 @@ int coalescence_amleft(Genes *g, int a, int b)
 {
     Genes *h = copy_genes(g);
     int n;
-    EVENTLIST tmp = std::move(g_eventlist_new);
-    g_eventlist_new.set_null();
+    EventList tmp = std::move(g_eventlist);
+    g_eventlist.set_null();
 
     coalesce(h, a, b);
     implode_genes(h);
@@ -4157,7 +4157,7 @@ int coalescence_amleft(Genes *g, int a, int b)
 
     /* Clean up */
     free_genes(h);
-    g_eventlist_new = tmp;
+    g_eventlist = tmp;
 
     return n;
 }
@@ -5029,7 +5029,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
         *out = (int *)xmalloc(g->n * sizeof(int));
     Genes *h;
     Event *e;
-    auto tmp = std::move(g_eventlist_new);
+    auto tmp = std::move(g_eventlist);
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
 #ifdef ENABLE_VERBOSE
@@ -5054,24 +5054,24 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
             g_site_labels = tmp_sites;
             if (split_removeprefix(h, s, a[s].index, a[s].block) != -1)
             {
-                if (g_use_eventlist && g_eventlist_new.in_use)
+                if (g_use_eventlist && g_eventlist.in_use)
                 {
-                    g_eventlist_new.reset();
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = RECOMBINATION;
-                    e->event.r.seq = s;
-                    e->event.r.pos = a[s].index + mulblocksize(a[s].block);
-                    g_eventlist_new.push_back(e);
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = SWAP;
-                    e->event.swap.s1 = s;
-                    e->event.swap.s2 = g->n;
-                    g_eventlist_new.push_back(e);
-                    e = (Event *)xmalloc(sizeof(Event));
-                    e->type = COALESCENCE;
-                    e->event.c.s1 = -1;
-                    e->event.c.s2 = g->n;
-                    g_eventlist_new.push_back(e);
+                    g_eventlist.reset();
+                    Event e;
+                    e.type = RECOMBINATION;
+                    e.event.r.seq = s;
+                    e.event.r.pos = a[s].index + mulblocksize(a[s].block);
+                    g_eventlist.push_back(e);
+                    Event e2;
+                    e2.type = SWAP;
+                    e2.event.swap.s1 = s;
+                    e2.event.swap.s2 = g->n;
+                    g_eventlist.push_back(e2);
+                    Event e3;
+                    e3.type = COALESCENCE;
+                    e3.event.c.s1 = -1;
+                    e3.event.c.s2 = g->n;
+                    g_eventlist.push_back(e3);
                 }
                 implode_genes(h);
                 f(h);
@@ -5217,24 +5217,24 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                     g_sequence_labels = tmp_elements;
                                     g_site_labels = tmp_sites;
                                     split_coalesceprefix(h, s, index, block, out[i]);
-                                    if (g_use_eventlist && g_eventlist_new.in_use)
+                                    if (g_use_eventlist && g_eventlist.in_use)
                                     {
-                                        g_eventlist_new.reset();
-                                        e = (Event *)xmalloc(sizeof(Event));
-                                        e->type = RECOMBINATION;
-                                        e->event.r.seq = s;
-                                        e->event.r.pos = index + mulblocksize(block);
-                                        g_eventlist_new.push_back(e);
-                                        e = (Event *)xmalloc(sizeof(Event));
-                                        e->type = SWAP;
-                                        e->event.swap.s1 = s;
-                                        e->event.swap.s2 = g->n;
-                                        g_eventlist_new.push_back(e);
-                                        e = (Event *)xmalloc(sizeof(Event));
-                                        e->type = COALESCENCE;
-                                        e->event.c.s1 = out[i];
-                                        e->event.c.s2 = g->n;
-                                        g_eventlist_new.push_back(e);
+                                        g_eventlist.reset();
+                                        Event e;
+                                        e.type = RECOMBINATION;
+                                        e.event.r.seq = s;
+                                        e.event.r.pos = index + mulblocksize(block);
+                                        g_eventlist.push_back(e);
+                                        Event e2;
+                                        e2.type = SWAP;
+                                        e2.event.swap.s1 = s;
+                                        e2.event.swap.s2 = g->n;
+                                        g_eventlist.push_back(e2);
+                                        Event e3;
+                                        e3.type = COALESCENCE;
+                                        e3.event.c.s1 = out[i];
+                                        e3.event.c.s2 = g->n;
+                                        g_eventlist.push_back(e3);
                                     }
                                     implode_genes(h);
                                     f(h);
@@ -5265,24 +5265,24 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                         g_sequence_labels = tmp_elements;
                                         g_site_labels = tmp_sites;
                                         split_coalesceprefix(h, s, index, block, out[i]);
-                                        if (g_use_eventlist && g_eventlist_new.in_use)
+                                        if (g_use_eventlist && g_eventlist.in_use)
                                         {
-                                            g_eventlist_new.reset();
-                                            e = (Event *)xmalloc(sizeof(Event));
-                                            e->type = RECOMBINATION;
-                                            e->event.r.seq = s;
-                                            e->event.r.pos = index + mulblocksize(block);
-                                            g_eventlist_new.push_back(e);
-                                            e = (Event *)xmalloc(sizeof(Event));
-                                            e->type = SWAP;
-                                            e->event.c.s1 = s;
-                                            e->event.c.s2 = g->n;
-                                            g_eventlist_new.push_back(e);
-                                            e = (Event *)xmalloc(sizeof(Event));
-                                            e->type = COALESCENCE;
-                                            e->event.c.s1 = out[i];
-                                            e->event.c.s2 = g->n;
-                                            g_eventlist_new.push_back(e);
+                                            g_eventlist.reset();
+                                            Event e;
+                                            e.type = RECOMBINATION;
+                                            e.event.r.seq = s;
+                                            e.event.r.pos = index + mulblocksize(block);
+                                            g_eventlist.push_back(e);
+                                            Event e2;
+                                            e2.type = SWAP;
+                                            e2.event.c.s1 = s;
+                                            e2.event.c.s2 = g->n;
+                                            g_eventlist.push_back(e2);
+                                            Event e3;
+                                            e3.type = COALESCENCE;
+                                            e3.event.c.s1 = out[i];
+                                            e3.event.c.s2 = g->n;
+                                            g_eventlist.push_back(e3);
                                         }
                                         implode_genes(h);
                                         f(h);
@@ -5322,7 +5322,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
     /* Clean up */
     free(out);
     free(ancestral);
-    g_eventlist_new = std::move(tmp);
+    g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 #ifdef ENABLE_VERBOSE
@@ -5346,7 +5346,7 @@ static void _maximal_prefix_coalesces_f(Genes *g)
     auto f = std::make_unique<HistoryFragment>();
 
     f->g = g;
-    f->events = g_eventlist_new;
+    f->events = g_eventlist;
     _maximal_prefix_coalesces_list.push_back(std::move(f));
 }
 std::vector<std::unique_ptr<HistoryFragment>> maximal_prefix_coalesces(Genes *g, Index *a, Index *b)
@@ -5375,7 +5375,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
         blocks = divblocksize(g->length - 1) + 1;
     Genes *h;
     Event *e;
-    auto tmp = std::move(g_eventlist_new);
+    auto tmp = std::move(g_eventlist);
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
 #ifdef ENABLE_VERBOSE
@@ -5406,19 +5406,19 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                 g_site_labels = tmp_sites;
                 if (split_removepostfix(h, s, b[s].index, b[s].block) != -1)
                 {
-                    if (g_use_eventlist && g_eventlist_new.in_use)
+                    if (g_use_eventlist && g_eventlist.in_use)
                     {
-                        g_eventlist_new.reset();
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = RECOMBINATION;
-                        e->event.r.seq = s;
-                        e->event.r.pos = b[s].index + mulblocksize(b[s].block);
-                        g_eventlist_new.push_back(e);
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = COALESCENCE;
-                        e->event.c.s1 = -1;
-                        e->event.c.s2 = g->n;
-                        g_eventlist_new.push_back(e);
+                        g_eventlist.reset();
+                        Event e;
+                        e.type = RECOMBINATION;
+                        e.event.r.seq = s;
+                        e.event.r.pos = b[s].index + mulblocksize(b[s].block);
+                        g_eventlist.push_back(e);
+                        Event e2;
+                        e2.type = COALESCENCE;
+                        e2.event.c.s1 = -1;
+                        e2.event.c.s2 = g->n;
+                        g_eventlist.push_back(e2);
                     }
                     implode_genes(h);
                     f(h);
@@ -5584,19 +5584,19 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                         g_sequence_labels = tmp_elements;
                                         g_site_labels = tmp_sites;
                                         splitafter_coalescepostfix(h, s, index, block, out[i]);
-                                        if (g_use_eventlist && g_eventlist_new.in_use)
+                                        if (g_use_eventlist && g_eventlist.in_use)
                                         {
-                                            g_eventlist_new.reset();
-                                            e = (Event *)xmalloc(sizeof(Event));
-                                            e->type = RECOMBINATION;
-                                            e->event.r.seq = s;
-                                            e->event.r.pos = index + mulblocksize(block) + 1;
-                                            g_eventlist_new.push_back(e);
-                                            e = (Event *)xmalloc(sizeof(Event));
-                                            e->type = COALESCENCE;
-                                            e->event.c.s1 = out[i];
-                                            e->event.c.s2 = g->n;
-                                            g_eventlist_new.push_back(e);
+                                            g_eventlist.reset();
+                                            Event e;
+                                            e.type = RECOMBINATION;
+                                            e.event.r.seq = s;
+                                            e.event.r.pos = index + mulblocksize(block) + 1;
+                                            g_eventlist.push_back(e);
+                                            Event e2;
+                                            e2.type = COALESCENCE;
+                                            e2.event.c.s1 = out[i];
+                                            e2.event.c.s2 = g->n;
+                                            g_eventlist.push_back(e2);
                                         }
                                         implode_genes(h);
                                         f(h);
@@ -5626,19 +5626,19 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                             g_sequence_labels = tmp_elements;
                                             g_site_labels = tmp_sites;
                                             splitafter_coalescepostfix(h, s, index, block, out[i]);
-                                            if (g_use_eventlist && g_eventlist_new.in_use)
+                                            if (g_use_eventlist && g_eventlist.in_use)
                                             {
-                                                g_eventlist_new.reset();
-                                                e = (Event *)xmalloc(sizeof(Event));
-                                                e->type = RECOMBINATION;
-                                                e->event.r.seq = s;
-                                                e->event.r.pos = index + mulblocksize(block) + 1;
-                                                g_eventlist_new.push_back(e);
-                                                e = (Event *)xmalloc(sizeof(Event));
-                                                e->type = COALESCENCE;
-                                                e->event.c.s1 = out[i];
-                                                e->event.c.s2 = g->n;
-                                                g_eventlist_new.push_back(e);
+                                                g_eventlist.reset();
+                                                Event e;
+                                                e.type = RECOMBINATION;
+                                                e.event.r.seq = s;
+                                                e.event.r.pos = index + mulblocksize(block) + 1;
+                                                g_eventlist.push_back(e);
+                                                Event e2;
+                                                e2.type = COALESCENCE;
+                                                e2.event.c.s1 = out[i];
+                                                e2.event.c.s2 = g->n;
+                                                g_eventlist.push_back(e2);
                                             }
                                             implode_genes(h);
                                             f(h);
@@ -5678,7 +5678,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
     /* Clean up */
     free(out);
     free(ancestral);
-    g_eventlist_new = std::move(tmp);
+    g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 #ifdef ENABLE_VERBOSE
@@ -5700,7 +5700,7 @@ static void _maximal_postfix_coalesces_f(Genes *g)
     auto f = std::make_unique<HistoryFragment>();
 
     f->g = g;
-    f->events = g_eventlist_new;
+    f->events = g_eventlist;
     _maximal_postfix_coalesces_list.push_back(std::move(f));
 }
 std::vector<std::unique_ptr<HistoryFragment>> maximal_postfix_coalesces(Genes *g, Index *a, Index *b)
@@ -6122,24 +6122,24 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                     g_site_labels = tmp_sites;
                     _split(h, s, sindex, sblock);
                     split_coalesceprefix(h, g->n, eindex, eblock, j);
-                    if (g_use_eventlist && g_eventlist_new.in_use)
+                    if (g_use_eventlist && g_eventlist.in_use)
                     {
-                        g_eventlist_new.reset();
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = RECOMBINATION;
-                        e->event.r.seq = s;
-                        e->event.r.pos = sindex + mulblocksize(sblock);
-                        g_eventlist_new.push_back(e);
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = RECOMBINATION;
-                        e->event.r.seq = g->n;
-                        e->event.r.pos = k;
-                        g_eventlist_new.push_back(e);
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = COALESCENCE;
-                        e->event.c.s1 = j;
-                        e->event.c.s2 = g->n;
-                        g_eventlist_new.push_back(e);
+                        g_eventlist.reset();
+                        Event e;
+                        e.type = RECOMBINATION;
+                        e.event.r.seq = s;
+                        e.event.r.pos = sindex + mulblocksize(sblock);
+                        g_eventlist.push_back(e);
+                        Event e2;
+                        e2.type = RECOMBINATION;
+                        e2.event.r.seq = g->n;
+                        e2.event.r.pos = k;
+                        g_eventlist.push_back(e2);
+                        Event e3;
+                        e3.type = COALESCENCE;
+                        e3.event.c.s1 = j;
+                        e3.event.c.s2 = g->n;
+                        g_eventlist.push_back(e3);
                     }
                     implode_genes(h);
                     f(h);
@@ -6186,24 +6186,24 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                     g_site_labels = tmp_sites;
                     _split(h, s, sindex, sblock);
                     split_coalesceprefix(h, g->n, eindex, eblock, j);
-                    if (g_use_eventlist && g_eventlist_new.in_use)
+                    if (g_use_eventlist && g_eventlist.in_use)
                     {
-                        g_eventlist_new.reset();
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = RECOMBINATION;
-                        e->event.r.seq = s;
-                        e->event.r.pos = sindex + mulblocksize(sblock);
-                        g_eventlist_new.push_back(e);
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = RECOMBINATION;
-                        e->event.r.seq = g->n;
-                        e->event.r.pos = k;
-                        g_eventlist_new.push_back(e);
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = COALESCENCE;
-                        e->event.c.s1 = j;
-                        e->event.c.s2 = g->n;
-                        g_eventlist_new.push_back(e);
+                        g_eventlist.reset();
+                        Event e;
+                        e.type = RECOMBINATION;
+                        e.event.r.seq = s;
+                        e.event.r.pos = sindex + mulblocksize(sblock);
+                        g_eventlist.push_back(e);
+                        Event e2;
+                        e2.type = RECOMBINATION;
+                        e2.event.r.seq = g->n;
+                        e2.event.r.pos = k;
+                        g_eventlist.push_back(e2);
+                        Event e3;
+                        e3.type = COALESCENCE;
+                        e3.event.c.s1 = j;
+                        e3.event.c.s2 = g->n;
+                        g_eventlist.push_back(e3);
                     }
                     implode_genes(h);
                     f(h);
@@ -6334,7 +6334,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
     Genes *h;
     Index *prefixs = NULL, *postfixs = NULL;
     Event *e;
-    auto tmp = std::move(g_eventlist_new);
+    auto tmp = std::move(g_eventlist);
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
 #ifdef ENABLE_VERBOSE
@@ -6476,24 +6476,24 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                 _split(h, i, leftindex, leftblock);
                 if (split_removeprefix(h, g->n, modblocksize(right), divblocksize(right)) != -1)
                 {
-                    if (g_use_eventlist && g_eventlist_new.in_use)
+                    if (g_use_eventlist && g_eventlist.in_use)
                     {
-                        g_eventlist_new.reset();
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = RECOMBINATION;
-                        e->event.r.seq = i;
-                        e->event.r.pos = left;
-                        g_eventlist_new.push_back(e);
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = RECOMBINATION;
-                        e->event.r.seq = g->n;
-                        e->event.r.pos = right;
-                        g_eventlist_new.push_back(e);
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = COALESCENCE;
-                        e->event.c.s1 = -1;
-                        e->event.c.s2 = g->n;
-                        g_eventlist_new.push_back(e);
+                        g_eventlist.reset();
+                        Event e;
+                        e.type = RECOMBINATION;
+                        e.event.r.seq = i;
+                        e.event.r.pos = left;
+                        g_eventlist.push_back(e);
+                        Event e2;
+                        e2.type = RECOMBINATION;
+                        e2.event.r.seq = g->n;
+                        e2.event.r.pos = right;
+                        g_eventlist.push_back(e2);
+                        Event e3;
+                        e3.type = COALESCENCE;
+                        e3.event.c.s1 = -1;
+                        e3.event.c.s2 = g->n;
+                        g_eventlist.push_back(e3);
                     }
                     implode_genes(h);
                     f(h);
@@ -6556,7 +6556,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
     free(leftmaximal);
     free_sites(s);
     free(subsumed);
-    g_eventlist_new = std::move(tmp);
+    g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 #ifdef ENABLE_VERBOSE
@@ -6577,7 +6577,7 @@ static void _maximal_infix_coalesces_f(Genes *g)
     auto f = std::make_unique<HistoryFragment>();
 
     f->g = g;
-    f->events = g_eventlist_new;
+    f->events = g_eventlist;
     _maximal_infix_coalesces_list.push_back(std::move(f));
 }
 std::vector<std::unique_ptr<HistoryFragment>> maximal_infix_coalesces(Genes *g, Index *a, Index *b)
@@ -6713,7 +6713,7 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
     unsigned long pattern;
     Genes *h;
     Event *e;
-    auto tmp = g_eventlist_new;
+    auto tmp = g_eventlist;
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
 #ifdef ENABLE_VERBOSE
@@ -6826,24 +6826,24 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
                             g_site_labels = tmp_sites;
                             _split(h, s1, index1, block1);
                             splitafter_coalescepostfix(h, in[s2], index2, block2, s1);
-                            if (g_use_eventlist && g_eventlist_new.in_use)
+                            if (g_use_eventlist && g_eventlist.in_use)
                             {
-                                g_eventlist_new.reset();
-                                e = (Event *)xmalloc(sizeof(Event));
-                                e->type = RECOMBINATION;
-                                e->event.r.seq = s1;
-                                e->event.r.pos = index1 + mulblocksize(block1);
-                                g_eventlist_new.push_back(e);
-                                e = (Event *)xmalloc(sizeof(Event));
-                                e->type = RECOMBINATION;
-                                e->event.r.seq = in[s2];
-                                e->event.r.pos = index2 + mulblocksize(block2) + 1;
-                                g_eventlist_new.push_back(e);
-                                e = (Event *)xmalloc(sizeof(Event));
-                                e->type = COALESCENCE;
-                                e->event.c.s1 = s1;
-                                e->event.c.s2 = g->n + 1;
-                                g_eventlist_new.push_back(e);
+                                g_eventlist.reset();
+                                Event e;
+                                e.type = RECOMBINATION;
+                                e.event.r.seq = s1;
+                                e.event.r.pos = index1 + mulblocksize(block1);
+                                g_eventlist.push_back(e);
+                                Event e2;
+                                e2.type = RECOMBINATION;
+                                e2.event.r.seq = in[s2];
+                                e2.event.r.pos = index2 + mulblocksize(block2) + 1;
+                                g_eventlist.push_back(e2);
+                                Event e3;
+                                e3.type = COALESCENCE;
+                                e3.event.c.s1 = s1;
+                                e3.event.c.s2 = g->n + 1;
+                                g_eventlist.push_back(e3);
                             }
                             implode_genes(h);
                             f(h);
@@ -6875,7 +6875,7 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
 
     /* Clean up */
     free(in);
-    g_eventlist_new = std::move(tmp);
+    g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 #ifdef ENABLE_VERBOSE
@@ -6897,7 +6897,7 @@ static void _maximal_overlap_coalesces_f(Genes *g)
     auto f = std::make_unique<HistoryFragment>();
 
     f->g = g;
-    f->events = g_eventlist_new;
+    f->events = g_eventlist;
     _maximal_overlap_coalesces_list.push_back(std::move(f));
 }
 std::vector<std::unique_ptr<HistoryFragment>> maximal_overlap_coalesces(Genes *g, Index *a, Index *b)
@@ -7332,7 +7332,7 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
     int q, s, m;
     Genes *h;
     Event *e;
-    auto tmp = std::move(g_eventlist_new);
+    auto tmp = std::move(g_eventlist);
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
     char c;
@@ -7366,14 +7366,14 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
                     }
                     g_sequence_labels = tmp_elements;
                     g_site_labels = tmp_sites;
-                    if (g_use_eventlist && g_eventlist_new.in_use)
+                    if (g_use_eventlist && g_eventlist.in_use)
                     {
-                        g_eventlist_new.reset();
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = SEFLIP;
-                        e->event.flip.seq = q;
-                        e->event.flip.site = s;
-                        g_eventlist_new.push_back(e);
+                        g_eventlist.reset();
+                        Event e;
+                        e.type = SEFLIP;
+                        e.event.flip.seq = q;
+                        e.event.flip.site = s;
+                        g_eventlist.push_back(e);
                     }
                     implode_genes(h);
                     f(h);
@@ -7383,7 +7383,7 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
     }
 
     g_recombinations = g_se_cost;
-    g_eventlist_new = std::move(tmp);
+    g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 }
@@ -7395,7 +7395,7 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
     int q, s, m;
     Genes *h;
     Event *e;
-    auto tmp = std::move(g_eventlist_new);
+    auto tmp = std::move(g_eventlist);
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
     char c;
@@ -7429,14 +7429,14 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
                     }
                     g_sequence_labels = tmp_elements;
                     g_site_labels = tmp_sites;
-                    if (g_use_eventlist && g_eventlist_new.in_use)
+                    if (g_use_eventlist && g_eventlist.in_use)
                     {
-                        g_eventlist_new.reset();
-                        e = (Event *)xmalloc(sizeof(Event));
-                        e->type = RMFLIP;
-                        e->event.flip.seq = q;
-                        e->event.flip.site = s;
-                        g_eventlist_new.push_back(e);
+                        g_eventlist.reset();
+                        Event e;
+                        e.type = RMFLIP;
+                        e.event.flip.seq = q;
+                        e.event.flip.site = s;
+                        g_eventlist.push_back(e);
                     }
                     implode_genes(h);
                     f(h);
@@ -7446,7 +7446,7 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
     }
 
     g_recombinations = rm_cost;
-    g_eventlist_new = std::move(tmp);
+    g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 }

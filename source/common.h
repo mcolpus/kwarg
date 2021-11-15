@@ -40,8 +40,7 @@ extern int **g_haploblocks;
 void explode_local(int **local, LList *r, int n);
 #endif
 
-extern EVENTLIST g_eventlist_new;
-extern LList *g_eventlist;
+extern EventList g_eventlist;
 extern bool g_use_eventlist;
 extern std::vector<int> g_sequence_labels;
 extern std::vector<int> g_site_labels;
