@@ -80,7 +80,6 @@ void output_g_eventlist_as_text(FILE *output)
 ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
 {
     output_g_eventlist_as_text(output);
-    return nullptr;
     
     int i, j, k, l, n = a->g->n, next_seq = a->g->n, *edges, n_se = 0, n_rm = 0, n_re = 0;
     LList *positions, *sequences, *tmp;
