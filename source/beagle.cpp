@@ -637,7 +637,7 @@ int main(int argc, char **argv)
             }
             arg_destroy(arg);
         }
-        if (g_eventlist != NULL)
+        if (!g_eventlist_is_null)
         {
             while (Length(g_eventlist) > 0)
                 free(Pop(g_eventlist));

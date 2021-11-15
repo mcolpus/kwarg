@@ -157,7 +157,7 @@ int main(int argc, char **argv)
     print_int_vector(g_site_labels, NULL);
 
     // Tidying
-    if (g_eventlist != NULL)
+    if (!g_eventlist_is_null)
     {
         while (Length(g_eventlist) > 0)
             free(Pop(g_eventlist));

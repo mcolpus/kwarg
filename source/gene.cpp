@@ -2699,7 +2699,7 @@ int remove_siamesetwins(Genes *g)
         else
             g->length = mulblocksize(mblock);
 
-        if (g_use_eventlist && g_eventlist != NULL)
+        if (g_use_eventlist && !g_eventlist_is_null)
             /* Insert collapse of Siamese twins into list of events */
             for (i = n - 1; i >= 0; i--)
             {
@@ -2892,7 +2892,7 @@ int remove_uninformative(Genes *g)
                     }
 #endif
 
-                    if (g_use_eventlist && g_eventlist != NULL && ((gene_knownancestor ? one1 : one0 & one1) & index))
+                    if (g_use_eventlist && !g_eventlist_is_null && ((gene_knownancestor ? one1 : one0 & one1) & index))
                     {
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = SUBSTITUTION;
@@ -2979,7 +2979,7 @@ int remove_uninformative(Genes *g)
         if (g->length == 0)
         {
             /* Everything was removed */
-            if (g_use_eventlist && g_eventlist != NULL)
+            if (g_use_eventlist && !g_eventlist_is_null)
                 for (i = 1; i < g->n; i++)
                 {
                     e = (Event *)xmalloc(sizeof(Event));
@@ -3136,7 +3136,7 @@ int remove_nonsegregating(Genes *g)
         if (g->length == 0)
         {
             /* Everything was removed */
-            if (g_use_eventlist && g_eventlist != NULL)
+            if (g_use_eventlist && !g_eventlist_is_null)
                 for (i = 1; i < g->n; i++)
                 {
                     e = (Event *)xmalloc(sizeof(Event));
@@ -3281,7 +3281,7 @@ int coalesce_subsumed(Genes *g)
         {
             g_sequence_labels.erase(g_sequence_labels.begin() + i);
         }
-        if (g_use_eventlist && g_eventlist != NULL)
+        if (g_use_eventlist && !g_eventlist_is_null)
         {
             e = (Event *)xmalloc(sizeof(Event));
             e->type = REMOVE;
@@ -3301,7 +3301,7 @@ int coalesce_subsumed(Genes *g)
                 {
                     g_sequence_labels.erase(g_sequence_labels.begin() + i);
                 }
-                if (g_use_eventlist && g_eventlist != NULL)
+                if (g_use_eventlist && !g_eventlist_is_null)
                 {
                     e = (Event *)xmalloc(sizeof(Event));
                     e->type = REMOVE;
@@ -3359,7 +3359,7 @@ int no_recombinations_required(Genes *g)
     Event *e;
     if (g->n < (gene_knownancestor ? 3 : 4))
     {
-        if (g_use_eventlist && g_eventlist != NULL)
+        if (g_use_eventlist && !g_eventlist_is_null)
         {
             if (g->length > 0)
                 remove_uninformative(g);
@@ -3378,7 +3378,7 @@ int no_recombinations_required(Genes *g)
 
     if (!ancestral_material_overlap(g))
     {
-        if (g_use_eventlist && g_eventlist != NULL)
+        if (g_use_eventlist && !g_eventlist_is_null)
             for (i = 1; i < g->n; i++)
             {
                 e = (Event *)xmalloc(sizeof(Event));
@@ -5056,7 +5056,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
             g_site_labels = tmp_sites;
             if (split_removeprefix(h, s, a[s].index, a[s].block) != -1)
             {
-                if (g_use_eventlist && g_eventlist != NULL)
+                if (g_use_eventlist && !g_eventlist_is_null)
                 {
                     g_eventlist = MakeLList();
                     e = (Event *)xmalloc(sizeof(Event));
@@ -5219,7 +5219,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                     g_sequence_labels = tmp_elements;
                                     g_site_labels = tmp_sites;
                                     split_coalesceprefix(h, s, index, block, out[i]);
-                                    if (g_use_eventlist && g_eventlist != NULL)
+                                    if (g_use_eventlist && !g_eventlist_is_null)
                                     {
                                         g_eventlist = MakeLList();
                                         e = (Event *)xmalloc(sizeof(Event));
@@ -5267,7 +5267,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                         g_sequence_labels = tmp_elements;
                                         g_site_labels = tmp_sites;
                                         split_coalesceprefix(h, s, index, block, out[i]);
-                                        if (g_use_eventlist && g_eventlist != NULL)
+                                        if (g_use_eventlist && !g_eventlist_is_null)
                                         {
                                             g_eventlist = MakeLList();
                                             e = (Event *)xmalloc(sizeof(Event));
@@ -5409,7 +5409,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                 g_site_labels = tmp_sites;
                 if (split_removepostfix(h, s, b[s].index, b[s].block) != -1)
                 {
-                    if (g_use_eventlist && g_eventlist != NULL)
+                    if (g_use_eventlist && !g_eventlist_is_null)
                     {
                         g_eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
@@ -5587,7 +5587,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                         g_sequence_labels = tmp_elements;
                                         g_site_labels = tmp_sites;
                                         splitafter_coalescepostfix(h, s, index, block, out[i]);
-                                        if (g_use_eventlist && g_eventlist != NULL)
+                                        if (g_use_eventlist && !g_eventlist_is_null)
                                         {
                                             g_eventlist = MakeLList();
                                             e = (Event *)xmalloc(sizeof(Event));
@@ -5629,7 +5629,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                             g_sequence_labels = tmp_elements;
                                             g_site_labels = tmp_sites;
                                             splitafter_coalescepostfix(h, s, index, block, out[i]);
-                                            if (g_use_eventlist && g_eventlist != NULL)
+                                            if (g_use_eventlist && !g_eventlist_is_null)
                                             {
                                                 g_eventlist = MakeLList();
                                                 e = (Event *)xmalloc(sizeof(Event));
@@ -6126,7 +6126,7 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                     g_site_labels = tmp_sites;
                     _split(h, s, sindex, sblock);
                     split_coalesceprefix(h, g->n, eindex, eblock, j);
-                    if (g_use_eventlist && g_eventlist != NULL)
+                    if (g_use_eventlist && !g_eventlist_is_null)
                     {
                         g_eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
@@ -6190,7 +6190,7 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                     g_site_labels = tmp_sites;
                     _split(h, s, sindex, sblock);
                     split_coalesceprefix(h, g->n, eindex, eblock, j);
-                    if (g_use_eventlist && g_eventlist != NULL)
+                    if (g_use_eventlist && !g_eventlist_is_null)
                     {
                         g_eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
@@ -6480,7 +6480,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                 _split(h, i, leftindex, leftblock);
                 if (split_removeprefix(h, g->n, modblocksize(right), divblocksize(right)) != -1)
                 {
-                    if (g_use_eventlist && g_eventlist != NULL)
+                    if (g_use_eventlist && !g_eventlist_is_null)
                     {
                         g_eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
@@ -6831,7 +6831,7 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
                             g_site_labels = tmp_sites;
                             _split(h, s1, index1, block1);
                             splitafter_coalescepostfix(h, in[s2], index2, block2, s1);
-                            if (g_use_eventlist && g_eventlist != NULL)
+                            if (g_use_eventlist && !g_eventlist_is_null)
                             {
                                 g_eventlist = MakeLList();
                                 e = (Event *)xmalloc(sizeof(Event));
@@ -7372,7 +7372,7 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
                     }
                     g_sequence_labels = tmp_elements;
                     g_site_labels = tmp_sites;
-                    if (g_use_eventlist && g_eventlist != NULL)
+                    if (g_use_eventlist && !g_eventlist_is_null)
                     {
                         g_eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));
@@ -7436,7 +7436,7 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
                     }
                     g_sequence_labels = tmp_elements;
                     g_site_labels = tmp_sites;
-                    if (g_use_eventlist && g_eventlist != NULL)
+                    if (g_use_eventlist && !g_eventlist_is_null)
                     {
                         g_eventlist = MakeLList();
                         e = (Event *)xmalloc(sizeof(Event));

@@ -97,7 +97,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
     Genes *old;
 #endif
 
-    if ((g_use_eventlist && g_eventlist != NULL) && (Length(g_eventlist) > 0))
+    if ((g_use_eventlist && !g_eventlist_is_null) && (Length(g_eventlist) > 0))
     {
         /* Determine number of nodes in ARG */
         lcounter = MakeCounter(g_eventlist, FIRST);
