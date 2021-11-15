@@ -34,11 +34,9 @@ static ARGEdge *getedge(ARG *arg, int edge)
         return &node->predecessor.one;
 }
 
-void output_g_eventlist_as_text(FILE *output)
+void output_g_eventlist_new_as_text(FILE *output)
 {
-    auto lcounter = MakeCounter(g_eventlist, FIRST);
-    Event *e;
-    while ((e = (Event *)Next(lcounter)) != NULL){
+    for (const Event *e : g_eventlist_new.events){
         switch (e->type)
         {
         case EventType::SUBSTITUTION:
@@ -81,11 +79,12 @@ void output_g_eventlist_as_text(FILE *output)
  */
 ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
 {
-    output_g_eventlist_as_text(output);
+    output_g_eventlist_new_as_text(output);
 
     int i, j, k, l, n = a->g->n, next_seq = a->g->n, *edges, n_se = 0, n_rm = 0, n_re = 0;
     LList *positions, *sequences, *tmp;
-    LListCounter *lcounter, *lpos, *lseq, *lc;
+    EVENTLIST tmp_eventlist;
+    LListCounter *lpos, *lseq, *lc;
     Genes *g = NULL, *h = copy_genes(a->g);
     Event *e, *f;
     char *pfix, *s, *t, **sequence, c;
@@ -97,11 +96,12 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
     Genes *old;
 #endif
 
-    if ((g_use_eventlist && !g_eventlist_is_null) && (Length(g_eventlist) > 0))
+    if ((g_use_eventlist && g_eventlist_new.in_use) && (g_eventlist_new.size() > 0))
     {
         /* Determine number of nodes in ARG */
-        lcounter = MakeCounter(g_eventlist, FIRST);
-        while ((e = (Event *)Next(lcounter)) != NULL)
+        
+        // lcounter = MakeCounter(g_eventlist_new, FIRST);
+        for (const Event *e : g_eventlist_new.events)
             if (e->type == RECOMBINATION)
                 n++;
         /* Create initial ARG information */
@@ -162,11 +162,15 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
         lpos = MakeCounter(positions, FIRST);
         lseq = MakeCounter(sequences, FIRST);
         lc = MakeCounter(positions, FIRST);
-        InitCounter(lcounter, g_eventlist, FIRST);
+
+        //InitCounter(lcounter, g_eventlist_new, FIRST);
+        std::list<Event *>::iterator it;// = g_eventlist_new.events.begin();
 
         /* Go through the events recorded */
-        while ((e = (Event *)Next(lcounter)) != NULL)
+        //while ((e = (Event *)Next(lcounter)) != NULL)
+        for (it = g_eventlist_new.events.begin(); it != g_eventlist_new.events.end(); it++)
         {
+            e = *it; //it is a pointer to a pointer to Event
 #ifdef DEBUG
             old = copy_genes(h);
 #endif
@@ -418,9 +422,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                      * siamese twins may alter the picture.
                      */
                     g = copy_genes(h);
-                    tmp = g_eventlist;
-                    g_eventlist = NULL;
-                    g_eventlist_is_null = true;
+                    tmp_eventlist = g_eventlist_new; //TODO: a copy
+                    g_eventlist_new.set_null();
                     remove_nonsegregating(g);
                     if (g->length > 0)
                     {
@@ -436,8 +439,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                          */
                         e->event.c.s1 = (e->event.c.s2 == 0 ? 1 : 0);
                     }
-                    g_eventlist = tmp;
-                    g_eventlist_is_null = g_eventlist == NULL;
+                    g_eventlist_new = tmp_eventlist; //TODO: a copy
                     free_genes(g);
                     g = NULL;
                 }
@@ -530,9 +532,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                      * case no further reductions should be made.
                      */
                     g = copy_genes(h);
-                    tmp = g_eventlist;
-                    g_eventlist = NULL;
-                    g_eventlist_is_null = true;
+                    tmp_eventlist = g_eventlist_new; //TODO: a copy
+                    g_eventlist_new.set_null();
                     remove_nonsegregating(g);
                     if (g->length > 0)
                         remove_siamesetwins(g);
@@ -549,8 +550,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                      */
                     i = (e->event.remove == 0 ? 1 : 0);
                 }
-                g_eventlist = tmp;
-                g_eventlist_is_null = g_eventlist == NULL;
+                g_eventlist_new = tmp_eventlist; //TODO: a copy
                 j = (intptr_t)SetCounter(lseq, i);
                 k = (intptr_t)SetCounter(lseq, e->event.remove);
                 if (output != NULL)
@@ -637,7 +637,9 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                  * change whether the prefix or postfix retains the place of
                  * the old sequence.
                  */
-                f = (Event *)Next(lcounter);
+                //f = (Event *)Next(lcounter);
+                std::advance(it, 1);
+                f = *it;
                 if ((f != NULL) && (f->type == SWAP))
                 {
                     pfix = "pre";
@@ -654,7 +656,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 else
                 {
                     pfix = "suf";
-                    Prev(lcounter);
+                    //Prev(lcounter);
+                    std::advance(it, -1);
                     /* Update sequences for ARG reconstruction */
                     for (k = 0; k < i; k++)
                         sequence[next_seq][k] = 'x';
@@ -727,13 +730,11 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
             /* Sanity check - did we see this ancestral state in the forward pass? */
             if ((ancestral_state_trace != NULL) && (e->type != RECOMBINATION))
             {
-                tmp = g_eventlist;
-                g_eventlist = NULL;
-                g_eventlist_is_null = true;
+                tmp_eventlist = g_eventlist_new; //TODO: a copy
+                g_eventlist_new.set_null();
                 g = copy_genes(h);
                 implode_genes(g);
-                g_eventlist = tmp;
-                g_eventlist_is_null = g_eventlist == NULL;
+                g_eventlist_new = tmp_eventlist; //TODO: a copy
                 if (!no_recombinations_required(g))
                 {
                     p = pack_genes(g);
@@ -816,7 +817,6 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
         }
         DestroyLList(positions);
         DestroyLList(sequences);
-        DestroyCounter(lcounter);
         DestroyCounter(lseq);
         DestroyCounter(lpos);
         DestroyCounter(lc);

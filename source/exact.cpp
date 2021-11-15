@@ -153,13 +153,13 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                 if (!skip_lookup)
                 {
                     /* And we don't want to search histories */
-                    if (g_use_eventlist && !g_eventlist_is_null)
+                    if (g_use_eventlist && g_eventlist_new.in_use)
                     {
-                        Append(g_eventlist, splits[*n].g->event);
+                        g_eventlist_new.append(splits[*n].g->events);
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = LOOKUP;
                         e->event.lookup = -prevtarget - 1;
-                        Enqueue(g_eventlist, (void *)e);
+                        g_eventlist_new.push_back(e);
                     }
                     free(splits[*n].g);
                     /* We found a solution - eliminate all candidates */
@@ -167,11 +167,9 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                     for (i++; i < genes.size(); i++)
                     {
                         splits[*n].g = genes[i].release();
-                        if (g_use_eventlist && !g_eventlist_is_null)
+                        if (g_use_eventlist && g_eventlist_new.in_use)
                         {
-                            while (Length(splits[*n].g->event) > 0)
-                                free(Pop(splits[*n].g->event));
-                            DestroyLList(splits[*n].g->event);
+                            splits[*n].g->events.destroy();
                         }
                         free_genes(splits[*n].g->g);
                         free(splits[*n].g);
@@ -179,11 +177,9 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                     for (i = 0; i < *n; i++)
                     {
                         free_genes(splits[i].g->g);
-                        if (g_use_eventlist && !g_eventlist_is_null)
+                        if (g_use_eventlist && g_eventlist_new.in_use)
                         {
-                            while (Length(splits[i].g->event) > 0)
-                                free(Pop(splits[i].g->event));
-                            DestroyLList(splits[i].g->event);
+                            splits[i].g->events.destroy();
                         }
                         free(splits[i].g);
                     }
@@ -196,11 +192,9 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                 /* We know this set of sequences needs more recombinations
                  * than we have left.
                  */
-                if (g_use_eventlist && !g_eventlist_is_null)
+                if (g_use_eventlist && g_eventlist_new.in_use)
                 {
-                    while (Length(splits[*n].g->event) > 0)
-                        free(Pop(splits[*n].g->event));
-                    DestroyLList(splits[*n].g->event);
+                    splits[*n].g->events.destroy();
                 }
                 free(splits[*n].g);
                 free_genes(g);
@@ -236,11 +230,9 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                 else
                     hashtable_update((void *)p, (void *)(bound - 1), t, NULL);
 #endif
-                if (g_use_eventlist && !g_eventlist_is_null)
+                if (g_use_eventlist && g_eventlist_new.in_use)
                 {
-                    while (Length(splits[*n].g->event) > 0)
-                        free(Pop(splits[*n].g->event));
-                    DestroyLList(splits[*n].g->event);
+                    splits[*n].g->events.destroy();
                 }
                 free(splits[*n].g);
                 continue;
@@ -288,10 +280,10 @@ static int check_for_bottom(const std::vector<std::unique_ptr<HistoryFragment>> 
                 output_genes_indexed(g, NULL);
             }
 #endif
-            if (g_use_eventlist && !g_eventlist_is_null)
+            if (g_use_eventlist && g_eventlist_new.in_use)
             {
-                Append(g_eventlist, s->event);
-                s->event = NULL;
+                g_eventlist_new.append(s->events);
+                s->events.set_null();
             }
             return 1;
         }
@@ -323,7 +315,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
     Genes *h = NULL;
     NodeClass *current, *tmp;
     Event *event;
-    auto oldevents = g_eventlist;
+    auto oldevents = g_eventlist_new; //TODO: copying
     auto oldelements = g_sequence_labels;
     auto oldsites = g_site_labels;
 
@@ -345,19 +337,19 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
                      * carrying out the coalescences in.
                      */
                     h = copy_genes(g);
-                    if (g_use_eventlist && !g_eventlist_is_null)
-                        g_eventlist = MakeLList();
+                    if (g_use_eventlist && g_eventlist_new.in_use)
+                        g_eventlist_new.reset();
                     g_sequence_labels = oldelements;
                     g_site_labels = oldsites;
                 }
                 coalesce(h, components[i] - 1, i);
-                if (g_use_eventlist && !g_eventlist_is_null)
+                if (g_use_eventlist && g_eventlist_new.in_use)
                 {
                     event = (Event *)xmalloc(sizeof(Event));
                     event->type = COALESCENCE;
                     event->event.c.s1 = components[i] - 1;
                     event->event.c.s2 = i;
-                    Enqueue(g_eventlist, event);
+                    g_eventlist_new.push_back(event);
                 }
             }
         }
@@ -368,7 +360,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
              */
             implode_genes(h);
             f(h);
-            g_eventlist = oldevents;
+            g_eventlist_new = oldevents; //TODO: copying
             g_sequence_labels = oldelements;
             g_site_labels = oldsites;
         }
@@ -543,7 +535,7 @@ static void _coalesce_compatibleandentangled_f(Genes *g)
     auto f = std::make_unique<HistoryFragment>();
 
     f->g = g;
-    f->event = g_eventlist;
+    f->events = g_eventlist_new;
     _coalesce_compatibleandentangled_states.push_back(std::move(f));
 }
 static std::vector<std::unique_ptr<HistoryFragment>> _coalesce_compatibleandentangled(Genes *g)
@@ -904,19 +896,17 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                                      (void *)(splits[j].splits - target - 1), t, NULL);
                     free_packedgenes(p);
                 }
-                if (g_use_eventlist && !g_eventlist_is_null)
-                    Prepend(splits[j].g->event, g_eventlist);
+                if (g_use_eventlist && g_eventlist_new.in_use)
+                    g_eventlist_new.prepend(splits[j].g->events);
                 free_genes(splits[j].g->g);
                 free(splits[j].g);
                 j++;
                 for (; j < i; j++)
                 {
                     free_genes(splits[j].g->g);
-                    if (g_use_eventlist && !g_eventlist_is_null)
+                    if (g_use_eventlist && g_eventlist_new.in_use)
                     {
-                        while (Length(splits[j].g->event) > 0)
-                            free(Pop(splits[j].g->event));
-                        DestroyLList(splits[j].g->event);
+                        splits[j].g->events.destroy();
                     }
                     free(splits[j].g);
                 }
@@ -932,11 +922,9 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
             }
 
             free_genes(splits[j].g->g);
-            if (g_use_eventlist && !g_eventlist_is_null)
+            if (g_use_eventlist && g_eventlist_new.in_use)
             {
-                while (Length(splits[j].g->event) > 0)
-                    free(Pop(splits[j].g->event));
-                DestroyLList(splits[j].g->event);
+                splits[j].g->events.destroy();
             }
             free(splits[j].g);
         }
@@ -967,8 +955,8 @@ static int _intmax(int a, int b)
 
 /* Use branch&bound plus dynamic programming techniques to reconstruct
  * a history for g requiring a minimum number of recombinations. If
- * g_eventlist is not NULL, a list of the events leading to this number
- * of recombinations is compiled in g_eventlist. If g_haploblocks is not
+ * g_eventlist_new is not NULL, a list of the events leading to this number
+ * of recombinations is compiled in g_eventlist_new. If g_haploblocks is not
  * NULL, local minimum number of recombinations are stored in
  * g_haploblocks; g_haploblocks is assumed to be a table initialised to 0s
  * - entry i, j is set to the minimum number of recombinations
@@ -987,7 +975,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     Genes *h;
     int table_size, bound = 0, r1 = 0, r2 = 0;
     void *lookup;
-    LList *implode, *tmp = g_eventlist;
+    EVENTLIST tmp_eventlist = g_eventlist_new; //TODO: copying
     Event *e;
 #ifdef HAPLOTYPE_BLOCKS
     int i, j, n, localbound, oldreusable = reusable;
@@ -1023,7 +1011,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
                 if (!skip_lookup)
                 {
                     /* And we are going to use it */
-                    if ((g_use_eventlist && !g_eventlist_is_null) && (-bound <= upper))
+                    if ((g_use_eventlist && g_eventlist_new.in_use) && (-bound <= upper))
                     {
                         e = (Event *)xmalloc(sizeof(Event));
                         e->type = LOOKUP;
@@ -1042,8 +1030,8 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     }
 
     /* Compute a good lower bound on the number of recombinations */
-    if (g_use_eventlist && !g_eventlist_is_null)
-        g_eventlist = MakeLList();
+    if (g_use_eventlist && g_eventlist_new.in_use)
+        g_eventlist_new.reset();
 #ifdef HAPLOTYPE_BLOCKS
     if (g_haploblocks != NULL)
     {
@@ -1071,8 +1059,8 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     }
 #endif
 
-    implode = g_eventlist;
-    g_eventlist = tmp;
+    EVENTLIST implode = g_eventlist_new; //TODO: copying
+    g_eventlist_new = tmp_eventlist;
 #ifdef HAPLOTYPE_BLOCKS
     if (g_haploblocks != NULL)
     {
@@ -1134,10 +1122,9 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 
         if (!r1)
             free_packedgenes(p);
-        if ((g_use_eventlist && !g_eventlist_is_null) && (bound > upper))
+        if ((g_use_eventlist && g_eventlist_new.in_use) && (bound > upper))
             /* We failed to find a valid history */
-            while (Length(implode) > 0)
-                free(Pop(implode));
+            implode.destroy();
 #ifdef ENABLE_VERBOSE
         if (v)
         {
@@ -1161,8 +1148,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
              */
             g_haploblocks[0][g->length - 2] = bound;
             /* Do not remember events from local bound computations */
-            g_eventlist = NULL;
-            g_eventlist_is_null = true;
+            g_eventlist_new.set_null();
             /* Run through regions in order of increasing length */
             for (i = 2; i < g->length; i++)
                 for (j = 0; j <= g->length - i; j++)
@@ -1210,9 +1196,8 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
             while (Length(l) > 0)
                 free(Pop(l));
             DestroyLList(l);
-            /* Restore g_eventlist */
-            g_eventlist = tmp;
-            g_eventlist_is_null = g_eventlist == NULL;
+            /* Restore g_eventlist_new */
+            g_eventlist_new = tmp_eventlist;//TODO: copying
             reusable = oldreusable;
         }
 #endif
@@ -1232,13 +1217,12 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     g_representativeness_counter = tmprepcount;
 #endif
 
-    if (g_use_eventlist && !g_eventlist_is_null)
+    if (g_use_eventlist && g_eventlist_new.in_use)
     {
         if (bound <= upper)
-            Prepend(implode, g_eventlist);
+            g_eventlist_new.prepend(implode);
         else
-            while (Length(g_eventlist) > 0)
-                free(Pop(g_eventlist));
+            g_eventlist_new.destroy();
     }
 
     free_genes(g);
@@ -1303,15 +1287,14 @@ int beagle_reusable_bounded(Genes *g, FILE *print_progress, int lower,
  * Events.
  */
 
-LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
+EVENTLIST beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
 {
     int reuse = 1, i, j, *permutation;
     Genes *h;
-    LList *tmp = g_eventlist, *history;
+    EVENTLIST tmp = g_eventlist_new, history;
     std::vector<Event> events = {};
     std::vector<Genes *> configurations;
-    g_eventlist = NULL;
-    g_eventlist_is_null = true;
+    g_eventlist_new.set_null();
 
     /* Allocate hash table for ancestral configurations encountered if
      * none such was provided.
@@ -1325,15 +1308,15 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
     /* Determine number of recombinations required for data set */
     if (beagle_reusable_bounded(g, print_progress, 0, r, t) > r)
     {
-        g_eventlist = tmp;
-        g_eventlist_is_null = g_eventlist == NULL;
-        return NULL;
+        g_eventlist_new = tmp;
+        history.set_null();
+        return history;
     }
 
     /* Find a history with at most bound recombinations and store events
      * in history.
      */
-    history = MakeLList();
+    history.reset();
     h = copy_genes(g);
     while (h->n > 1)
     {
@@ -1363,7 +1346,7 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
                     e->event.c.s2 = e->event.c.s1;
                     e->event.c.s1 = j;
                 }
-                Enqueue(history, e);
+                history.push_back(e);
             }
             break;
         }
@@ -1394,7 +1377,7 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
             if (beagle_reusable_bounded(h, NULL, 0, r - (e->type == RECOMBINATION), t) <= r - (e->type == RECOMBINATION))
             {
                 /* Found next configuration */
-                Enqueue(history, e);
+                history.push_back(e);
                 if (e->type == RECOMBINATION)
                     /* Used one more recombination from our total allowance */
                     r--;
@@ -1425,8 +1408,7 @@ LList *beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
 
     /* Clean up */
     free_genes(h);
-    g_eventlist = tmp;
-    g_eventlist_is_null = g_eventlist == NULL;
+    g_eventlist_new = tmp; //TODO: copying
 
     return history;
 }
@@ -1613,7 +1595,7 @@ static void _reset_builtins(Genes *g)
 }
 
 /* Update global quantities with contribution from g and free any
- * events that may be stored in g_eventlist.
+ * events that may be stored in g_eventlist_new.
  */
 static int _choice_fixed;
 static double _minam, _maxam, _minseq, _maxseq, _minlen, _maxlen;
@@ -1770,7 +1752,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     int global, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
     double r = 0;
     Index *start, *end;
-    LList *tmp = g_eventlist;
+    EVENTLIST tmp = g_eventlist_new; //;TODO: copying
     double printscore = 0;
     const char *names[5];
     names[0] = "Coalescence";
@@ -1857,7 +1839,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             auto f = std::make_unique<HistoryFragment>();
 
             /* Wrap configuration and events leading to it in a HistoryFragment */
-            f->event = g_eventlist;
+            f->events = g_eventlist_new;
             f->g = g;
             f->recombinations = g_recombinations;
             f->elements = g_sequence_labels;
@@ -1998,8 +1980,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
              */
 
             // Set the tracking lists to NULL for the score computation, and destroy the old g_sequence_labels/sites
-            g_eventlist = NULL;
-            g_eventlist_is_null = true;
+            g_eventlist_new.set_null();
             g_sequence_labels.clear();
             g_site_labels.clear();
             reset();
@@ -2061,8 +2042,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
             free(score_array);
 
-            g_eventlist = tmp;
-            g_eventlist_is_null = g_eventlist == NULL;
+            g_eventlist_new = tmp;
             predecessors.clear();
         }
 
@@ -2104,9 +2084,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             fflush(print_progress);
         }
 
-        if (g_use_eventlist && !g_eventlist_is_null)
+        if (g_use_eventlist && g_eventlist_new.in_use)
         {
-            Append(g_eventlist, greedy_choice->event);
+            g_eventlist_new.append(greedy_choice->events);
         }
 
         r += greedy_choice->recombinations;

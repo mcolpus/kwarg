@@ -11,7 +11,7 @@
 #define BACKTRACK_H
 
 #include <vector>
-
+#include <list>
 
 #include "arg.h"
 #include "gene.h"

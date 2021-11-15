@@ -38,8 +38,7 @@ int main(int argc, char **argv)
     FILE *fp;
     fp = stdout;
 
-    g_eventlist = MakeLList();
-    g_eventlist_is_null = false;
+    g_eventlist_new.reset();
     g_use_eventlist = true;
 
 /* Analyse command line options */
@@ -157,11 +156,9 @@ int main(int argc, char **argv)
     print_int_vector(g_site_labels, NULL);
 
     // Tidying
-    if (!g_eventlist_is_null)
+    if (g_eventlist_new.in_use)
     {
-        while (Length(g_eventlist) > 0)
-            free(Pop(g_eventlist));
-        DestroyLList(g_eventlist);
+        g_eventlist_new.destroy();
     }
     free_annotatedgenes(a);
 

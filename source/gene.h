@@ -6,6 +6,7 @@
 #include <vector>
 #include <functional>
 #include <memory>
+#include <list>
 
 #include "llist.h"
 #include "hashtable.h"
@@ -118,9 +119,73 @@ typedef struct _Event
     } event;
 } Event;
 
+typedef struct _EVENTLIST
+{
+    bool in_use; // set to false when not wanting to record some section of computation
+    std::list<Event *> events;
+
+    _EVENTLIST()
+    {
+        in_use = true;
+        events = {};
+    }
+
+    int size()
+    {
+        if(!in_use)
+        {
+            fprintf(stderr, "EVENTLIST is not in use!");
+        }
+        return events.size();
+    }
+
+    void push_back(Event *e)
+    {
+        if(!in_use)
+        {
+            fprintf(stderr, "EVENTLIST is not in use!");
+        }
+        events.push_back(e);
+    }
+
+    void set_null()
+    {
+        events = {};
+        in_use = false;
+    }
+
+    void reset()
+    {
+        events = {};
+        in_use = true;
+    }
+
+    // splices elements from other list to front
+    void prepend(struct _EVENTLIST &other)
+    {
+        events.splice(events.begin(), other.events);
+    }
+
+    // splices elements from other list to front
+    void append(struct _EVENTLIST &other)
+    {
+        events.splice(events.end(), other.events);
+    }
+
+    void destroy()
+    {
+        for (Event *e : events)
+        {
+            free(e);
+        }
+        in_use = false;
+    }
+
+} EVENTLIST;
+
 struct HistoryFragment {
   Genes *g;           /* End configuration */
-  LList *event;       /* List of events leading from start
+  EVENTLIST events;       /* List of events leading from start
 		       * configuration to end configuration.
 		       */
   double recombinations; /* Number of recombination events */
@@ -136,11 +201,7 @@ struct HistoryFragment {
   ~HistoryFragment() {
     if(g != NULL)
       free_genes(g);
-    if (event != NULL) {
-      while (Length(event) != 0)
-        free(Pop(event));
-      DestroyLList(event);
-    }
+    events.destroy();
   }
 };
 

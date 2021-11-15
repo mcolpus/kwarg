@@ -268,6 +268,9 @@ int main(int argc, char **argv)
           *dottree_files = MakeLList(),
           *gmltree_files = MakeLList(),
           *gdltree_files = MakeLList();
+
+    Enqueue(history_files, stdout);
+
     ARG *arg = NULL;
     ARGLabels nodelabel = ARGLABEL;
     int edgelabel = 0;
@@ -791,9 +794,9 @@ int main(int argc, char **argv)
     g_use_eventlist = false;
     if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
     {
+        g_eventlist_new.reset();
         g_eventlist = MakeLList();
         g_use_eventlist = true;
-        g_eventlist_is_null = false;
         multruns = 0;
         cost_in = 1;
         T_in = 1;
@@ -1058,7 +1061,11 @@ int main(int argc, char **argv)
             arg_destroy(arg);
         }
 
-        if (!g_eventlist_is_null)
+        if (g_eventlist_new.in_use)
+        {
+            g_eventlist_new.destroy();
+        }
+        if (!g_eventlist != NULL)
         {
             while (Length(g_eventlist) > 0)
                 free(Pop(g_eventlist));

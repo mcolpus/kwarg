@@ -454,14 +454,12 @@ int main(int argc, char **argv)
 
     /* Set up structures for computation */
     g_use_eventlist = false;
-    g_eventlist_is_null = true;
     if (comprehensive_bound >= 0)
         t = beagle_allocate_hashtable(g, -1);
     else if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
     {
-        g_eventlist = MakeLList();
+        g_eventlist_new.reset();
         g_use_eventlist = true;
-        g_eventlist_is_null = false;
     }    
 
 #ifdef HAPLOTYPE_BLOCKS
@@ -532,8 +530,7 @@ int main(int argc, char **argv)
     {
         if (comprehensive_bound >= 0)
         {
-            g_eventlist = beagle_randomised(g, NULL, comprehensive_bound, t);
-            g_eventlist_is_null = g_eventlist == NULL;
+            g_eventlist_new = beagle_randomised(g, NULL, comprehensive_bound, t);
             beagle_deallocate_hashtable(t);
         }
         while ((fp = (FILE *)Pop(history_files)) != NULL)
@@ -637,11 +634,9 @@ int main(int argc, char **argv)
             }
             arg_destroy(arg);
         }
-        if (!g_eventlist_is_null)
+        if (g_eventlist_new.in_use)
         {
-            while (Length(g_eventlist) > 0)
-                free(Pop(g_eventlist));
-            DestroyLList(g_eventlist);
+            g_eventlist_new.destroy();
         }
     }
 
