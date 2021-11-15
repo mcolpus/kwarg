@@ -18,6 +18,8 @@
 #include <time.h>
 #include <errno.h>
 
+#include <iostream>
+
 #include "gene.h"
 #include "bounds.h"
 #include "exact.h"
@@ -750,10 +752,6 @@ int main(int argc, char **argv)
             exit(1);
         }
     }
-
-
-    Enqueue(history_files, stdout);
-
 
     if (j != k)
     {

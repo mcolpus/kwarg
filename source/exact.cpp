@@ -1980,6 +1980,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
              */
 
             // Set the tracking lists to NULL for the score computation, and destroy the old g_sequence_labels/sites
+            tmp = g_eventlist_new;
             g_eventlist_new.set_null();
             g_sequence_labels.clear();
             g_site_labels.clear();

@@ -21,6 +21,7 @@
 #ifdef DEBUG
 extern HashTable *ancestral_state_trace;
 #endif
+void output_g_eventlist_new_as_text(FILE *output);
 ARG *eventlist2history(AnnotatedGenes *a, FILE *output);
 
 #endif
