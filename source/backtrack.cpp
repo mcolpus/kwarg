@@ -427,7 +427,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                      * siamese twins may alter the picture.
                      */
                     g = copy_genes(h);
-                    tmp_eventlist = g_eventlist_new; // TODO: a copy
+                    tmp_eventlist = std::move(g_eventlist_new);
                     g_eventlist_new.set_null();
                     remove_nonsegregating(g);
                     if (g->length > 0)
@@ -444,7 +444,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                          */
                         e->event.c.s1 = (e->event.c.s2 == 0 ? 1 : 0);
                     }
-                    g_eventlist_new = tmp_eventlist; // TODO: a copy
+                    g_eventlist_new = std::move(tmp_eventlist);
                     free_genes(g);
                     g = NULL;
                 }
@@ -525,7 +525,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                  * the entire block of sequences following the disappearing
                  * sequence is moved one place up.
                  */
-                tmp_eventlist = std::move(g_eventlist_new); // TODO: a copy
+                tmp_eventlist = std::move(g_eventlist_new);
 
                 if (g == NULL)
                 {
@@ -557,7 +557,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                      */
                     i = (e->event.remove == 0 ? 1 : 0);
                 }
-                g_eventlist_new = std::move(tmp_eventlist); // TODO: a copy
+                g_eventlist_new = std::move(tmp_eventlist);
 
 
 
@@ -741,11 +741,11 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
             /* Sanity check - did we see this ancestral state in the forward pass? */
             if ((ancestral_state_trace != NULL) && (e->type != RECOMBINATION))
             {
-                tmp_eventlist = g_eventlist_new; // TODO: a copy
+                tmp_eventlist = std::move(g_eventlist_new);
                 g_eventlist_new.set_null();
                 g = copy_genes(h);
                 implode_genes(g);
-                g_eventlist_new = tmp_eventlist; // TODO: a copy
+                g_eventlist_new = std::move(tmp_eventlist);
                 if (!no_recombinations_required(g))
                 {
                     p = pack_genes(g);
@@ -765,11 +765,6 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
             free_genes(old);
 #endif
 
-        }
-
-        if(it != g_eventlist_new.events.end())
-        {
-            fprintf(output, "ERROR should not have finished:\n");
         }
 
         if (g_howverbose != -1 && output != stdout && output != NULL)

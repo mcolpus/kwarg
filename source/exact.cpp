@@ -107,7 +107,7 @@ static void permute_vector(std::vector<T> &vec)
     {
         j = unbiased_random(i);
         i--;
-        vector_swap_elements(vec, i , j);
+        vector_swap_elements(vec, i, j);
     }
 }
 
@@ -315,13 +315,13 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
     Genes *h = NULL;
     NodeClass *current, *tmp;
     Event *event;
-    auto oldevents = g_eventlist_new; //TODO: copying
-    auto oldelements = g_sequence_labels;
-    auto oldsites = g_site_labels;
 
     /* Check whether we have reached bottom of recursion */
     if (Length(stack) == 0)
     {
+        auto oldevents = std::move(g_eventlist_new);
+        auto oldelements = std::move(g_sequence_labels);
+        auto oldsites = std::move(g_site_labels);
         /* Coalesce in reverse order to avoid having to keep track of
          * where other sequences are moved when sequences disappear by
          * coalescence.
@@ -337,7 +337,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
                      * carrying out the coalescences in.
                      */
                     h = copy_genes(g);
-                    if (g_use_eventlist && g_eventlist_new.in_use)
+                    if (g_use_eventlist && oldevents.in_use)
                         g_eventlist_new.reset();
                     g_sequence_labels = oldelements;
                     g_site_labels = oldsites;
@@ -360,10 +360,11 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
              */
             implode_genes(h);
             f(h);
-            g_eventlist_new = oldevents; //TODO: copying
-            g_sequence_labels = oldelements;
-            g_site_labels = oldsites;
         }
+
+        g_eventlist_new = std::move(oldevents);
+        g_sequence_labels = std::move(oldelements);
+        g_site_labels = std::move(oldsites);
     }
     else
     {
@@ -595,7 +596,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
     }
     else
         n = 0;
-    
+
     i = 0;
     if (target > 0)
     {
@@ -975,7 +976,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     Genes *h;
     int table_size, bound = 0, r1 = 0, r2 = 0;
     void *lookup;
-    EVENTLIST tmp_eventlist = g_eventlist_new; //TODO: copying
+    EVENTLIST tmp_eventlist = std::move(g_eventlist_new);
     Event *e;
 #ifdef HAPLOTYPE_BLOCKS
     int i, j, n, localbound, oldreusable = reusable;
@@ -1059,8 +1060,8 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     }
 #endif
 
-    EVENTLIST implode = g_eventlist_new; //TODO: copying
-    g_eventlist_new = tmp_eventlist;
+    EVENTLIST implode = std::move(g_eventlist_new);
+    g_eventlist_new = std::move(tmp_eventlist);
 #ifdef HAPLOTYPE_BLOCKS
     if (g_haploblocks != NULL)
     {
@@ -1197,7 +1198,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
                 free(Pop(l));
             DestroyLList(l);
             /* Restore g_eventlist_new */
-            g_eventlist_new = tmp_eventlist;//TODO: copying
+            g_eventlist_new = std::move(tmp_eventlist);
             reusable = oldreusable;
         }
 #endif
@@ -1357,11 +1358,12 @@ EVENTLIST beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
         auto new_configs = force_coalesce(h, events);
         vector_append(configurations, new_configs);
         /* Determine configurations reachable by recombinations */
-        for (i = 0; i < h->n; i++) {
+        for (i = 0; i < h->n; i++)
+        {
             new_configs = force_split(h, i, events);
             vector_append(configurations, new_configs);
         }
-            
+
         /* Go through configurations in randomly permuted order and choose
          * first that does not exceed recombination allowance.
          */
@@ -1385,7 +1387,7 @@ EVENTLIST beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
                 permutation[i + j] = permutation[i];
                 for (i++; i < configurations.size(); i++)
                 {
-                    free_genes( configurations[permutation[i]] );
+                    free_genes(configurations[permutation[i]]);
                 }
                 /* Clean up */
                 configurations.clear();
@@ -1408,7 +1410,7 @@ EVENTLIST beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
 
     /* Clean up */
     free_genes(h);
-    g_eventlist_new = tmp; //TODO: copying
+    g_eventlist_new = std::move(tmp);
 
     return history;
 }
@@ -1752,7 +1754,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     int global, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
     double r = 0;
     Index *start, *end;
-    EVENTLIST tmp = g_eventlist_new; //;TODO: copying
+    EVENTLIST tmp = std::move(g_eventlist_new);
     double printscore = 0;
     const char *names[5];
     names[0] = "Coalescence";

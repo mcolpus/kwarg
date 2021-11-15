@@ -4148,7 +4148,7 @@ int coalescence_amleft(Genes *g, int a, int b)
 {
     Genes *h = copy_genes(g);
     int n;
-    EVENTLIST tmp = g_eventlist_new; //TODO: copying
+    EVENTLIST tmp = std::move(g_eventlist_new);
     g_eventlist_new.set_null();
 
     coalesce(h, a, b);
@@ -5029,7 +5029,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
         *out = (int *)xmalloc(g->n * sizeof(int));
     Genes *h;
     Event *e;
-    auto tmp = g_eventlist_new; //TODO: copying
+    auto tmp = std::move(g_eventlist_new);
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
 #ifdef ENABLE_VERBOSE
@@ -5322,7 +5322,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
     /* Clean up */
     free(out);
     free(ancestral);
-    g_eventlist_new = tmp; //TODO: copying
+    g_eventlist_new = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 #ifdef ENABLE_VERBOSE
@@ -5375,7 +5375,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
         blocks = divblocksize(g->length - 1) + 1;
     Genes *h;
     Event *e;
-    auto tmp = g_eventlist_new; //TODO: copying
+    auto tmp = std::move(g_eventlist_new);
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
 #ifdef ENABLE_VERBOSE
@@ -5678,7 +5678,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
     /* Clean up */
     free(out);
     free(ancestral);
-    g_eventlist_new = tmp; //TODO: copying
+    g_eventlist_new = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 #ifdef ENABLE_VERBOSE
@@ -6334,7 +6334,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
     Genes *h;
     Index *prefixs = NULL, *postfixs = NULL;
     Event *e;
-    auto tmp = g_eventlist_new;  //TODO: copying
+    auto tmp = std::move(g_eventlist_new);
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
 #ifdef ENABLE_VERBOSE
@@ -6556,7 +6556,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
     free(leftmaximal);
     free_sites(s);
     free(subsumed);
-    g_eventlist_new = tmp;  //TODO: copying
+    g_eventlist_new = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 #ifdef ENABLE_VERBOSE
@@ -6875,7 +6875,7 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
 
     /* Clean up */
     free(in);
-    g_eventlist_new = tmp;  //TODO: copying
+    g_eventlist_new = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 #ifdef ENABLE_VERBOSE
@@ -7332,7 +7332,7 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
     int q, s, m;
     Genes *h;
     Event *e;
-    auto tmp = g_eventlist_new; //TODO: copying
+    auto tmp = std::move(g_eventlist_new);
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
     char c;
@@ -7383,7 +7383,7 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
     }
 
     g_recombinations = g_se_cost;
-    g_eventlist_new = tmp; //TODO: copying
+    g_eventlist_new = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 }
@@ -7395,7 +7395,7 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
     int q, s, m;
     Genes *h;
     Event *e;
-    auto tmp = g_eventlist_new; //TODO: copying
+    auto tmp = std::move(g_eventlist_new);
     auto tmp_elements = std::move(g_sequence_labels);
     auto tmp_sites = std::move(g_site_labels);
     char c;
@@ -7446,7 +7446,7 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
     }
 
     g_recombinations = rm_cost;
-    g_eventlist_new = tmp; //TODO: copying
+    g_eventlist_new = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
 }
