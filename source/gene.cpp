@@ -71,26 +71,9 @@ void free_genes(Genes *g)
         free(g->data[i].type);
         free(g->data[i].ancestral);
     }
-    free(g->data);
     free(g);
 }
 
-/* Create a Genes data structure containing no sequences. This should
- * be used with care as some (most) functions assume non-empty data
- * set. One exception is add_gene, so used in combination with this
- * function it can be used to build a data set.
- */
-Genes *make_genes()
-{
-    Genes *g = (Genes *)xmalloc(sizeof(Genes));
-    g->data = (Gene *)xmalloc(sizeof(Gene));
-    g->data[0].type = (unsigned long *)xcalloc(1, sizeof(unsigned long));
-    g->data[0].ancestral = (unsigned long *)xcalloc(1, sizeof(unsigned long));
-    g->n = 0;
-    g->length = 0;
-
-    return g;
-}
 
 /* Free memory used by an annotatedgenes data structure */
 void free_annotatedgenes(AnnotatedGenes *g)
@@ -125,22 +108,6 @@ void free_sites(Sites *s)
     free(s);
 }
 
-/* Create a Sites data structure containing no sites. This should be
- * used with care as some (most) functions assume non-empty data
- * set. One exception is add_site, so used in combination with this
- * function it can be used to build a data set.
- */
-Sites *make_sites()
-{
-    Sites *s = (Sites *)xmalloc(sizeof(Sites));
-    s->data = (Site *)xmalloc(sizeof(Site));
-    s->data[0].type = (unsigned long *)xcalloc(1, sizeof(unsigned long));
-    s->data[0].ancestral = (unsigned long *)xcalloc(1, sizeof(unsigned long));
-    s->n = 0;
-    s->length = 0;
-
-    return s;
-}
 
 /* Free memory used by a gene data structure */
 void free_gene(Gene *g)
@@ -1158,6 +1125,7 @@ static int _output_genes(Genes *g, FILE *fp, LList *labels)
                 block++;
             }
         }
+
         /* Finished outputting gene i */
         if (fputc((int)'\n', fp) == EOF)
         {
@@ -1293,97 +1261,6 @@ void output_annotatedgenes(AnnotatedGenes *a, FILE *fp, char *comment)
     }
 }
 
-/* Add the gene specified by the gene _new to g. The _new gene is
- * assumed to have the same length as the genes already present in
- * g. If g does not contain any genes, an extra argument specifying
- * the number of sites in _new is required.
- */
-void add_gene(Genes *g, Gene *_new, ...)
-{
-    int blocks;
-    va_list args;
-
-    /* Determine length of sequences and corresponding number of blocks */
-    if (g->n == 0)
-    {
-        va_start(args, _new);
-        g->length = (int)va_arg(args, int);
-        va_end(args);
-    }
-    blocks = divblocksize(g->length - 1) + 1;
-
-    /* Modify basic structure */
-    g->n++;
-    g->data = (Gene *)xrealloc(g->data, g->n * sizeof(Gene));
-
-    /* Copy _new gene to structure */
-    g->data[g->n - 1].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    memcpy(g->data[g->n - 1].type, _new->type,
-           blocks * sizeof(unsigned long));
-    g->data[g->n - 1].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    memcpy(g->data[g->n - 1].ancestral, _new->ancestral,
-           blocks * sizeof(unsigned long));
-}
-
-/* Add the site specified by the site _new to s. The _new site is
- * assumed to have the same length as the sites already present in
- * s. If s does not contain any sites, an extra argument specifying
- * the number of genes in _new is required.
- */
-void add_site(Sites *s, Site *_new, ...)
-{
-    int blocks;
-
-    va_list args;
-    /* Determine number of sequences and corresponding number of blocks */
-    if (s->length == 0)
-    {
-        va_start(args, _new);
-        s->n = (int)va_arg(args, int);
-        va_end(args);
-    }
-    blocks = divblocksize(s->n - 1) + 1;
-
-    /* Modify basic structure */
-    s->length++;
-    s->data = (Site *)xrealloc(s->data, s->length * sizeof(Site));
-
-    /* Copy _new site to structure */
-    s->data[s->length - 1].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    memcpy(s->data[s->length - 1].type, _new->type,
-           blocks * sizeof(unsigned long));
-    s->data[s->length - 1].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    memcpy(s->data[s->length - 1].ancestral, _new->ancestral,
-           blocks * sizeof(unsigned long));
-}
-
-/* Return the i'th sequence of g as a Gene data structure */
-Gene *get_gene(Genes *g, int i)
-{
-    int blocks = divblocksize(g->length - 1) + 1;
-    Gene *_new = (Gene *)xmalloc(sizeof(Gene));
-
-    _new->type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    memcpy(_new->type, g->data[i].type, blocks * sizeof(unsigned long));
-    _new->ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    memcpy(_new->ancestral, g->data[i].ancestral, blocks * sizeof(unsigned long));
-
-    return _new;
-}
-
-/* Return the i'th site of s as a Site data structure */
-Site *get_site(Sites *s, int i)
-{
-    int blocks = divblocksize(s->n - 1) + 1;
-    Site *_new = (Site *)xmalloc(sizeof(Site));
-
-    _new->type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    memcpy(_new->type, s->data[i].type, blocks * sizeof(unsigned long));
-    _new->ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    memcpy(_new->ancestral, s->data[i].ancestral, blocks * sizeof(unsigned long));
-
-    return _new;
-}
 
 /* Return character in site site of sequence seq of g - if character
  * is ancestral either 0 or 1 is returned depending on type, if
@@ -1403,23 +1280,6 @@ char get_genes_character(Genes *g, int seq, int site)
         return 2;
 }
 
-/* Return character in site site of sequence seq of g - if character
- * is ancestral either 0 or 1 is returned depending on type, if
- * character is non-ancestral 2 is returned. It is assumed that seq is
- * less than g->n and site is less than g->length.
- */
-char get_sites_character(Sites *s, int seq, int site)
-{
-    int block = divblocksize(seq);
-    int index = modblocksize(seq);
-
-    if ((s->data[site].ancestral[block] & ((unsigned long)1 << index)) != 0)
-        /* Character is ancestral */
-        return ((s->data[site].type[block] >> index) & 1);
-    else
-        /* Character is non-ancestral */
-        return 2;
-}
 
 /* Set character in site site of sequence seq of g to c, where 0 and 1
  * denotes ancestral types and any other value of c corresponds to a
@@ -1448,32 +1308,6 @@ void set_genes_character(Genes *g, int seq, int site, char c)
         g->data[seq].ancestral[block] &= ~((unsigned long)1 << index);
 }
 
-/* Set character in site site of sequence seq of s to c, where 0 and 1
- * denotes ancestral types and any other value of c corresponds to a
- * non-ancestral type. It is assumed that seq is less than s->n and
- * site is less than s->length.
- */
-void set_sites_character(Sites *s, int seq, int site, char c)
-{
-    int block = divblocksize(seq);
-    int index = modblocksize(seq);
-
-    /* Set type for character */
-    if (c == 1)
-        /* Ancestral type 1 */
-        s->data[site].type[block] |= (unsigned long)1 << index;
-    else
-        /* Non-ancestral type or ancestral type 0 */
-        s->data[site].type[block] &= ~((unsigned long)1 << index);
-
-    /* Set ancestrality for character */
-    if (c <= 1)
-        /* Ancestral type */
-        s->data[site].ancestral[block] |= (unsigned long)1 << index;
-    else
-        /* Non-ancestral type */
-        s->data[site].ancestral[block] &= ~((unsigned long)1 << index);
-}
 
 /* Swap sequences a and b */
 void swap_genes(Genes *g, int a, int b)
@@ -1485,27 +1319,6 @@ void swap_genes(Genes *g, int a, int b)
     tmp = g->data[a].ancestral;
     g->data[a].ancestral = g->data[b].ancestral;
     g->data[b].ancestral = tmp;
-}
-
-/* Add the all 0 sequence as the last sequence to g */
-void add_ancestral_genes(Genes *g)
-{
-    int i, blocks = divblocksize(g->length - 1) + 1;
-
-    /* Modify basic structure */
-    g->n++;
-    g->data = (Gene *)xrealloc(g->data, g->n * sizeof(Gene));
-
-    /* Insert the all 0 sequence */
-    g->data[g->n - 1].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    g->data[g->n - 1].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    for (i = 0; i < blocks - 1; i++)
-    {
-        g->data[g->n - 1].type[i] = 0;
-        g->data[g->n - 1].ancestral[i] = ~0;
-    }
-    g->data[g->n - 1].type[i] = 0;
-    g->data[g->n - 1].ancestral[i] = ((unsigned long)2 << modblocksize(g->length - 1)) - 1;
 }
 
 /* Add the all 0 sequence as the last sequence to s */
@@ -1716,63 +1529,6 @@ void reallocate_genes(Genes *g)
     }
 }
 
-/* Create a random set of n genes of length m */
-Genes *random_genes(int n, int m)
-{
-    int i, j, bits = 1, blocks = divblocksize(m - 1) + 1;
-    unsigned long filter = 1, data;
-    Genes *g = (Genes *)xmalloc(sizeof(Genes));
-
-    /* Set up basic structure */
-    g->n = n;
-    g->length = m;
-    g->data = (Gene *)xmalloc(n * sizeof(Gene));
-
-    /* Determine how many unbiased bits we obtain from rand, and create
-     * a filter for obtaining them.
-     */
-    while (filter & XRAND_MAX)
-    {
-        bits++;
-        filter <<= 1;
-    }
-    if (bits > BLOCKSIZE)
-    {
-        bits = BLOCKSIZE;
-        filter = ~0;
-    }
-    else
-        filter--;
-
-    /* Create _new genes */
-    for (i = 0; i < n; i++)
-    {
-        /* Allocate memory for gene i */
-        g->data[i].type = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
-        g->data[i].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-        /* Set type to random value */
-        for (j = 0; j < m; j += bits)
-        {
-            data = xrandom();
-            g->data[i].type[divblocksize(j)] |= data << modblocksize(j);
-            if ((modblocksize(j) + bits > BLOCKSIZE) && (divblocksize(j) < blocks - 1))
-                /* This block of random bits extends into the next block in g */
-                g->data[i].type[divblocksize(j) + 1] = (j == 0 ? 0 : data >> (BLOCKSIZE - modblocksize(j)));
-        }
-        /* Set gene to have ancestral material in all positions */
-        for (j = 0; j < blocks - 1; j++)
-            g->data[i].ancestral[j] = ~0;
-        if (modblocksize(m) == 0)
-            g->data[i].ancestral[j] = ~0;
-        else
-        {
-            g->data[i].ancestral[j] = ((unsigned long)1 << modblocksize(m)) - 1;
-            g->data[i].type[j] &= g->data[i].ancestral[j];
-        }
-    }
-
-    return g;
-}
 
 /* Convert gene to a site oriented structure where the data is
  * comprised of columns instead of sequences.
@@ -1811,46 +1567,6 @@ Sites *genes2sites(Genes *g)
 
     return s;
 }
-
-/* Convert a site oriented structure where the data is represented as
- * columns to a sequence oriented structure.
- */
-Genes *sites2genes(Sites *s)
-{
-    int i, j, block, blocks = divblocksize(s->length - 1) + 1;
-    unsigned long index;
-    Genes *g = (Genes *)xmalloc(sizeof(Genes));
-
-    g->n = s->n;
-    g->length = s->length;
-    g->data = (Gene *)xmalloc(g->n * sizeof(Gene));
-    for (i = 0; i < g->n; i++)
-    {
-        /* Construct sequence i */
-        g->data[i].type = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
-        g->data[i].ancestral = (unsigned long *)xcalloc(blocks, sizeof(unsigned long));
-        /* Collect data from all sites */
-        index = 1;
-        block = 0;
-        for (j = 0; j < g->length; j++)
-        {
-            /* Handle site j */
-            if (s->data[j].type[divblocksize(i)] & (unsigned long)1 << modblocksize(i))
-                g->data[i].type[block] |= index;
-            if (s->data[j].ancestral[divblocksize(i)] & (unsigned long)1 << modblocksize(i))
-                g->data[i].ancestral[block] |= index;
-            index <<= 1;
-            if (index == 0)
-            {
-                index = 1;
-                block += 1;
-            }
-        }
-    }
-
-    return g;
-}
-
 /* Return the gene set as an array of strings */
 char **genes2string(Genes *g)
 {
@@ -1942,23 +1658,6 @@ void output_sites(Sites *s, FILE *fp, char *comment)
             block++;
         }
     }
-}
-
-/* Output site data in s to file fp (stdout if fp is NULL), followed
- * by a line of site indeces.
- */
-void output_sites_indexed(Sites *s, FILE *fp)
-{
-    int i;
-
-    /* Set up file for output */
-    if (fp == NULL)
-        fp = stdout;
-
-    output_sites(s, NULL, NULL);
-    for (i = 0; i < s->length; i++)
-        fprintf(fp, "%d", i % 10);
-    fprintf(fp, "\n");
 }
 
 /* Add data from g's block from index low to high to _new starting from
@@ -3672,93 +3371,6 @@ int segregating_site(Genes *g, int i)
     return 0;
 }
 
-/* Determines whether there exists a pair of conflicting sites in g */
-int conflicting_sites(Genes *g)
-{
-    Sites *s = genes2sites(g);
-    unsigned long type00, type01, type10, type11, filter;
-    int i, j, k;
-
-    for (i = 0; i < s->length - 1; i++)
-    {
-        /* Find conflicting sites with site i as first site */
-        for (j = i + 1; j < s->length; j++)
-        {
-            /* Compare sites i and j */
-            type01 = type10 = type11 = 0;
-            type00 = gene_knownancestor;
-            for (k = 0; k < divblocksize(s->n - 1) + 1; k++)
-            {
-                filter = s->data[i].ancestral[k] & s->data[j].ancestral[k];
-                type00 |= ~s->data[i].type[k] & ~s->data[j].type[k] & filter;
-                type01 |= ~s->data[i].type[k] & s->data[j].type[k] & filter;
-                type10 |= s->data[i].type[k] & ~s->data[j].type[k] & filter;
-                type11 |= s->data[i].type[k] & s->data[j].type[k] & filter;
-            }
-            if (type00 && type01 && type10 && type11)
-            {
-                /* Sites are in conflict */
-                free_sites(s);
-                return 1;
-            }
-        }
-    }
-
-    free_sites(s);
-    return 0;
-}
-
-/* Return index of first site after site i carrying ancestral material
- * in sequence a. If no such site exists, -1 is returned. Negative
- * values of i causes the search to start from the beginning of the
- * sequence.
- */
-int next_ancestral(Genes *g, int a, int i)
-{
-    int block, blocks = divblocksize(g->length - 1) + 1;
-    unsigned long pattern;
-
-    if (i >= g->length - 1)
-        return -1;
-    else if (i < 0)
-    {
-        pattern = g->data[a].ancestral[0];
-        block = 0;
-    }
-    else
-    {
-        block = divblocksize(i + 1);
-        i = modblocksize(i + 1);
-        if (i == 0)
-            pattern = ~0;
-        else
-            pattern = ~(((unsigned long)1 << i) - 1);
-        pattern &= g->data[a].ancestral[block];
-    }
-
-    while (((i = lsb(pattern)) == -1) && (++block < blocks))
-        pattern = g->data[a].ancestral[block];
-
-    if (i >= 0)
-        return mulblocksize(block) + i;
-    else
-        return -1;
-}
-
-/* Determines whether sequences a and b are identical */
-int identical(Genes *g, int a, int b)
-{
-    int i, blocks = divblocksize(g->length - 1) + 1;
-
-    /* Check for identity */
-    for (i = 0; i < blocks; i++)
-        if (((g->data[a].ancestral[i] ^ g->data[b].ancestral[i]) != 0) || ((g->data[a].type[i] ^ g->data[b].type[i]) != 0))
-            /* Conflict */
-            return 0;
-
-    /* No conflicts found */
-    return 1;
-}
 
 /* Determines whether sequences a and b are compatible for coalescence */
 int compatible(Genes *g, int a, int b)
@@ -3805,121 +3417,6 @@ std::vector<int> incompatible_sites(Genes *g, int a, int b)
     return incompatibilities;
 }
 
-/* Determines whether sequence a is subsumed in sequence b */
-int subsumed_sequence(Genes *g, int a, int b)
-{
-    int i, blocks = divblocksize(g->length - 1) + 1;
-
-    /* Check for subsumation */
-    for (i = 0; i < blocks; i++)
-        if (((~g->data[b].ancestral[i] | (g->data[a].type[i] ^ g->data[b].type[i])) & g->data[a].ancestral[i]) != 0)
-            /* Either b does not carry ancestral material or there is a
-             * conflict in a site where a carries ancestral material.
-             */
-            return 0;
-
-    /* No conflicts found */
-    return 1;
-}
-
-/* Determines whether site a is subsumed in site b */
-int subsumed_site(Sites *s, int a, int b)
-{
-    int i, blocks = divblocksize(s->length - 1) + 1;
-
-    /* Check for subsumation */
-    for (i = 0; i < blocks; i++)
-        if (((~s->data[b].ancestral[i] | (s->data[a].type[i] ^ s->data[b].type[i])) & s->data[a].ancestral[i]) != 0)
-            /* Either b does not carry ancestral material or there is a
-             * conflict in a sequence where a carries ancestral material.
-             */
-            return 0;
-
-    /* No conflicts found */
-    return 1;
-}
-
-/* Return list of indeces of ancestral sites in sequence a */
-std::vector<int> ancestral_sites(Genes *g, int a)
-{
-    int i, block = 0;
-    unsigned long index = 1;
-    std::vector<int> sites = {};
-
-    for (i = 0; i < g->length; i++)
-    {
-        if (g->data[a].ancestral[block] & index)
-            sites.push_back(i);
-        if ((index <<= 1) == 0)
-        {
-            /* End of block - continue with next block */
-            block++;
-            index = 1;
-        }
-    }
-
-    return sites;
-}
-
-/* Return list of indeces of sequences carrying a 0 in site i */
-std::vector<int> zero_sequences(Sites *s, int i)
-{
-    int h, j, k, blocks = divblocksize(s->n - 1) + 1;
-    std::vector<int> l = {};
-    unsigned long zeros;
-
-    for (h = 0; h < blocks; h++)
-        /* Compute bit vector representation of sequences carrying 0 in block i */
-        if ((zeros = ~s->data[i].type[h] & s->data[i].ancestral[h]) != 0)
-        {
-            /* Convert these positions to indeces and insert in list */
-            /* First position is found in logarithmic time, then we do a linear
-             * scan.
-             */
-            k = mulblocksize(h);
-            j = lsb(zeros);
-            l.push_back(k + j);
-            zeros ^= (unsigned long)1 << j;
-            for (j++; zeros != 0; j++)
-                if ((((unsigned long)1 << j) & zeros) != 0)
-                {
-                    l.push_back(k + j);
-                    zeros ^= (unsigned long)1 << j;
-                }
-        }
-
-    return l;
-}
-
-/* Return list of indeces of sequences carrying a 1 in site i */
-std::vector<int> one_sequences(Sites *s, int i)
-{
-    int h, j, k, blocks = divblocksize(s->n - 1) + 1;
-    std::vector<int> l = {};
-    unsigned long ones;
-
-    for (h = 0; h < blocks; h++)
-        /* Copy bit vector representation of sequences carrying 1 in block i */
-        if ((ones = s->data[i].type[h]) != 0)
-        {
-            /* Convert these positions to indeces and insert in list */
-            /* First position is found in logarithmic time, then we do a linear
-             * scan.
-             */
-            k = mulblocksize(h);
-            j = lsb(ones);
-            l.push_back(k + j);
-            ones ^= (unsigned long)1 << j;
-            for (j++; ones != 0; j++)
-                if ((((unsigned long)1 << j) & ones) != 0)
-                {
-                    l.push_back(k + j);
-                    ones ^= (unsigned long)1 << j;
-                }
-        }
-
-    return l;
-}
 
 /* Determine whether b subsumes a in all sites given by segregating;
  * the data should consist of n blocks.
@@ -4138,29 +3635,6 @@ std::vector<Genes *> force_coalesce(Genes *g, std::vector<Event> &events)
     return std::move(forced);
 }
 
-/* Computes the amount of ancestral material left after coalescing the
- * two compatible sequences a and b and performing all safe
- * evolutionary events. It runs implode on the data set obtained by
- * the coalescence and reports the amount of ancestral material
- * left.
- */
-int coalescence_amleft(Genes *g, int a, int b)
-{
-    Genes *h = copy_genes(g);
-    int n;
-    EventList tmp = std::move(g_eventlist);
-    g_eventlist.set_null();
-
-    coalesce(h, a, b);
-    implode_genes(h);
-    n = ancestral_material(h);
-
-    /* Clean up */
-    free_genes(h);
-    g_eventlist = tmp;
-
-    return n;
-}
 
 /* Split sequence a into two sequences before site given by index and
  * block. The postfix is inserted as last sequence.
@@ -4498,18 +3972,6 @@ int split_removepostfix(Genes *g, int a, int index, int block)
     return b;
 }
 
-/* Count the number of sites carrying ancestral material in
- * sequence i of g.
- */
-int individual_ancestral_material(Genes *g, int i)
-{
-    int j, am = 0, blocks = divblocksize(g->length - 1) + 1;
-
-    for (j = 0; j < blocks; j++)
-        am += weight(g->data[i].ancestral[j]);
-
-    return am;
-}
 
 /* Count the number of sites carrying ancestral material in the
  * sequences of g.
@@ -4537,54 +3999,6 @@ int individual_all_ancestral(Genes *g, int i)
     return (g->data[i].ancestral[blocks - 1] + 1 == (unsigned long)1 << (modblocksize(g->length - 1) + 1));
 }
 
-/* Determine whether all sequences contain ancestral material in all sites */
-int all_ancestral(Genes *g)
-{
-    int i;
-
-    for (i = 0; i < g->n; i++)
-        if (!individual_all_ancestral(g, i))
-            return 0;
-    return 1;
-}
-
-/* Count the number of sites carrying ancestral material in
- * informative sites in the sequences of g.
- */
-int informative_ancestral_material(Genes *g)
-{
-    int i, j, am = 0, blocks = divblocksize(g->length - 1) + 1;
-    unsigned long one0, two0, one1, two1, filter;
-
-    for (i = 0; i <= blocks - 1; i++)
-    {
-        /* Compile type information from all genes for block i */
-        one1 = g->data[0].type[i];
-        one0 = ~g->data[0].type[i] & g->data[0].ancestral[i];
-        two0 = two1 = 0;
-        for (j = 1; j < g->n; j++)
-        {
-            two1 |= one1 & g->data[j].type[i];
-            one1 |= g->data[j].type[i];
-            filter = ~g->data[j].type[i] & g->data[j].ancestral[i];
-            two0 |= one0 & filter;
-            one0 |= filter;
-        }
-        /* two1 (two0) now has a 1 in all positions where there are at
-         * least two 1s (0s) in the data.
-         */
-        if (gene_knownancestor)
-            filter = two1;
-        else
-            filter = two0 & two1;
-
-        /* Count ancestral material in informative sites for this block */
-        for (j = 0; j < g->n; j++)
-            am += weight(g->data[j].ancestral[i] & filter);
-    }
-
-    return am;
-}
 
 /* Determine whether there is any overlapping ancestral material for
  * the sequences in g.
@@ -4611,19 +4025,6 @@ int ancestral_material_overlap(Genes *g)
     return 0;
 }
 
-/* Determine whether sequences a and b in g share ancestral sites */
-int pairwise_am_overlap(Genes *g, int a, int b)
-{
-    int i, blocks = divblocksize(g->length - 1) + 1;
-
-    /* Check block by block */
-    for (i = 0; i < blocks; i++)
-        if ((g->data[a].ancestral[i] & g->data[b].ancestral[i]) != 0)
-            /* Overlap detected */
-            return 1;
-
-    return 0;
-}
 
 /* Find maximum of the n numbers in a */
 static int max(int n, int *a)
@@ -4718,86 +4119,6 @@ int minimum_compatiblechops(Genes *g, int a)
     return chops;
 }
 
-/* Find the minimum number of segment we need to chop sequence a into
- * to be able to coalesce every segment with a sequence it is subsumed
- * in. If a contains a site that cannot be coalesced with any other
- * sequence, i.e. a site where a is unique, -1 is returned.
- */
-int minimum_subsumedchops(Genes *g, int a)
-{
-    unsigned long filter, tmp;
-    int i, j, k, chops = 0, blockmatched, blockswitch = 0,
-                 *out = (int *)xcalloc(g->n, sizeof(int)),
-                 blocks = divblocksize(g->length - 1) + 1;
-
-    out[a] = -1;
-    /* Run through the entire sequence */
-    for (i = 0; i < blocks; i++)
-    {
-        /* Handle block i */
-        filter = ~0;
-        while (filter)
-        {
-            blockmatched = 0;
-            for (j = 0; j < g->n; j++)
-                if (!out[j])
-                {
-                    /* Sequence j is still a contender */
-                    k = lsb((((g->data[a].type[i] ^ g->data[j].type[i]) & g->data[a].ancestral[i]) | (g->data[a].ancestral[i] & ~g->data[j].ancestral[i])) & filter);
-                    if (k >= 0)
-                        /* But not anymore */
-                        out[j] = k + 1;
-                    else
-                        /* Sequence a is subsumed in sequence j for remainder of
-                         * the block.
-                         */
-                        blockmatched = 1;
-                }
-                else
-                    out[j] = -1;
-            if (blockmatched)
-                filter = 0;
-            else
-            {
-                /* We could not match a with a compatible sequence to the end
-                 * of the block.
-                 */
-                /* Update filter */
-                tmp = ~(((unsigned long)1 << (max(g->n, out) - 1)) - 1);
-                if (tmp == filter)
-                {
-                    /* We need to be a bit careful as the site that causes a
-                     * chop can be the first site in a block. This means that
-                     * even though tmp = filter, the current incompatibility
-                     * does not match the previous incompatibility.
-                     */
-                    if (!blockswitch)
-                    {
-                        /* We found a site that cannot be coalesced */
-                        free(out);
-                        return -1;
-                    }
-                    else
-                        blockswitch = 0;
-                }
-                filter = tmp;
-                /* Reset array of contenders */
-                for (j = 0; j < a; j++)
-                    out[j] = 0;
-                for (j++; j < g->n; j++)
-                    out[j] = 0;
-                /* Increment number of chops */
-                chops += 1;
-            }
-        }
-        blockswitch = 1;
-    }
-
-    /* Clean up */
-    free(out);
-
-    return chops;
-}
 
 /* Find the maximum prefix of each sequence that is subsumed in some
  * other sequence. The indeces returned are of the site immediately
@@ -6952,27 +6273,6 @@ static unsigned long hash_genes(Genes *g, HashGenesParameters *p)
     return value;
 }
 
-/* Compare sequences a and b in g and return -1, 0, or 1 depending on
- * whether sequence a is smaller than sequence b. The main purpose of
- * this function is to allow a sorting of sequences - the definition
- * of `smaller' does not carry information of e.g. subsumedness.
- */
-int compare_sequences(Genes *g, int a, int b)
-{
-    int i, blocks = divblocksize(g->length - 1) + 1;
-
-    for (i = 0; i < blocks; i++)
-        if (g->data[a].type[i] < g->data[b].type[i])
-            return -1;
-        else if (g->data[a].type[i] > g->data[b].type[i])
-            return 1;
-        else if (g->data[a].ancestral[i] < g->data[b].ancestral[i])
-            return -1;
-        else if (g->data[a].ancestral[i] > g->data[b].ancestral[i])
-            return 1;
-
-    return 0;
-}
 
 /* Compare sites a and b in s and return -1, 0, or 1 depending on
  * whether site a is smaller than site b. The main purpose of this
@@ -7277,27 +6577,6 @@ int compare_packedgenes(PackedGenes *g, PackedGenes *h)
     return 1;
 }
 
-HashTable *new_geneshashtable(int bits)
-{
-    if (bits > 20)
-        bits = 20;
-    if (bits < 3)
-        bits = 3;
-    return hashtable_new(bits, (unsigned long (*)(void *, void *))hash_genes,
-                         (int (*)(void *, void *))compare_genes,
-                         (void *(*)(unsigned long))initialise_hashparameters);
-}
-
-void init_geneshashtable(HashTable *table, int bits)
-{
-    if (bits > 20)
-        bits = 20;
-    if (bits < 3)
-        bits = 3;
-    hashtable_init(bits, table, (unsigned long (*)(void *, void *))hash_genes,
-                   (int (*)(void *, void *))compare_genes,
-                   (void *(*)(unsigned long))initialise_hashparameters);
-}
 
 HashTable *new_packedgeneshashtable(int bits)
 {
@@ -7312,18 +6591,6 @@ HashTable *new_packedgeneshashtable(int bits)
                              initialise_hashpackedparameters);
 }
 
-void init_packedgeneshashtable(HashTable *table, int bits)
-{
-    if (bits > 20)
-        bits = 20;
-    if (bits < 3)
-        bits = 3;
-    hashtable_init(bits, table,
-                   (unsigned long (*)(void *, void *))hash_packedgenes,
-                   (int (*)(void *, void *))compare_packedgenes,
-                   (void *(*)(unsigned long))
-                       initialise_hashpackedparameters);
-}
 
 /* Function to try all possible flips of sequencing errors
  */
