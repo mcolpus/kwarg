@@ -748,6 +748,10 @@ int main(int argc, char **argv)
         }
     }
 
+
+    Enqueue(history_files, stdout);
+
+
     if (j != k)
     {
         fprintf(stderr, "Wrong number of costs specified.\n");
