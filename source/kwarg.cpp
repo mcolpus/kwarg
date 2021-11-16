@@ -282,14 +282,15 @@ int main(int argc, char **argv)
     Event *e;
     LList *tmp;
     int run_seed = 0;
-    g_rec_max = INT_MAX;
+    int rec_max = INT_MAX;
+    int rm_max = INT_MAX;
     char *token;
     //     int gc_ind = 0;
     double timer;
     char *endptr;
     errno = 0;
     int run_reference = -1;
-    g_rm_max = INT_MAX;
+    
 
     int T_in = 0, cost_in = 0;
     double T_array[100] = {30};
@@ -702,7 +703,7 @@ int main(int argc, char **argv)
             }
             break;
         case 'X':
-            g_rec_max = strtol(optarg, &endptr, 10);
+            rec_max = strtol(optarg, &endptr, 10);
             if (errno != 0 || *endptr != '\0')
             {
                 fprintf(stderr, "Upper bound on number of recombinations should be a positive integer.\n");
@@ -710,7 +711,7 @@ int main(int argc, char **argv)
             }
             break;
         case 'Y':
-            g_rm_max = strtol(optarg, &endptr, 10);
+            rm_max = strtol(optarg, &endptr, 10);
             if (errno != 0 || *endptr != '\0')
             {
                 fprintf(stderr, "Upper bound on number of recurrent mutations should be a positive integer.\n");
@@ -865,24 +866,26 @@ int main(int argc, char **argv)
     // Create the g_lookup array if will have multiple runs
     if (multruns > 0 || cost_in > 1)
     {
-        if (g_rec_max == INT_MAX)
+        if (rec_max == INT_MAX)
         {
-            g_rec_max = 1000; // TODO What should this be
+            rec_max = 1000; // TODO What should this be
         }
         // Will store SE + RM in a g_lookup list with index = number of recombinations
         g_lookup = {};
-        for (i = 0; i <= g_rec_max; i++)
+        for (i = 0; i <= rec_max; i++)
         {
             g_lookup.push_back(INT_MAX);
         }
-        // We need 0 se/rm for g_rec_max recombinations
-        g_lookup[g_rec_max] = 0;
+        // We need 0 se/rm for rec_max recombinations
+        g_lookup[rec_max] = 0;
     }
 
     for (l = 0; l < T_in; l++)
     {
         RunSettings run_settings;
         run_settings.run_reference = run_reference;
+        run_settings.rec_max = rec_max;
+        run_settings.rm_max = rm_max;
 
         run_settings.temp = T_array[l];
         if (run_settings.temp == -1)
@@ -942,7 +945,7 @@ int main(int argc, char **argv)
                 clock_t toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
-                // The ggreedy function will update g_rec_max and the g_lookup array
+                // The ggreedy function will update rec_max and the g_lookup array
 
                 // Tidy up for the next run
                 free_genes(h);

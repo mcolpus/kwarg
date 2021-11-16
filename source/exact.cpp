@@ -1772,9 +1772,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     set_verbose(0);
 #endif
 
-    if (g_rm_max < INT_MAX)
+    if (run_settings.rm_max < INT_MAX)
     {
-        update_lookup(g_lookup, 0, g_rm_max);
+        update_lookup(g_lookup, 0, run_settings.rm_max);
     }
 
     /* Create working copy of g */
@@ -2104,8 +2104,8 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             free_genes(g);
         }
 
-        // Can abandon the run if the number of recombinations already exceeds g_rec_max
-        if (recombs > g_rec_max)
+        // Can abandon the run if the number of recombinations already exceeds rec_max
+        if (recombs > run_settings.rec_max)
         {
             bad_soln = 1;
             break;
@@ -2113,7 +2113,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
         // Can also abandon the run if the number of SE+RM when we have r recombinations is greater than what we've
         // seen in earlier solutions.
-        if (g_rec_max != INT_MAX && !g_lookup.empty())
+        if (run_settings.rec_max != INT_MAX && !g_lookup.empty())
         {
             if (seflips + rmflips > g_lookup[recombs])
             {
@@ -2164,10 +2164,10 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         {
             if (seflips + rmflips < g_lookup[recombs])
             {
-                // If found a better bound r < g_rec_max for Rmin, update.
+                // If found a better bound r < rec_max for Rmin, update.
                 if (seflips + rmflips == 0)
                 {
-                    g_rec_max = recombs;
+                    run_settings.rec_max = recombs;
                 }
                 update_lookup(g_lookup, recombs, seflips + rmflips);
             }

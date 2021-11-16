@@ -47,6 +47,7 @@ typedef struct _RunSettings
     double temp;
     double run_seed;
     int run_reference;
+    int rec_max, rm_max;
 } RunSettings;
 
 #include "gene.h"
@@ -63,10 +64,10 @@ extern int g_seq_numbering;
 // extern double g_rr_cost;
 extern int g_howverbose;
 extern double g_recombinations;
-extern int gc_enabled;
+extern int gc_enabled; // Used in local2global. Not sure what is does. Is not changed
 // extern double g_Temp;
 // extern double g_run_seed;
-extern int g_rec_max, g_rm_max;
+// extern int g_rec_max, g_rm_max;
 // extern int g_run_reference;
 extern HashTable *g_greedy_functioncalls, *g_greedy_beaglereusable;
 #ifdef DEBUG

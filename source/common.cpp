@@ -54,7 +54,7 @@ double g_recombinations;
 int gc_enabled = 0;
 // double g_Temp = 1;
 // double g_run_seed;
-int g_rec_max, g_rm_max;
+// int g_rec_max, g_rm_max;
 // int g_run_reference = 0;
 HashTable *g_greedy_functioncalls = NULL, *g_greedy_beaglereusable = NULL;
 #ifdef DEBUG
