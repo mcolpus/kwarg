@@ -6674,12 +6674,12 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
         {
             for (s = 0; s < g->length; s++)
             {
-                g_recombinations = rm_cost;
+                g_recombinations = g_rm_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = tmp_sites[s];
                 if (m < 0)
                 {
-                    g_recombinations = rm_cost * (-m);
+                    g_recombinations = g_rm_cost * (-m);
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
@@ -6712,7 +6712,7 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
         }
     }
 
-    g_recombinations = rm_cost;
+    g_recombinations = g_rm_cost;
     g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);

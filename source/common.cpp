@@ -40,7 +40,7 @@ LListCounter *g_representativeness_counter;
 int **g_haploblocks = NULL;
 #endif
 double g_se_cost;
-double rm_cost;
+double g_rm_cost;
 double g_r_cost;
 double g_rr_cost;
 EventList g_eventlist;

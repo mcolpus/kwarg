@@ -1903,9 +1903,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             }
         }
 
-        if (rm_cost != -1)
+        if (g_rm_cost != -1)
         {
-            g_recombinations = rm_cost;
+            g_recombinations = g_rm_cost;
             ac = RM;
 
             recmut_flips(g, action);
@@ -2062,7 +2062,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             seflips = seflips + greedy_choice->recombinations / g_se_cost;
             break;
         case RM:
-            rmflips = rmflips + greedy_choice->recombinations / rm_cost;
+            rmflips = rmflips + greedy_choice->recombinations / g_rm_cost;
             break;
         case RECOMB1:
             recombs++;
@@ -2127,11 +2127,11 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     {
         if (g_run_reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", g_run_reference, g_run_seed, g_Temp, g_se_cost, rm_cost, g_r_cost, g_rr_cost, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", g_run_reference, g_run_seed, g_Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", g_run_seed, g_Temp, g_se_cost, rm_cost, g_r_cost, g_rr_cost, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", g_run_seed, g_Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, total_nbdsize);
         }
     }
     else
@@ -2153,11 +2153,11 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         }
         if (g_run_reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", g_run_reference, g_run_seed, g_Temp, g_se_cost, rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", g_run_reference, g_run_seed, g_Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", g_run_seed, g_Temp, g_se_cost, rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", g_run_seed, g_Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
         if (!g_lookup.empty())
         {

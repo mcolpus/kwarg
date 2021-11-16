@@ -896,10 +896,10 @@ int main(int argc, char **argv)
         {
 
             g_se_cost = se_costs[k];
-            rm_cost = rm_costs[k];
+            g_rm_cost = rm_costs[k];
             g_r_cost = r_costs[k];
             g_rr_cost = rr_costs[k];
-            if (g_se_cost == -1 && rm_cost == -1 && g_r_cost == -1 && g_rr_cost == -1)
+            if (g_se_cost == -1 && g_rm_cost == -1 && g_r_cost == -1 && g_rr_cost == -1)
             {
                 fprintf(stderr, "At least one type of event should be allowed (all event costs are -1).\n");
                 exit(1);

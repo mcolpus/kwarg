@@ -47,7 +47,7 @@ extern std::vector<int> g_site_labels;
 extern std::vector<int> g_lookup;
 extern int g_seq_numbering;
 extern double g_se_cost;
-extern double rm_cost;
+extern double g_rm_cost;
 extern double g_r_cost;
 extern double g_rr_cost;
 extern int g_howverbose;
