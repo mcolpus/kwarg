@@ -1622,7 +1622,7 @@ static void __update(Genes *g)
 /* Score computation for each state in the neighbourhood */
 static double sc_min = DBL_MAX, sc_max = 0;
 static double prev_lb = 0, current_lb = 0, _lb;
-double scoring_function(Genes *g)
+double scoring_function(Genes *g, RunSettings &run_settings)
 {
     double sc;
     double lb;
@@ -1635,7 +1635,7 @@ double scoring_function(Genes *g)
     // pick the move with the least negative score in this case, as needed.
     if (_choice_fixed)
     {
-        sign = (g_Temp < 0) - (g_Temp > 0) - (g_Temp == 0);
+        sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
         if (no_recombinations_required(g))
         {
             sc = sign * g_recombinations;
@@ -1681,14 +1681,14 @@ double scoring_function(Genes *g)
 }
 
 /* Once scores have been computed, renormalise and apply annealing */
-double score_renormalise(Genes *g, double sc)
+double score_renormalise(Genes *g, double sc, RunSettings &run_settings)
 {
 
     int sign;
 
     if (_choice_fixed)
     {
-        sign = (g_Temp < 0) - (g_Temp > 0) - (g_Temp == 0);
+        sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
         if (no_recombinations_required(g))
         {
             sc = sign * g_recombinations;
@@ -1702,9 +1702,9 @@ double score_renormalise(Genes *g, double sc)
     {
         if (sc_max != sc_min)
         {
-            if (g_Temp != -1)
+            if (run_settings.temp != -1)
             {
-                sc = exp(g_Temp * (1 - (sc - sc_min) / (sc_max - sc_min)));
+                sc = exp(run_settings.temp * (1 - (sc - sc_min) / (sc_max - sc_min)));
             }
         }
         else
@@ -1748,7 +1748,8 @@ void update_lookup(std::vector<int> &lku, int index, int bd)
 
 /* Main function of kwarg implementing neighbourhood search.
  */
-double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection)
+double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
+                RunSettings run_settings)
 {
     int global, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
     double r = 0;
@@ -1889,12 +1890,12 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             fprintf(print_progress, "%-40s %3d\n", "Coalescing entangled: ", preds);
         }
 
-        if (g_se_cost != -1)
+        if (run_settings.se_cost != -1)
         {
-            g_recombinations = g_se_cost;
+            g_recombinations = run_settings.se_cost;
             ac = SE;
 
-            seqerror_flips(g, action);
+            seqerror_flips(g, action, run_settings);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
             if (g_howverbose > 0)
@@ -1903,12 +1904,12 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             }
         }
 
-        if (g_rm_cost != -1)
+        if (run_settings.rm_cost != -1)
         {
-            g_recombinations = g_rm_cost;
+            g_recombinations = run_settings.rm_cost;
             ac = RM;
 
-            recmut_flips(g, action);
+            recmut_flips(g, action, run_settings);
 
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
@@ -1919,9 +1920,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         }
 
         /* Try all sensible events with one split */
-        if (g_r_cost != -1)
+        if (run_settings.r_cost != -1)
         {
-            g_recombinations = g_r_cost;
+            g_recombinations = run_settings.r_cost;
             ac = RECOMB1;
 
             maximal_prefix_coalesces_map(g, start, end, action);
@@ -1942,9 +1943,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         }
 
         /* Try all sensible events with two splits */
-        if (g_rr_cost != -1)
+        if (run_settings.rr_cost != -1)
         {
-            g_recombinations = g_rr_cost;
+            g_recombinations = run_settings.rr_cost;
             ac = RECOMB2;
 
             maximal_infix_coalesces_map(g, start, end, action);
@@ -2007,7 +2008,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                     _reset_builtins(f->g); // set f to be _greedy_currentstate
                     g_recombinations = f->recombinations;
                     // Calculate all the scores and update the min and max
-                    score_array[i] = scoring_function(f->g);
+                    score_array[i] = scoring_function(f->g, run_settings);
 
                     i++;
                 }
@@ -2020,7 +2021,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 _reset_builtins(f->g); // set _greedy_currentstate to be f->g
 
                 g_recombinations = f->recombinations;
-                printscore = score_renormalise(f->g, score_array[i]);
+                printscore = score_renormalise(f->g, score_array[i], run_settings);
                 if (print_progress != NULL && g_howverbose == 2)
                 {
                     fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->recombinations);
@@ -2059,10 +2060,10 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         case COAL:
             break;
         case SE:
-            seflips = seflips + greedy_choice->recombinations / g_se_cost;
+            seflips += greedy_choice->recombinations / run_settings.se_cost;
             break;
         case RM:
-            rmflips = rmflips + greedy_choice->recombinations / g_rm_cost;
+            rmflips += greedy_choice->recombinations / run_settings.rm_cost;
             break;
         case RECOMB1:
             recombs++;
@@ -2125,13 +2126,13 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     // If we exited the loop because of a sub-optimal solution, record this
     if (bad_soln)
     {
-        if (g_run_reference > 0)
+        if (run_settings.run_reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", g_run_reference, g_run_seed, g_Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", run_settings.run_reference, run_settings.run_seed, run_settings.temp, run_settings.se_cost, run_settings.rm_cost, run_settings.r_cost, run_settings.rr_cost, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", g_run_seed, g_Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", run_settings.run_seed, run_settings.temp, run_settings.se_cost, run_settings.rm_cost, run_settings.r_cost, run_settings.rr_cost, total_nbdsize);
         }
     }
     else
@@ -2141,7 +2142,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         {
             fprintf(print_progress, "\nTotal number of states considered: %d\n", total_nbdsize);
             fprintf(print_progress, "Total event cost: %.1f\n", r);
-            if (g_run_reference > 0)
+            if (run_settings.run_reference > 0)
             {
                 fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
                         "SE", "RM", "R", "N_states", "Time");
@@ -2151,13 +2152,13 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 fprintf(print_progress, "%13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost", "SE", "RM", "R", "N_states", "Time");
             }
         }
-        if (g_run_reference > 0)
+        if (run_settings.run_reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", g_run_reference, g_run_seed, g_Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", run_settings.run_reference, run_settings.run_seed, run_settings.temp, run_settings.se_cost, run_settings.rm_cost, run_settings.r_cost, run_settings.rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", g_run_seed, g_Temp, g_se_cost, g_rm_cost, g_r_cost, g_rr_cost, seflips, rmflips, recombs, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", run_settings.run_seed, run_settings.temp, run_settings.se_cost, run_settings.rm_cost, run_settings.r_cost, run_settings.rr_cost, seflips, rmflips, recombs, total_nbdsize);
         }
         if (!g_lookup.empty())
         {

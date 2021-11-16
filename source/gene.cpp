@@ -6594,7 +6594,7 @@ HashTable *new_packedgeneshashtable(int bits)
 
 /* Function to try all possible flips of sequencing errors
  */
-void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
+void seqerror_flips(Genes *g, std::function<void(Genes *)> f, RunSettings &run_settings)
 {
     int q, s, m;
     Genes *h;
@@ -6611,12 +6611,12 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
         {
             for (s = 0; s < g->length; s++)
             {
-                g_recombinations = g_se_cost;
+                g_recombinations = run_settings.se_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = tmp_sites[s];
                 if (m < 0)
                 {
-                    g_recombinations = g_se_cost * (-m);
+                    g_recombinations = run_settings.se_cost * (-m);
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
@@ -6649,7 +6649,7 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
         }
     }
 
-    g_recombinations = g_se_cost;
+    g_recombinations = run_settings.se_cost;
     g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
@@ -6657,7 +6657,7 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f)
 
 /* Function to try all possible flips of recurrent mutations
  */
-void recmut_flips(Genes *g, std::function<void(Genes *)> f)
+void recmut_flips(Genes *g, std::function<void(Genes *)> f, RunSettings &run_settings)
 {
     int q, s, m;
     Genes *h;
@@ -6674,12 +6674,12 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
         {
             for (s = 0; s < g->length; s++)
             {
-                g_recombinations = g_rm_cost;
+                g_recombinations = run_settings.rm_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = tmp_sites[s];
                 if (m < 0)
                 {
-                    g_recombinations = g_rm_cost * (-m);
+                    g_recombinations = run_settings.rm_cost * (-m);
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
@@ -6712,7 +6712,7 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f)
         }
     }
 
-    g_recombinations = g_rm_cost;
+    g_recombinations = run_settings.rm_cost;
     g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);

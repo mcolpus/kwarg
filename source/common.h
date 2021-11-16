@@ -4,8 +4,6 @@
 #define COMMON_H
 
 #include "llist.h"
-#include "gene.h"
-#include "arg.h"
 
 #include <vector>
 #include <list>
@@ -40,24 +38,36 @@ extern int **g_haploblocks;
 void explode_local(int **local, LList *r, int n);
 #endif
 
+typedef struct _RunSettings
+{
+    double se_cost;
+    double rm_cost;
+    double r_cost;
+    double rr_cost;
+    double temp;
+    double run_seed;
+    int run_reference;
+} RunSettings;
+
+#include "gene.h"
+
 extern EventList g_eventlist;
 extern bool g_use_eventlist;
 extern std::vector<int> g_sequence_labels;
 extern std::vector<int> g_site_labels;
 extern std::vector<int> g_lookup;
 extern int g_seq_numbering;
-extern double g_se_cost;
-extern double g_rm_cost;
-extern double g_r_cost;
-extern double g_rr_cost;
+// extern double g_se_cost;
+// extern double g_rm_cost;
+// extern double g_r_cost;
+// extern double g_rr_cost;
 extern int g_howverbose;
 extern double g_recombinations;
 extern int gc_enabled;
-extern double g_Temp;
-extern double g_run_seed;
+// extern double g_Temp;
+// extern double g_run_seed;
 extern int g_rec_max, g_rm_max;
-extern int g_seed_counter;
-extern int g_run_reference;
+// extern int g_run_reference;
 extern HashTable *g_greedy_functioncalls, *g_greedy_beaglereusable;
 #ifdef DEBUG
 extern HashTable *ancestral_state_trace;
@@ -68,7 +78,7 @@ void *xcalloc(int m, int n);
 void *xrealloc(void *oldadr, int n);
 #define XRAND_MAX RAND_MAX
 void initialise_xrandom();
-void initialise_x2random(double seed);
+double initialise_x2random(double seed);
 long int xrandom();
 long int x2random();
 char *i2a(int n);

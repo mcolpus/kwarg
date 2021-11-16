@@ -203,7 +203,9 @@ struct HistoryFragment {
   }
 };
 
+#include "common.h"
 #include "backtrack.h"
+
 
 void free_annotatedgenes(AnnotatedGenes *g);
 void free_sites(Sites *s);
@@ -269,8 +271,8 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
 std::vector<std::unique_ptr<HistoryFragment>> maximal_postfix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
 				     std::function<void (Genes *)> f);
-void seqerror_flips(Genes* g, std::function<void (Genes *)> f);
-void recmut_flips(Genes* g, std::function<void (Genes *)> f);
+void seqerror_flips(Genes* g, std::function<void (Genes *)> f, RunSettings &run_settings);
+void recmut_flips(Genes* g, std::function<void (Genes *)> f, RunSettings &run_settings);
 std::vector<std::unique_ptr<HistoryFragment>> maximal_infix_coalesces(Genes *g, Index *a, Index *b);
 void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
 				  std::function<void (Genes *)> f);

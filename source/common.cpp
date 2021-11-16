@@ -26,12 +26,12 @@
 static int verbosity = 0;
 int verbose()
 {
-  return (verbosity > 0 ? verbosity : 0);
+    return (verbosity > 0 ? verbosity : 0);
 }
 
 void set_verbose(int v)
 {
-  verbosity = v;
+    verbosity = v;
 }
 #endif
 #ifdef HAPLOTYPE_BLOCKS
@@ -39,10 +39,10 @@ LList *g_representativeness = NULL;
 LListCounter *g_representativeness_counter;
 int **g_haploblocks = NULL;
 #endif
-double g_se_cost;
-double g_rm_cost;
-double g_r_cost;
-double g_rr_cost;
+// double g_se_cost;
+// double g_rm_cost;
+// double g_r_cost;
+// double g_rr_cost;
 EventList g_eventlist;
 bool g_use_eventlist;
 std::vector<int> g_sequence_labels;
@@ -52,11 +52,10 @@ int g_seq_numbering;
 int g_howverbose = 0;
 double g_recombinations;
 int gc_enabled = 0;
-double g_Temp = 1;
-double g_run_seed;
+// double g_Temp = 1;
+// double g_run_seed;
 int g_rec_max, g_rm_max;
-int g_seed_counter = 0;
-int g_run_reference = 0;
+// int g_run_reference = 0;
 HashTable *g_greedy_functioncalls = NULL, *g_greedy_beaglereusable = NULL;
 #ifdef DEBUG
 /* Define structure for storing trace of ancestral states as we return
@@ -69,22 +68,22 @@ HashTable *ancestral_state_trace = NULL;
  */
 void *xmalloc(int n)
 {
-  void *adr;
+    void *adr;
 
-  if (n <= 0)
-  {
-    fprintf(stderr,
-            "Erroneous memory allocation with xmalloc, n<=0 - please email error report\n");
-    return NULL;
-  }
+    if (n <= 0)
+    {
+        fprintf(stderr,
+                "Erroneous memory allocation with xmalloc, n<=0 - please email error report\n");
+        return NULL;
+    }
 
-  if ((adr = malloc(n)) == NULL)
-  {
-    fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
-    exit(2);
-  }
+    if ((adr = malloc(n)) == NULL)
+    {
+        fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
+        exit(2);
+    }
 
-  return adr;
+    return adr;
 }
 
 /* xcalloc(m, n): Allocate n words of size m of memory intialised to
@@ -92,22 +91,22 @@ void *xmalloc(int n)
  */
 void *xcalloc(int m, int n)
 {
-  void *adr;
+    void *adr;
 
-  if ((n <= 0) || (m <= 0))
-  {
-    fprintf(stderr,
-            "Erroneous memory allocation with xcalloc, either n<=0 or m<=0 - please email error report\n");
-    return NULL;
-  }
+    if ((n <= 0) || (m <= 0))
+    {
+        fprintf(stderr,
+                "Erroneous memory allocation with xcalloc, either n<=0 or m<=0 - please email error report\n");
+        return NULL;
+    }
 
-  if ((adr = calloc(m, n)) == NULL)
-  {
-    fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
-    exit(2);
-  }
+    if ((adr = calloc(m, n)) == NULL)
+    {
+        fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
+        exit(2);
+    }
 
-  return adr;
+    return adr;
 }
 
 /* xrealloc(n): Resize memory allocated at oldadr to n bytes of memory,
@@ -115,22 +114,22 @@ void *xcalloc(int m, int n)
  */
 void *xrealloc(void *oldadr, int n)
 {
-  void *adr;
+    void *adr;
 
-  if (n <= 0)
-  {
-    fprintf(stderr,
-            "Erroneous memory allocation with xrealloc, n<=0 - please email error report\n");
-    return NULL;
-  }
+    if (n <= 0)
+    {
+        fprintf(stderr,
+                "Erroneous memory allocation with xrealloc, n<=0 - please email error report\n");
+        return NULL;
+    }
 
-  if ((adr = realloc(oldadr, n)) == NULL)
-  {
-    fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
-    exit(2);
-  }
+    if ((adr = realloc(oldadr, n)) == NULL)
+    {
+        fprintf(stderr, "Unable to allocate sufficient amount of memory\n");
+        exit(2);
+    }
 
-  return adr;
+    return adr;
 }
 
 /* Interface to random number generator. This interface is used
@@ -140,150 +139,146 @@ void *xrealloc(void *oldadr, int n)
 /* initialise_xrandom(): Initialise random number generator, using the
  * current time.
  */
-void initialise_x2random(double seed)
+double initialise_x2random(double seed)
 {
 #ifndef DEBUG
-  if (seed == 0)
-  {
-    g_run_seed = (double)time(NULL) + (double)xrandom();
-  }
-  else
-  {
-    g_run_seed = seed;
-  }
+    if (seed == 0)
+    {
+        seed = (double)time(NULL) + (double)xrandom();
+    }
 
-  srandom(g_run_seed);
+    srandom(seed);
+    return seed;
 #else
-  /* Make sure random sequence is the same for every run */
-  srandom(1);
+    /* Make sure random sequence is the same for every run */
+    srandom(1);
 #endif
 }
 
 long int _xseed;
 void initialise_xrandom()
 {
-  _xseed = (double)time(NULL) + g_seed_counter;
+    _xseed = (double)time(NULL);
 }
 
 /* xrandom(): Return (pseudo-)random number between 0 and XRAND_MAX
  */
 long int x2random()
 {
-  long int r = random();
-  g_seed_counter++;
-  //     printf("%li ", r);
-  //     fflush(stdout);
-  return r;
-  //     x2seed = (x2seed * 1664519 + 1013904229) % XRAND_MAX;
-  //     return x2seed;
+    long int r = random();
+    //     printf("%li ", r);
+    //     fflush(stdout);
+    return r;
+    //     x2seed = (x2seed * 1664519 + 1013904229) % XRAND_MAX;
+    //     return x2seed;
 }
 
 /* Simple LCG, only used for initialising hash tables.
  */
 long int xrandom()
 {
-  _xseed = (_xseed * 1664525 + 1013904223) % XRAND_MAX;
-  return _xseed;
+    _xseed = (_xseed * 1664525 + 1013904223) % XRAND_MAX;
+    return _xseed;
 }
 
 /* Convert n to string */
 char *i2a(int n)
 {
-  char *s, *t;
+    char *s, *t;
 
-  if (n > 0)
-    s = t = (char *)xmalloc(((int)log10(n) + 2) * sizeof(char));
-  else if (n == 0)
-    s = t = (char *)xmalloc(2 * sizeof(char));
-  else
-  {
-    s = (char *)xmalloc(((int)log10(n) + 2) * sizeof(char));
-    s[0] = '-';
-    t = s + 1;
-  }
+    if (n > 0)
+        s = t = (char *)xmalloc(((int)log10(n) + 2) * sizeof(char));
+    else if (n == 0)
+        s = t = (char *)xmalloc(2 * sizeof(char));
+    else
+    {
+        s = (char *)xmalloc(((int)log10(n) + 2) * sizeof(char));
+        s[0] = '-';
+        t = s + 1;
+    }
 
-  sprintf(t, "%d", n);
+    sprintf(t, "%d", n);
 
-  return s;
+    return s;
 }
 
 /* Output s to fp with line length l and indentation i */
 void pretty_print(FILE *fp, char *s, int l, int i)
 {
-  int j;
-  char *last = s + strlen(s) - 1;
+    int j;
+    char *last = s + strlen(s) - 1;
 
-  if (fp == NULL)
-    fp = stdout;
+    if (fp == NULL)
+        fp = stdout;
 
-  /* Remove initial stretches of white space */
-  while (isspace(*s))
-    s++;
-  if (s > last)
-    /* s contains only white space */
-    return;
-  while (isspace(*last))
-    last--;
-
-  while (s <= last)
-  {
-    /* Output indentation */
-    for (j = 0; j < i; j++)
-      fputc(' ', fp);
-
-    /* Is there a new line within reach? */
-    for (j = 0; (j <= l - i - 2) && (s + j <= last); j++)
-      if (s[j] == '\n')
-      {
-        fwrite(s, sizeof(char), j + 1, fp);
-        s += j + 1;
-        break;
-      }
-    if ((j <= l - i - 2) && (s + j <= last))
-      /* New line encountered - continue with next line */
-      continue;
-
-    if (s + l - i <= last)
-    {
-      /* Find good place for next line break */
-      for (j = l - i - 2; j > 0; j--)
-      {
-        if ((s[j] == '-') && (s[j - 1] != ' '))
-        {
-          /* Break after hyphen */
-          j++;
-          break;
-        }
-        if ((s[j] == ' ') && (s[j + 1] != '-'))
-        {
-          /* Break at space, unless it borders a dash */
-          while ((j > 0) && (s[j] == ' '))
-            j--;
-          if ((j > 0) && (s[j - 1] != '-'))
-            break;
-        }
-      }
-      if (j == 0)
-      {
-        /* No good line break found - look for acceptable line break */
-        for (j = l - i - 2; (j > 0) && (s[j] != ' '); j--)
-          ;
-        while (s[j] == ' ')
-          j--;
-        if (j == 0)
-          j = l - i - 2;
-      }
-    }
-    else
-      /* Rest of text fits on one line */
-      j = last - s;
-    fwrite(s, sizeof(char), j + 1, fp);
-    fputc('\n', fp);
-    s += j + 1;
-    /* Remove initial stretch of white space */
+    /* Remove initial stretches of white space */
     while (isspace(*s))
-      s++;
-  }
+        s++;
+    if (s > last)
+        /* s contains only white space */
+        return;
+    while (isspace(*last))
+        last--;
+
+    while (s <= last)
+    {
+        /* Output indentation */
+        for (j = 0; j < i; j++)
+            fputc(' ', fp);
+
+        /* Is there a new line within reach? */
+        for (j = 0; (j <= l - i - 2) && (s + j <= last); j++)
+            if (s[j] == '\n')
+            {
+                fwrite(s, sizeof(char), j + 1, fp);
+                s += j + 1;
+                break;
+            }
+        if ((j <= l - i - 2) && (s + j <= last))
+            /* New line encountered - continue with next line */
+            continue;
+
+        if (s + l - i <= last)
+        {
+            /* Find good place for next line break */
+            for (j = l - i - 2; j > 0; j--)
+            {
+                if ((s[j] == '-') && (s[j - 1] != ' '))
+                {
+                    /* Break after hyphen */
+                    j++;
+                    break;
+                }
+                if ((s[j] == ' ') && (s[j + 1] != '-'))
+                {
+                    /* Break at space, unless it borders a dash */
+                    while ((j > 0) && (s[j] == ' '))
+                        j--;
+                    if ((j > 0) && (s[j - 1] != '-'))
+                        break;
+                }
+            }
+            if (j == 0)
+            {
+                /* No good line break found - look for acceptable line break */
+                for (j = l - i - 2; (j > 0) && (s[j] != ' '); j--)
+                    ;
+                while (s[j] == ' ')
+                    j--;
+                if (j == 0)
+                    j = l - i - 2;
+            }
+        }
+        else
+            /* Rest of text fits on one line */
+            j = last - s;
+        fwrite(s, sizeof(char), j + 1, fp);
+        fputc('\n', fp);
+        s += j + 1;
+        /* Remove initial stretch of white space */
+        while (isspace(*s))
+            s++;
+    }
 }
 
 /* Print an option description to fp with line length l and subsequent
@@ -291,82 +286,82 @@ void pretty_print(FILE *fp, char *s, int l, int i)
  */
 void print_option(FILE *fp, char *option, char *description, int l, int i)
 {
-  int n, m, j;
+    int n, m, j;
 
-  if (fp == NULL)
-    fp = stdout;
+    if (fp == NULL)
+        fp = stdout;
 
-  /* Remove initial stretches of white space */
-  while (isspace(*option))
-    option++;
-  n = strlen(option);
-  if (n > 0)
-    while (isspace(option[n - 1]))
-      n--;
-  while (isspace(*description))
-    description++;
-  m = strlen(description);
-  if (m > 0)
-    while (isspace(description[m - 1]))
-      m--;
+    /* Remove initial stretches of white space */
+    while (isspace(*option))
+        option++;
+    n = strlen(option);
+    if (n > 0)
+        while (isspace(option[n - 1]))
+            n--;
+    while (isspace(*description))
+        description++;
+    m = strlen(description);
+    if (m > 0)
+        while (isspace(description[m - 1]))
+            m--;
 
-  /* Output option */
-  fputc(' ', fp);
-  fwrite(option, sizeof(char), n, fp);
-  fputc(' ', fp);
+    /* Output option */
+    fputc(' ', fp);
+    fwrite(option, sizeof(char), n, fp);
+    fputc(' ', fp);
 
-  if (n + 2 + m <= l)
-  {
-    /* Whole description fits on first line - output it */
-    fwrite(description, sizeof(char), m, fp);
-    fputc('\n', fp);
-  }
-  else
-  {
-    /* Check whether there is a new line within reach */
-    for (j = 0; j <= l - n - 2; j++)
-      if (description[j] == '\n')
-      {
+    if (n + 2 + m <= l)
+    {
+        /* Whole description fits on first line - output it */
+        fwrite(description, sizeof(char), m, fp);
+        fputc('\n', fp);
+    }
+    else
+    {
+        /* Check whether there is a new line within reach */
+        for (j = 0; j <= l - n - 2; j++)
+            if (description[j] == '\n')
+            {
+                fwrite(description, sizeof(char), j + 1, fp);
+                pretty_print(fp, description + j + 1, l, (i < 0 ? n + 2 : i));
+                return;
+            }
+
+        /* Output first line of description */
+        /* Find good place for next line break */
+        for (j = l - n - 3; j > 0; j--)
+        {
+            if ((description[j] == '-') && (description[j - 1] != ' '))
+            {
+                /* Break after hyphen */
+                j++;
+                break;
+            }
+            if ((description[j] == ' ') && (description[j + 1] != '-'))
+            {
+                /* Break at space, unless it borders a dash */
+                while ((j > 0) && (description[j] == ' '))
+                    j--;
+                if ((j > 0) && (description[j - 1] != '-'))
+                    break;
+            }
+        }
+        if (j == 0)
+        {
+            /* No good line break found - look for acceptable line break */
+            for (j = l - n - 4; (j > 0) && (description[j] != ' '); j--)
+                ;
+            while (description[j] == ' ')
+                j--;
+            if (j == 0)
+                j = l - n - 4;
+        }
         fwrite(description, sizeof(char), j + 1, fp);
-        pretty_print(fp, description + j + 1, l, (i < 0 ? n + 2 : i));
-        return;
-      }
-
-    /* Output first line of description */
-    /* Find good place for next line break */
-    for (j = l - n - 3; j > 0; j--)
-    {
-      if ((description[j] == '-') && (description[j - 1] != ' '))
-      {
-        /* Break after hyphen */
-        j++;
-        break;
-      }
-      if ((description[j] == ' ') && (description[j + 1] != '-'))
-      {
-        /* Break at space, unless it borders a dash */
-        while ((j > 0) && (description[j] == ' '))
-          j--;
-        if ((j > 0) && (description[j - 1] != '-'))
-          break;
-      }
+        fputc('\n', fp);
+        description += j + 1;
+        /* Output remainder of description */
+        pretty_print(fp, description, l, (i < 0 ? n + 2 : i));
     }
-    if (j == 0)
-    {
-      /* No good line break found - look for acceptable line break */
-      for (j = l - n - 4; (j > 0) && (description[j] != ' '); j--)
-        ;
-      while (description[j] == ' ')
-        j--;
-      if (j == 0)
-        j = l - n - 4;
-    }
-    fwrite(description, sizeof(char), j + 1, fp);
-    fputc('\n', fp);
-    description += j + 1;
-    /* Output remainder of description */
-    pretty_print(fp, description, l, (i < 0 ? n + 2 : i));
-  }
 }
 
 #ifdef HAPLOTYPE_BLOCKS
@@ -379,107 +374,107 @@ void print_option(FILE *fp, char *option, char *description, int l, int i)
  */
 void explode_local(int **local, LList *r, int n)
 {
-  int i, j, a, b;
-  SuperColumn *f, *l, *f2;
-  LListCounter *first, *last;
+    int i, j, a, b;
+    SuperColumn *f, *l, *f2;
+    LListCounter *first, *last;
 
-  first = MakeCounter(r, LAST);
-  last = MakeCounter(r, LAST);
-  f = (SuperColumn *)Prev(first);
-  /* Run through all pairs of sites in imploded sequence set */
-  while (f != NULL)
-  {
-    f2 = (SuperColumn *)Prev(first);
-    a = (f2 != NULL ? f2->right : -1);
-    b = n;
-    l = (SuperColumn *)Prev(last);
-    while (l != f)
+    first = MakeCounter(r, LAST);
+    last = MakeCounter(r, LAST);
+    f = (SuperColumn *)Prev(first);
+    /* Run through all pairs of sites in imploded sequence set */
+    while (f != NULL)
     {
-      /* Run through all pairs of sites in original sequence set the
-       * pair of sites in the imploded sequence set corresponds to.
-       */
-      for (i = f->right; i > a; i--)
-        for (j = b - 1; j >= l->left; j--)
-          local[i][j - i - 1] = local[GetPosition(first) + 1]
-                                     [GetPosition(last) - GetPosition(first) - 2];
-      b = l->left;
-      l = (SuperColumn *)Prev(last);
+        f2 = (SuperColumn *)Prev(first);
+        a = (f2 != NULL ? f2->right : -1);
+        b = n;
+        l = (SuperColumn *)Prev(last);
+        while (l != f)
+        {
+            /* Run through all pairs of sites in original sequence set the
+             * pair of sites in the imploded sequence set corresponds to.
+             */
+            for (i = f->right; i > a; i--)
+                for (j = b - 1; j >= l->left; j--)
+                    local[i][j - i - 1] = local[GetPosition(first) + 1]
+                                               [GetPosition(last) - GetPosition(first) - 2];
+            b = l->left;
+            l = (SuperColumn *)Prev(last);
+        }
+        /* Make sure to reset entries corresponding to bounds between
+         * sites in the same collapsed position to 0.
+         */
+        for (i = b - 2; i > a; i--)
+            for (j = b - 1; j > i; j--)
+                local[i][j - i - 1] = 0;
+        f = f2;
+        InitCounter(last, r, LAST);
     }
-    /* Make sure to reset entries corresponding to bounds between
-     * sites in the same collapsed position to 0.
-     */
-    for (i = b - 2; i > a; i--)
-      for (j = b - 1; j > i; j--)
-        local[i][j - i - 1] = 0;
-    f = f2;
-    InitCounter(last, r, LAST);
-  }
-  DestroyCounter(first);
-  DestroyCounter(last);
+    DestroyCounter(first);
+    DestroyCounter(last);
 }
 #endif
 
 void remove_element(int *array, int index, int array_length)
 {
-  int i;
-  for (i = index; i < array_length - 1; i++)
-    array[i] = array[i + 1];
-  array[array_length - 1] = 0;
+    int i;
+    for (i = index; i < array_length - 1; i++)
+        array[i] = array[i + 1];
+    array[array_length - 1] = 0;
 }
 
 void delete_i(int *array, int i, int array_length)
 {
-  int j;
-  for (j = 0; j < array_length; j++)
-    if (array[j] == i)
-    {
-      remove_element(array, j, array_length);
-      break;
-    }
+    int j;
+    for (j = 0; j < array_length; j++)
+        if (array[j] == i)
+        {
+            remove_element(array, j, array_length);
+            break;
+        }
 }
 
 void delete_by_value(int *array, int v, int array_length)
 {
-  int j = 0;
-  while (j < array_length)
-  {
-    if (array[j] == v)
+    int j = 0;
+    while (j < array_length)
     {
-      remove_element(array, j, array_length);
+        if (array[j] == v)
+        {
+            remove_element(array, j, array_length);
+        }
+        else
+        {
+            j++;
+        }
     }
-    else
-    {
-      j++;
-    }
-  }
 }
 
 void print_int_vector(std::vector<int> vec, char *comment)
 {
-  if (comment != NULL)
-  {
-    printf("%s", comment);
-  }
-  for (auto p : vec)
-  {
-    if (p > 0)
+    if (comment != NULL)
     {
-      printf("%d ", p);
+        printf("%s", comment);
     }
-    else
+    for (auto p : vec)
     {
-      printf("X ");
+        if (p > 0)
+        {
+            printf("%d ", p);
+        }
+        else
+        {
+            printf("X ");
+        }
     }
-  }
-  printf("\n");
+    printf("\n");
 }
 
 void set_array(double *a1, double *a2, int a2_length, int b)
 {
-  int i;
+    int i;
 
-  for (i = 0; i < a2_length; i++)
-  {
-    a1[b + i] = a2[i];
-  }
+    for (i = 0; i < a2_length; i++)
+    {
+        a1[b + i] = a2[i];
+    }
 }

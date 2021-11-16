@@ -281,14 +281,14 @@ int main(int argc, char **argv)
     gc_enabled = 0;
     Event *e;
     LList *tmp;
-    g_run_seed = 0;
+    int run_seed = 0;
     g_rec_max = INT_MAX;
     char *token;
     //     int gc_ind = 0;
     double timer;
     char *endptr;
     errno = 0;
-    g_run_reference = -1;
+    int run_reference = -1;
     g_rm_max = INT_MAX;
 
     int T_in = 0, cost_in = 0;
@@ -676,13 +676,13 @@ int main(int argc, char **argv)
             seqtype = GENE_NUCLEIC;
             break;
         case 'Z':
-            g_run_seed = strtod(optarg, &endptr);
+            run_seed = strtod(optarg, &endptr);
             if (errno != 0 || *endptr != '\0')
             {
                 fprintf(stderr, "Seed input should be a positive integer.\n");
                 exit(1);
             }
-            if (g_run_seed <= 0)
+            if (run_seed <= 0)
             {
                 fprintf(stderr, "Seed input should be a positive integer.\n");
                 exit(1);
@@ -721,13 +721,13 @@ int main(int argc, char **argv)
             head = 0;
             break;
         case 'L':
-            g_run_reference = strtol(optarg, &endptr, 10);
+            run_reference = strtol(optarg, &endptr, 10);
             if (errno != 0 || *endptr != '\0')
             {
                 fprintf(stderr, "Reference should be a positive integer.\n");
                 exit(1);
             }
-            if (g_run_reference < 0)
+            if (run_reference < 0)
             {
                 fprintf(stderr, "Reference should be a positive integer.\n");
                 exit(1);
@@ -801,7 +801,7 @@ int main(int argc, char **argv)
 
     initialise_xrandom();
 
-    if (g_run_seed > 0)
+    if (run_seed > 0)
     {
         multruns = 0;
         T_in = 1;
@@ -850,7 +850,7 @@ int main(int argc, char **argv)
 
     if (head)
     {
-        if (g_run_reference > 0)
+        if (run_reference > 0)
         {
             fprintf(print_progress, "%10s %13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Ref", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost",
                     "SE", "RM", "R", "N_states", "Time");
@@ -881,9 +881,11 @@ int main(int argc, char **argv)
 
     for (l = 0; l < T_in; l++)
     {
+        RunSettings run_settings;
+        run_settings.run_reference = run_reference;
 
-        g_Temp = T_array[l];
-        if (g_Temp == -1)
+        run_settings.temp = T_array[l];
+        if (run_settings.temp == -1)
         {
             select = _minimum_select;
         }
@@ -894,24 +896,22 @@ int main(int argc, char **argv)
 
         for (k = 0; k < cost_in; k++)
         {
-
-            g_se_cost = se_costs[k];
-            g_rm_cost = rm_costs[k];
-            g_r_cost = r_costs[k];
-            g_rr_cost = rr_costs[k];
-            if (g_se_cost == -1 && g_rm_cost == -1 && g_r_cost == -1 && g_rr_cost == -1)
+            if (se_costs[k] == -1 && rm_costs[k] == -1 && r_costs[k] == -1 && rr_costs[k] == -1)
             {
                 fprintf(stderr, "At least one type of event should be allowed (all event costs are -1).\n");
                 exit(1);
             }
+            run_settings.se_cost = se_costs[k];
+            run_settings.rm_cost = rm_costs[k];
+            run_settings.r_cost = r_costs[k];
+            run_settings.rr_cost = rr_costs[k];
 
             /* Find a history for each iteration */
             for (j = 0; j <= multruns; j++)
             {
 
                 /* Initialise random number generator */
-                initialise_x2random(g_run_seed);
-                g_seed_counter = 0;
+                run_settings.run_seed = initialise_x2random(run_seed);
 
                 // Copy the data and set up the tracking lists
                 h = copy_genes(g);
@@ -938,7 +938,7 @@ int main(int argc, char **argv)
 
                 // Get a history
                 clock_t tic = clock();
-                n = ggreedy(h, print_progress, select, _reset_selections, ontheflyselection);
+                n = ggreedy(h, print_progress, select, _reset_selections, ontheflyselection, run_settings);
                 clock_t toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
@@ -948,7 +948,7 @@ int main(int argc, char **argv)
                 free_genes(h);
                 g_sequence_labels.clear();
                 g_site_labels.clear();
-                g_run_seed = 0;
+                run_seed = 0;
             }
         }
     }
