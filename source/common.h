@@ -40,6 +40,7 @@ void explode_local(int **local, LList *r, int n);
 
 typedef struct _RunSettings
 {
+    //Fixed
     double se_cost;
     double rm_cost;
     double r_cost;
@@ -49,6 +50,12 @@ typedef struct _RunSettings
     int run_reference;
     int rec_max, rm_max;
 } RunSettings;
+
+typedef struct _RunData
+{
+    //varies during run. Captures data on one path
+    double current_step_cost;
+} RunData;
 
 #include "gene.h"
 
@@ -63,7 +70,7 @@ extern int g_seq_numbering;
 // extern double g_r_cost;
 // extern double g_rr_cost;
 extern int g_howverbose;
-extern double g_recombinations;
+// extern double g_step_cost;
 extern int gc_enabled; // Used in local2global. Not sure what is does. Is not changed
 // extern double g_Temp;
 // extern double g_run_seed;

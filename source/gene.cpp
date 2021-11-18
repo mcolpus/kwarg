@@ -74,7 +74,6 @@ void free_genes(Genes *g)
     free(g);
 }
 
-
 /* Free memory used by an annotatedgenes data structure */
 void free_annotatedgenes(AnnotatedGenes *g)
 {
@@ -107,7 +106,6 @@ void free_sites(Sites *s)
     free(s->data);
     free(s);
 }
-
 
 /* Free memory used by a gene data structure */
 void free_gene(Gene *g)
@@ -1261,7 +1259,6 @@ void output_annotatedgenes(AnnotatedGenes *a, FILE *fp, char *comment)
     }
 }
 
-
 /* Return character in site site of sequence seq of g - if character
  * is ancestral either 0 or 1 is returned depending on type, if
  * character is non-ancestral 2 is returned. It is assumed that seq is
@@ -1279,7 +1276,6 @@ char get_genes_character(Genes *g, int seq, int site)
         /* Character is non-ancestral */
         return 2;
 }
-
 
 /* Set character in site site of sequence seq of g to c, where 0 and 1
  * denotes ancestral types and any other value of c corresponds to a
@@ -1307,7 +1303,6 @@ void set_genes_character(Genes *g, int seq, int site, char c)
         /* Non-ancestral type */
         g->data[seq].ancestral[block] &= ~((unsigned long)1 << index);
 }
-
 
 /* Swap sequences a and b */
 void swap_genes(Genes *g, int a, int b)
@@ -1528,7 +1523,6 @@ void reallocate_genes(Genes *g)
                                                          blocks * sizeof(unsigned long));
     }
 }
-
 
 /* Convert gene to a site oriented structure where the data is
  * comprised of columns instead of sequences.
@@ -3218,16 +3212,16 @@ std::vector<Genes *> _force_mutation(Genes *g, bool use_events, std::vector<Even
 #endif
             h->data[k + mulblocksize(j)].type[block] &= ~((unsigned long)1 << index);
             forced.push_back(h);
-            
+
             /* Insert corresponding event in list of events */
-            if(use_events){
+            if (use_events)
+            {
                 Event e;
                 e.type = SUBSTITUTION;
                 e.event.s.seq = k + mulblocksize(j);
                 e.event.s.site = i;
                 events->push_back(std::move(e));
             }
-            
         }
         if (!gene_knownancestor && (w0 == 1) && (w1 > 0))
         {
@@ -3251,7 +3245,8 @@ std::vector<Genes *> _force_mutation(Genes *g, bool use_events, std::vector<Even
             h->data[k + mulblocksize(j)].type[block] |= ((unsigned long)1 << index);
             forced.push_back(h);
             /* Insert corresponding event in list of events */
-            if(use_events){
+            if (use_events)
+            {
                 Event e;
                 e.type = SUBSTITUTION;
                 e.event.s.seq = k + mulblocksize(j);
@@ -3371,7 +3366,6 @@ int segregating_site(Genes *g, int i)
     return 0;
 }
 
-
 /* Determines whether sequences a and b are compatible for coalescence */
 int compatible(Genes *g, int a, int b)
 {
@@ -3416,7 +3410,6 @@ std::vector<int> incompatible_sites(Genes *g, int a, int b)
 
     return incompatibilities;
 }
-
 
 /* Determine whether b subsumes a in all sites given by segregating;
  * the data should consist of n blocks.
@@ -3635,7 +3628,6 @@ std::vector<Genes *> force_coalesce(Genes *g, std::vector<Event> &events)
     return std::move(forced);
 }
 
-
 /* Split sequence a into two sequences before site given by index and
  * block. The postfix is inserted as last sequence.
  */
@@ -3749,14 +3741,14 @@ std::vector<Genes *> _force_split(Genes *g, int a, bool use_events, std::vector<
             _split(h, a, index, block);
             forced.push_back(h);
             /* Insert corresponding event in list of events */
-            if(use_events)
+            if (use_events)
             {
                 Event e;
                 e.type = RECOMBINATION;
                 e.event.r.seq = a;
                 e.event.r.pos = index + mulblocksize(block);
                 events->push_back(std::move(e));
-            }            
+            }
         }
     }
 
@@ -3972,7 +3964,6 @@ int split_removepostfix(Genes *g, int a, int index, int block)
     return b;
 }
 
-
 /* Count the number of sites carrying ancestral material in the
  * sequences of g.
  */
@@ -3999,7 +3990,6 @@ int individual_all_ancestral(Genes *g, int i)
     return (g->data[i].ancestral[blocks - 1] + 1 == (unsigned long)1 << (modblocksize(g->length - 1) + 1));
 }
 
-
 /* Determine whether there is any overlapping ancestral material for
  * the sequences in g.
  */
@@ -4024,7 +4014,6 @@ int ancestral_material_overlap(Genes *g)
 
     return 0;
 }
-
 
 /* Find maximum of the n numbers in a */
 static int max(int n, int *a)
@@ -4118,7 +4107,6 @@ int minimum_compatiblechops(Genes *g, int a)
 
     return chops;
 }
-
 
 /* Find the maximum prefix of each sequence that is subsumed in some
  * other sequence. The indeces returned are of the site immediately
@@ -4342,8 +4330,8 @@ Index *maximumsubsumedpostfix(Genes *g, int s)
  * responsibility of the calling function to free memory used for the
  * HistoryFragments.
  */
-void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
-                                  std::function<void(Genes *)> f)
+void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &main_path_data,
+                                  STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j, s, index, block, sindex, sblock,
         *ancestral = (int *)xmalloc(g->n * sizeof(int)),
@@ -4375,6 +4363,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
             g_site_labels = tmp_sites;
             if (split_removeprefix(h, s, a[s].index, a[s].block) != -1)
             {
+                RunData new_path_data = main_path_data;
                 if (g_use_eventlist && g_eventlist.in_use)
                 {
                     g_eventlist.reset();
@@ -4395,7 +4384,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                     g_eventlist.push_back(e3);
                 }
                 implode_genes(h);
-                f(h);
+                f(h, std::move(new_path_data));
             }
             else
             {
@@ -4535,6 +4524,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                 if (ancestral[i])
                                 {
                                     h = copy_genes(g);
+                                    RunData new_path_data = main_path_data;
                                     g_sequence_labels = tmp_elements;
                                     g_site_labels = tmp_sites;
                                     split_coalesceprefix(h, s, index, block, out[i]);
@@ -4558,7 +4548,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                         g_eventlist.push_back(e3);
                                     }
                                     implode_genes(h);
-                                    f(h);
+                                    f(h, std::move(new_path_data));
 
 #ifdef ENABLE_VERBOSE
                                     if (v)
@@ -4583,6 +4573,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                     if (ancestral[i])
                                     {
                                         h = copy_genes(g);
+                                        RunData new_path_data = main_path_data;
                                         g_sequence_labels = tmp_elements;
                                         g_site_labels = tmp_sites;
                                         split_coalesceprefix(h, s, index, block, out[i]);
@@ -4606,7 +4597,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
                                             g_eventlist.push_back(e3);
                                         }
                                         implode_genes(h);
-                                        f(h);
+                                        f(h, std::move(new_path_data));
 
 #ifdef ENABLE_VERBOSE
                                         if (v)
@@ -4662,7 +4653,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b,
  * HistoryFragments.
  */
 static std::vector<std::unique_ptr<HistoryFragment>> _maximal_prefix_coalesces_list = {};
-static void _maximal_prefix_coalesces_f(Genes *g)
+static void _maximal_prefix_coalesces_f(Genes *g, RunData run_data)
 {
     auto f = std::make_unique<HistoryFragment>();
 
@@ -4673,7 +4664,8 @@ static void _maximal_prefix_coalesces_f(Genes *g)
 std::vector<std::unique_ptr<HistoryFragment>> maximal_prefix_coalesces(Genes *g, Index *a, Index *b)
 {
     _maximal_prefix_coalesces_list.clear();
-    maximal_prefix_coalesces_map(g, a, b, _maximal_prefix_coalesces_f);
+    RunData empty_data;
+    maximal_prefix_coalesces_map(g, a, b, empty_data, _maximal_prefix_coalesces_f);
     return std::move(_maximal_prefix_coalesces_list);
 }
 
@@ -4687,8 +4679,8 @@ std::vector<std::unique_ptr<HistoryFragment>> maximal_prefix_coalesces(Genes *g,
  * resulting HistoryFragments. It is the responsibility of the calling
  * function to free memory used for the HistoryFragments.
  */
-void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
-                                   std::function<void(Genes *)> f)
+void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &main_path_data,
+                                   STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j, k, s, index, block, sindex, sblock,
         *ancestral = (int *)xmalloc(g->n * sizeof(int)),
@@ -4727,6 +4719,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                 g_site_labels = tmp_sites;
                 if (split_removepostfix(h, s, b[s].index, b[s].block) != -1)
                 {
+                    RunData new_path_data = main_path_data;
                     if (g_use_eventlist && g_eventlist.in_use)
                     {
                         g_eventlist.reset();
@@ -4742,7 +4735,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                         g_eventlist.push_back(e2);
                     }
                     implode_genes(h);
-                    f(h);
+                    f(h, std::move(new_path_data));
                 }
                 else
                 {
@@ -4901,6 +4894,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                      */
                                     if (ancestral[i])
                                     {
+                                        RunData new_path_data = main_path_data;
                                         h = copy_genes(g);
                                         g_sequence_labels = tmp_elements;
                                         g_site_labels = tmp_sites;
@@ -4920,7 +4914,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                             g_eventlist.push_back(e2);
                                         }
                                         implode_genes(h);
-                                        f(h);
+                                        f(h, new_path_data);
 #ifdef ENABLE_VERBOSE
                                         if (v)
                                         {
@@ -4944,6 +4938,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                         if (ancestral[i])
                                         {
                                             h = copy_genes(g);
+                                            RunData new_path_data = main_path_data;
                                             g_sequence_labels = tmp_elements;
                                             g_site_labels = tmp_sites;
                                             splitafter_coalescepostfix(h, s, index, block, out[i]);
@@ -4962,7 +4957,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
                                                 g_eventlist.push_back(e2);
                                             }
                                             implode_genes(h);
-                                            f(h);
+                                            f(h, new_path_data);
 #ifdef ENABLE_VERBOSE
                                             if (v)
                                             {
@@ -5016,7 +5011,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b,
  * than the sequence length.
  */
 static std::vector<std::unique_ptr<HistoryFragment>> _maximal_postfix_coalesces_list = {};
-static void _maximal_postfix_coalesces_f(Genes *g)
+static void _maximal_postfix_coalesces_f(Genes *g, RunData run_data)
 {
     auto f = std::make_unique<HistoryFragment>();
 
@@ -5027,7 +5022,8 @@ static void _maximal_postfix_coalesces_f(Genes *g)
 std::vector<std::unique_ptr<HistoryFragment>> maximal_postfix_coalesces(Genes *g, Index *a, Index *b)
 {
     _maximal_postfix_coalesces_list.clear();
-    maximal_postfix_coalesces_map(g, a, b, _maximal_postfix_coalesces_f);
+    RunData empty_data;
+    maximal_postfix_coalesces_map(g, a, b, empty_data, _maximal_postfix_coalesces_f);
     return std::move(_maximal_postfix_coalesces_list);
 }
 
@@ -5399,7 +5395,8 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                                    unsigned long *maximal,
                                    unsigned long *type,
                                    unsigned long *ancestral, Genes *g, int k,
-                                   std::function<void(Genes *)> f)
+                                   const RunData &main_path_data,
+                                   STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j, eindex, eblock;
     unsigned long pattern;
@@ -5439,6 +5436,7 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                 {
                     /* Perform splits and coalesces with sequence j */
                     h = copy_genes(g);
+                    RunData new_path_data = main_path_data;
                     g_sequence_labels = tmp_elements;
                     g_site_labels = tmp_sites;
                     _split(h, s, sindex, sblock);
@@ -5463,7 +5461,7 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                         g_eventlist.push_back(e3);
                     }
                     implode_genes(h);
-                    f(h);
+                    f(h, new_path_data);
 #ifdef ENABLE_VERBOSE
                     if (v)
                     {
@@ -5503,6 +5501,7 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                 {
                     /* Perform splits and coalesces with sequence j */
                     h = copy_genes(g);
+                    RunData new_path_data = main_path_data;
                     g_sequence_labels = tmp_elements;
                     g_site_labels = tmp_sites;
                     _split(h, s, sindex, sblock);
@@ -5527,7 +5526,7 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                         g_eventlist.push_back(e3);
                     }
                     implode_genes(h);
-                    f(h);
+                    f(h, new_path_data);
 #ifdef ENABLE_VERBOSE
                     if (v)
                     {
@@ -5604,7 +5603,8 @@ static void find_compatibleintervals(int index, int block, int i, int blocks,
                                      int leftindex, int leftblock, int start,
                                      int end, unsigned long *compatible,
                                      Index *postfixs, Sites *s, Genes *g,
-                                     std::function<void(Genes *)> f)
+                                     const RunData &main_path_data,
+                                     STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int c = 1;
 
@@ -5623,7 +5623,7 @@ static void find_compatibleintervals(int index, int block, int i, int blocks,
             perform_maximal_splits(index, block, i, blocks, leftindex,
                                    leftblock, compatible,
                                    s->data[start].type, s->data[start].ancestral,
-                                   g, start, f);
+                                   g, start, main_path_data, f);
             c = extend_compatibleinterval(index, block, blocks, compatible,
                                           s->data[start].type,
                                           s->data[start].ancestral);
@@ -5641,8 +5641,8 @@ static void find_compatibleintervals(int index, int block, int i, int blocks,
  * responsibility of the calling function to free the memory used by
  * these HistoryFragments.
  */
-void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
-                                 std::function<void(Genes *)> f)
+void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &main_path_data,
+                                 STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int c, i, j, k, index, block, start, end, left, right, leftindex,
         leftblock, blocks = divblocksize(g->n - 1) + 1;
@@ -5766,7 +5766,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                         postfixs = maximumsubsumedpostfix(g, i);
                     find_compatibleintervals(index, block, i, blocks, leftindex,
                                              leftblock, right, end, leftmaximal,
-                                             postfixs, s, g, f);
+                                             postfixs, s, g, main_path_data, f);
                     c = extend_compatibleinterval(index, block, blocks, compatible2,
                                                   s->data[j].type, s->data[j].ancestral);
                 }
@@ -5792,6 +5792,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                 leftindex = modblocksize(left);
                 leftblock = divblocksize(left);
                 h = copy_genes(g);
+                RunData new_path_data = main_path_data;
                 g_sequence_labels = tmp_elements;
                 g_site_labels = tmp_sites;
                 _split(h, i, leftindex, leftblock);
@@ -5817,7 +5818,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                         g_eventlist.push_back(e3);
                     }
                     implode_genes(h);
-                    f(h);
+                    f(h, new_path_data);
                 }
                 else
                 {
@@ -5844,9 +5845,10 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
                         g_site_labels = tmp_sites;
                         find_compatibleintervals(index, block, i, blocks, leftindex,
                                                  leftblock, right, end, compatible,
-                                                 postfixs, s, g, f);
+                                                 postfixs, s, g, main_path_data, f);
                         break;
                     }
+
                 /* Prepare to look for next maximal subsumed interval */
                 start = left;
 #ifdef ENABLE_VERBOSE
@@ -5893,7 +5895,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b,
  * is larger than zero, and b is smaller than the sequence length.
  */
 static std::vector<std::unique_ptr<HistoryFragment>> _maximal_infix_coalesces_list = {};
-static void _maximal_infix_coalesces_f(Genes *g)
+static void _maximal_infix_coalesces_f(Genes *g, RunData run_data)
 {
     auto f = std::make_unique<HistoryFragment>();
 
@@ -5904,7 +5906,8 @@ static void _maximal_infix_coalesces_f(Genes *g)
 std::vector<std::unique_ptr<HistoryFragment>> maximal_infix_coalesces(Genes *g, Index *a, Index *b)
 {
     _maximal_infix_coalesces_list.clear();
-    maximal_infix_coalesces_map(g, a, b, _maximal_infix_coalesces_f);
+    RunData empty_run_data;
+    maximal_infix_coalesces_map(g, a, b, empty_run_data, _maximal_infix_coalesces_f);
     return std::move(_maximal_infix_coalesces_list);
 }
 
@@ -6026,8 +6029,8 @@ static int initialise_secondsplit(int s1, int index1, int block1, int s2,
  * the resulting HistoryFragments. It is the responsibility of the
  * calling function to free the memory used by these HistoryFragments.
  */
-void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
-                                   std::function<void(Genes *)> f)
+void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b, const RunData &main_path_data,
+                                   STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j, s1, s2, index1, block1, index2, block2,
         *in = (int *)xmalloc(g->n * sizeof(int));
@@ -6143,6 +6146,7 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
                              * overlapping region.
                              */
                             h = copy_genes(g);
+                            RunData new_path_data = main_path_data;
                             g_sequence_labels = tmp_elements;
                             g_site_labels = tmp_sites;
                             _split(h, s1, index1, block1);
@@ -6167,7 +6171,7 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
                                 g_eventlist.push_back(e3);
                             }
                             implode_genes(h);
-                            f(h);
+                            f(h, new_path_data);
 #ifdef ENABLE_VERBOSE
                             if (v)
                             {
@@ -6213,7 +6217,7 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b,
  * resulting HistoryFragments is returned.
  */
 static std::vector<std::unique_ptr<HistoryFragment>> _maximal_overlap_coalesces_list = {};
-static void _maximal_overlap_coalesces_f(Genes *g)
+static void _maximal_overlap_coalesces_f(Genes *g, RunData run_data)
 {
     auto f = std::make_unique<HistoryFragment>();
 
@@ -6224,7 +6228,8 @@ static void _maximal_overlap_coalesces_f(Genes *g)
 std::vector<std::unique_ptr<HistoryFragment>> maximal_overlap_coalesces(Genes *g, Index *a, Index *b)
 {
     _maximal_overlap_coalesces_list.clear();
-    maximal_overlap_coalesces_map(g, a, b, _maximal_overlap_coalesces_f);
+    RunData empty_data;
+    maximal_overlap_coalesces_map(g, a, b, empty_data, _maximal_overlap_coalesces_f);
     return std::move(_maximal_overlap_coalesces_list);
 }
 
@@ -6272,7 +6277,6 @@ static unsigned long hash_genes(Genes *g, HashGenesParameters *p)
 
     return value;
 }
-
 
 /* Compare sites a and b in s and return -1, 0, or 1 depending on
  * whether site a is smaller than site b. The main purpose of this
@@ -6577,7 +6581,6 @@ int compare_packedgenes(PackedGenes *g, PackedGenes *h)
     return 1;
 }
 
-
 HashTable *new_packedgeneshashtable(int bits)
 {
     if (bits > 20)
@@ -6591,10 +6594,9 @@ HashTable *new_packedgeneshashtable(int bits)
                              initialise_hashpackedparameters);
 }
 
-
 /* Function to try all possible flips of sequencing errors
  */
-void seqerror_flips(Genes *g, std::function<void(Genes *)> f, RunSettings &run_settings)
+void seqerror_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, RunSettings &run_settings)
 {
     int q, s, m;
     Genes *h;
@@ -6611,18 +6613,21 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f, RunSettings &run_s
         {
             for (s = 0; s < g->length; s++)
             {
-                g_recombinations = run_settings.se_cost;
+                double step_cost = run_settings.se_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = tmp_sites[s];
                 if (m < 0)
                 {
-                    g_recombinations = run_settings.se_cost * (-m);
+                    // g_step_cost = run_settings.se_cost * (-m);
+                    step_cost = run_settings.se_cost * (-m);
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
                 if (c != 2)
                 {
                     h = copy_genes(g);
+                    RunData new_path_data = main_path_data; // copies
+                    new_path_data.current_step_cost = step_cost;
                     if (c == 0)
                     {
                         set_genes_character(h, q, s, 1);
@@ -6643,13 +6648,13 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f, RunSettings &run_s
                         g_eventlist.push_back(e);
                     }
                     implode_genes(h);
-                    f(h);
+                    f(h, std::move(new_path_data));
                 }
             }
         }
     }
 
-    g_recombinations = run_settings.se_cost;
+    // g_step_cost = run_settings.se_cost;
     g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);
@@ -6657,7 +6662,7 @@ void seqerror_flips(Genes *g, std::function<void(Genes *)> f, RunSettings &run_s
 
 /* Function to try all possible flips of recurrent mutations
  */
-void recmut_flips(Genes *g, std::function<void(Genes *)> f, RunSettings &run_settings)
+void recmut_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, RunSettings &run_settings)
 {
     int q, s, m;
     Genes *h;
@@ -6674,18 +6679,20 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f, RunSettings &run_set
         {
             for (s = 0; s < g->length; s++)
             {
-                g_recombinations = run_settings.rm_cost;
+                double step_cost = run_settings.rm_cost;
                 // Get the "multiplicity" of the site (how many columns have been collapsed into it)
                 m = tmp_sites[s];
                 if (m < 0)
                 {
-                    g_recombinations = run_settings.rm_cost * (-m);
+                    step_cost = run_settings.rm_cost * (-m);
                 }
                 c = get_genes_character(g, q, s);
                 // Check that the site is ancestral, if so flip and store
                 if (c != 2)
                 {
                     h = copy_genes(g);
+                    RunData new_path_data = main_path_data;
+                    new_path_data.current_step_cost = step_cost;
                     if (c == 0)
                     {
                         set_genes_character(h, q, s, 1);
@@ -6706,13 +6713,13 @@ void recmut_flips(Genes *g, std::function<void(Genes *)> f, RunSettings &run_set
                         g_eventlist.push_back(e);
                     }
                     implode_genes(h);
-                    f(h);
+                    f(h, std::move(new_path_data));
                 }
             }
         }
     }
 
-    g_recombinations = run_settings.rm_cost;
+    // g_step_cost = run_settings.rm_cost;
     g_eventlist = std::move(tmp);
     g_sequence_labels = std::move(tmp_elements);
     g_site_labels = std::move(tmp_sites);

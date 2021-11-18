@@ -50,7 +50,7 @@ std::vector<int> g_site_labels;
 std::vector<int> g_lookup;
 int g_seq_numbering;
 int g_howverbose = 0;
-double g_recombinations;
+// double g_step_cost;
 int gc_enabled = 0;
 // double g_Temp = 1;
 // double g_run_seed;

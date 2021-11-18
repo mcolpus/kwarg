@@ -298,6 +298,7 @@ typedef struct _NodeClass
     int node;
     int _class;
 } NodeClass;
+
 /* The recursion actually implementing the enumeration of
  * _coalesce_compatibleandentangled. The nodes stored on stack still
  * needs to be considered, the nodes stored in component are in current
@@ -306,10 +307,9 @@ typedef struct _NodeClass
  * graph, components is an array containing current assignment, and
  * states is the list new ancestral states are stored in.
  */
-template <typename F>
 static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component, Genes *g,
                                       std::vector<int> E[], int **C, int *components,
-                                      F f)
+                                      RunData &main_run_data, STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j, n = 0, old;
     Genes *h = NULL;
@@ -358,7 +358,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
              * ancestral state that should be pursued.
              */
             implode_genes(h);
-            f(h);
+            f(h, main_run_data);
         }
 
         g_eventlist = std::move(oldevents);
@@ -420,7 +420,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
                         }
                     }
                 }
-                _coalesce_cande_recursion(stack, component, g, E, C, components, f);
+                _coalesce_cande_recursion(stack, component, g, E, C, components, main_run_data, f);
                 /* Clean up */
                 if (E[current->node].size() > 0)
                 {
@@ -442,7 +442,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
             if (current->node != current->_class - 1)
             {
                 components[current->node] = -current->_class;
-                _coalesce_cande_recursion(stack, component, g, E, C, components, f);
+                _coalesce_cande_recursion(stack, component, g, E, C, components, main_run_data, f);
             }
 
             /* Restore old components value for current node */
@@ -452,7 +452,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
             /* Decision already made for current, continue with rest of
              * nodes on stack.
              */
-            _coalesce_cande_recursion(stack, component, g, E, C, components, f);
+            _coalesce_cande_recursion(stack, component, g, E, C, components, main_run_data, f);
 
         /* Restore current to stack */
         Push(stack, current);
@@ -468,8 +468,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
  * HistoryFragment. It is the responsibility of the calling function
  * to free memory used for the HistoryFragment.
  */
-template <typename F>
-static void _coalesce_compatibleandentangled_map(Genes *g, F f)
+static void _coalesce_compatibleandentangled_map(Genes *g, RunData &main_run_data, STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j;
     std::vector<int> component = {};
@@ -508,7 +507,7 @@ static void _coalesce_compatibleandentangled_map(Genes *g, F f)
             }
 
     /* Initiate enumeration of all splits into connected components */
-    _coalesce_cande_recursion(stack, component, g, E, C, components, f);
+    _coalesce_cande_recursion(stack, component, g, E, C, components, main_run_data, f);
 
     /* Clean up */
     for (i = 0; i < g->n; i++)
@@ -530,7 +529,7 @@ static void _coalesce_compatibleandentangled_map(Genes *g, F f)
  * list that is returned.
  */
 static std::vector<std::unique_ptr<HistoryFragment>> _coalesce_compatibleandentangled_states = {};
-static void _coalesce_compatibleandentangled_f(Genes *g)
+static void _coalesce_compatibleandentangled_f(Genes *g, RunData run_data)
 {
     auto f = std::make_unique<HistoryFragment>();
 
@@ -541,7 +540,8 @@ static void _coalesce_compatibleandentangled_f(Genes *g)
 static std::vector<std::unique_ptr<HistoryFragment>> _coalesce_compatibleandentangled(Genes *g)
 {
     _coalesce_compatibleandentangled_states.clear();
-    _coalesce_compatibleandentangled_map(g, _coalesce_compatibleandentangled_f);
+    RunData empty_data;
+    _coalesce_compatibleandentangled_map(g, empty_data, _coalesce_compatibleandentangled_f);
     return std::move(_coalesce_compatibleandentangled_states);
 }
 
@@ -1622,7 +1622,7 @@ static void __update(Genes *g)
 /* Score computation for each state in the neighbourhood */
 static double sc_min = DBL_MAX, sc_max = 0;
 static double prev_lb = 0, current_lb = 0, _lb;
-double scoring_function(Genes *g, RunSettings &run_settings)
+double scoring_function(Genes *g, double step_cost, RunSettings &run_settings)
 {
     double sc;
     double lb;
@@ -1638,7 +1638,7 @@ double scoring_function(Genes *g, RunSettings &run_settings)
         sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
         if (no_recombinations_required(g))
         {
-            sc = sign * g_recombinations;
+            sc = sign * step_cost;
         }
         else
         {
@@ -1667,7 +1667,7 @@ double scoring_function(Genes *g, RunSettings &run_settings)
 
         _lb = lb;
 
-        sc = (g_recombinations + lb) * _maxam + _am;
+        sc = (step_cost + lb) * _maxam + _am;
         if (sc < sc_min)
         {
             sc_min = sc;
@@ -1681,7 +1681,7 @@ double scoring_function(Genes *g, RunSettings &run_settings)
 }
 
 /* Once scores have been computed, renormalise and apply annealing */
-double score_renormalise(Genes *g, double sc, RunSettings &run_settings)
+double score_renormalise(Genes *g, double sc, double step_cost, RunSettings &run_settings)
 {
 
     int sign;
@@ -1691,7 +1691,7 @@ double score_renormalise(Genes *g, double sc, RunSettings &run_settings)
         sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
         if (no_recombinations_required(g))
         {
-            sc = sign * g_recombinations;
+            sc = sign * step_cost;
         }
         else
         {
@@ -1766,6 +1766,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
     /* Store HistoryFragments of possible predecessors in predecessors */
     auto predecessors = std::vector<std::unique_ptr<HistoryFragment>>{};
+    RunData main_path_run_data; //Stores data about the main path being taken
 
 #ifdef ENABLE_VERBOSE
     int v = verbose();
@@ -1836,20 +1837,23 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         start = maximumsubsumedprefixs(g);
         end = maximumsubsumedpostfixs(g);
 
-        auto action = [&](Genes *g)
+        // Store current state to a HistoryFragment
+        // run_data takes parameter by copy!
+        auto action = [&](Genes *g, RunData run_data)
         {
             auto f = std::make_unique<HistoryFragment>();
 
             /* Wrap configuration and events leading to it in a HistoryFragment */
             f->events = g_eventlist;
             f->g = g;
-            f->recombinations = g_recombinations;
+            // f->recombinations = g_step_cost;
+            f->recombinations = run_data.current_step_cost;
             f->elements = g_sequence_labels;
             f->sites = g_site_labels;
             f->action = ac;
             if (!g_sequence_labels.empty() && g->n != 0 && g->n != g_sequence_labels.size())
             {
-                fprintf(stderr, "Error: number of sequence labels in g_sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", g_sequence_labels.size(), g->n, g_recombinations);
+                fprintf(stderr, "Error: number of sequence labels in g_sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", g_sequence_labels.size(), g->n, run_data.current_step_cost);
                 exit(0);
             }
             if (!g_sequence_labels.empty() && g->length > 0 && g->length != g_site_labels.size())
@@ -1877,12 +1881,13 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
             fprintf(print_progress, "Searching possible predecessors:\n");
         }
-        g_recombinations = 0;
+        // g_step_cost = 0;
+        main_path_run_data.current_step_cost = 0;
         ac = COAL;
         preds = 0;
         nbdsize = 0;
 
-        _coalesce_compatibleandentangled_map(g, action);
+        _coalesce_compatibleandentangled_map(g, main_path_run_data, action);
         preds = predecessors.size() - nbdsize;
         nbdsize = predecessors.size();
         if (g_howverbose > 0)
@@ -1892,10 +1897,11 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
         if (run_settings.se_cost != -1)
         {
-            g_recombinations = run_settings.se_cost;
+            //g_step_cost = run_settings.se_cost;
+            main_path_run_data.current_step_cost = run_settings.se_cost;
             ac = SE;
 
-            seqerror_flips(g, action, run_settings);
+            seqerror_flips(g, main_path_run_data, action, run_settings);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
             if (g_howverbose > 0)
@@ -1906,10 +1912,11 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
         if (run_settings.rm_cost != -1)
         {
-            g_recombinations = run_settings.rm_cost;
+            // g_step_cost = run_settings.rm_cost;
+            main_path_run_data.current_step_cost = run_settings.rm_cost;
             ac = RM;
 
-            recmut_flips(g, action, run_settings);
+            recmut_flips(g, main_path_run_data, action, run_settings);
 
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
@@ -1922,10 +1929,11 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         /* Try all sensible events with one split */
         if (run_settings.r_cost != -1)
         {
-            g_recombinations = run_settings.r_cost;
+            // g_step_cost = run_settings.r_cost;
+            main_path_run_data.current_step_cost = run_settings.r_cost;
             ac = RECOMB1;
 
-            maximal_prefix_coalesces_map(g, start, end, action);
+            maximal_prefix_coalesces_map(g, start, end, main_path_run_data, action);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
             if (g_howverbose > 0)
@@ -1933,7 +1941,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 fprintf(print_progress, "%-40s %3d\n", "Prefix recombinations: ", preds);
             }
 
-            maximal_postfix_coalesces_map(g, start, end, action);
+            maximal_postfix_coalesces_map(g, start, end, main_path_run_data, action);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
             if (g_howverbose > 0)
@@ -1945,10 +1953,11 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         /* Try all sensible events with two splits */
         if (run_settings.rr_cost != -1)
         {
-            g_recombinations = run_settings.rr_cost;
+            //g_step_cost = run_settings.rr_cost;
+            main_path_run_data.current_step_cost = run_settings.rr_cost;
             ac = RECOMB2;
 
-            maximal_infix_coalesces_map(g, start, end, action);
+            maximal_infix_coalesces_map(g, start, end, main_path_run_data, action);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
             if (g_howverbose > 0)
@@ -1956,7 +1965,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 fprintf(print_progress, "%-40s %3d\n", "Two recombinations (infix): ", preds);
             }
 
-            maximal_overlap_coalesces_map(g, start, end, action);
+            maximal_overlap_coalesces_map(g, start, end, main_path_run_data, action);
             preds = predecessors.size() - nbdsize;
             nbdsize = predecessors.size();
             if (g_howverbose > 0)
@@ -2006,9 +2015,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 {
                     // output_genes(f->g, stderr, "\nGenes of f:\n");
                     _reset_builtins(f->g); // set f to be _greedy_currentstate
-                    g_recombinations = f->recombinations;
+                    //g_step_cost = f->recombinations;
                     // Calculate all the scores and update the min and max
-                    score_array[i] = scoring_function(f->g, run_settings);
+                    score_array[i] = scoring_function(f->g, f->recombinations, run_settings);
 
                     i++;
                 }
@@ -2020,8 +2029,8 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             {
                 _reset_builtins(f->g); // set _greedy_currentstate to be f->g
 
-                g_recombinations = f->recombinations;
-                printscore = score_renormalise(f->g, score_array[i], run_settings);
+                //g_step_cost = f->recombinations;
+                printscore = score_renormalise(f->g, score_array[i], f->recombinations, run_settings);
                 if (print_progress != NULL && g_howverbose == 2)
                 {
                     fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->recombinations);
@@ -2054,6 +2063,8 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         g = greedy_choice->g;
         g_sequence_labels = greedy_choice->elements;
         g_site_labels = greedy_choice->sites;
+
+        main_path_run_data.current_step_cost = greedy_choice->recombinations;
 
         switch (greedy_choice->action)
         {

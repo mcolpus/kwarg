@@ -25,6 +25,8 @@ ggreedy
             count_ancestral_material 
                 weight  done
 
+# Generating predecessors 
+
     _coalesce_compatible_and_entangled_map
         compatible 
         entangled 
