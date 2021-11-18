@@ -1847,7 +1847,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             f->events = g_eventlist;
             f->g = g;
             // f->recombinations = g_step_cost;
-            f->recombinations = run_data.current_step_cost;
+            f->step_cost = run_data.current_step_cost;
             f->elements = g_sequence_labels;
             f->sites = g_site_labels;
             f->action = ac;
@@ -2017,7 +2017,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                     _reset_builtins(f->g); // set f to be _greedy_currentstate
                     //g_step_cost = f->recombinations;
                     // Calculate all the scores and update the min and max
-                    score_array[i] = scoring_function(f->g, f->recombinations, run_settings);
+                    score_array[i] = scoring_function(f->g, f->step_cost, run_settings);
 
                     i++;
                 }
@@ -2030,10 +2030,10 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 _reset_builtins(f->g); // set _greedy_currentstate to be f->g
 
                 //g_step_cost = f->recombinations;
-                printscore = score_renormalise(f->g, score_array[i], f->recombinations, run_settings);
+                printscore = score_renormalise(f->g, score_array[i], f->step_cost, run_settings);
                 if (print_progress != NULL && g_howverbose == 2)
                 {
-                    fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->recombinations);
+                    fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->step_cost);
                     output_genes(f->g, print_progress, NULL);
                     print_int_vector(f->elements, "Sequences: ");
                     print_int_vector(f->sites, "Sites: ");
@@ -2064,17 +2064,17 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         g_sequence_labels = greedy_choice->elements;
         g_site_labels = greedy_choice->sites;
 
-        main_path_run_data.current_step_cost = greedy_choice->recombinations;
+        main_path_run_data.current_step_cost = greedy_choice->step_cost;
 
         switch (greedy_choice->action)
         {
         case COAL:
             break;
         case SE:
-            seflips += greedy_choice->recombinations / run_settings.se_cost;
+            seflips += greedy_choice->step_cost / run_settings.se_cost;
             break;
         case RM:
-            rmflips += greedy_choice->recombinations / run_settings.rm_cost;
+            rmflips += greedy_choice->step_cost / run_settings.rm_cost;
             break;
         case RECOMB1:
             recombs++;
@@ -2086,7 +2086,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
         if (print_progress != NULL && g_howverbose == 2)
         {
-            fprintf(print_progress, "%s completed at cost of %.3f.\n", names[greedy_choice->action], greedy_choice->recombinations);
+            fprintf(print_progress, "%s completed at cost of %.3f.\n", names[greedy_choice->action], greedy_choice->step_cost);
             fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
             fprintf(print_progress, "Current data:\n");
             output_genes(greedy_choice->g, print_progress, NULL);
@@ -2094,7 +2094,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         }
         if (print_progress != NULL && g_howverbose == 1)
         {
-            fprintf(print_progress, "%s at cost %.3f \n", names[greedy_choice->action], greedy_choice->recombinations);
+            fprintf(print_progress, "%s at cost %.3f \n", names[greedy_choice->action], greedy_choice->step_cost);
             fflush(print_progress);
         }
 
@@ -2103,7 +2103,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             g_eventlist.append(greedy_choice->events);
         }
 
-        r += greedy_choice->recombinations;
+        r += greedy_choice->step_cost;
 
         /* Clean up */
         HistoryFragment *ptr = greedy_choice.release(); // Needed so that it doesn't delete all it's members (which other variables are now pointing to)

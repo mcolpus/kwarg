@@ -205,7 +205,7 @@ struct HistoryFragment
     EventList events;      /* List of events leading from start
                             * configuration to end configuration.
                             */
-    double recombinations; /* Number of recombination events */
+    double step_cost; /* Number of recombination events */
     std::vector<int> elements;
     std::vector<int> sites;
     Action action;
