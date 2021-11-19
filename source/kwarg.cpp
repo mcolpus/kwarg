@@ -919,8 +919,6 @@ int main(int argc, char **argv)
                 // Copy the data and set up the tracking lists
                 h = copy_genes(g);
                 g_seq_numbering = h->n;
-                g_sequence_labels = {};
-                g_site_labels = {};
                 std::vector<int> sequence_labels = {};
                 std::vector<int> site_labels = {};
 
@@ -929,7 +927,6 @@ int main(int argc, char **argv)
                 {
                     for (i = 0; i < h->n; i++)
                     {
-                        g_sequence_labels.push_back(i+1);
                         sequence_labels.push_back(i+1);
                     }
                 }
@@ -937,7 +934,6 @@ int main(int argc, char **argv)
                 {
                     for (i = 0; i < h->n; i++)
                     {
-                        g_sequence_labels.push_back(i);
                         sequence_labels.push_back(i);
                     }
                 }
@@ -945,7 +941,6 @@ int main(int argc, char **argv)
                 // Initialise the list of sites
                 for (i = 0; i < h->length; i++)
                 {
-                    g_site_labels.push_back(i);
                     site_labels.push_back(i);
                 }
 
@@ -963,8 +958,6 @@ int main(int argc, char **argv)
 
                 // Tidy up for the next run
                 free_genes(h);
-                g_sequence_labels.clear();
-                g_site_labels.clear();
                 run_seed = 0;
             }
         }

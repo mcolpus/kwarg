@@ -39,24 +39,15 @@ LList *g_representativeness = NULL;
 LListCounter *g_representativeness_counter;
 int **g_haploblocks = NULL;
 #endif
-// double g_se_cost;
-// double g_rm_cost;
-// double g_r_cost;
-// double g_rr_cost;
+
 EventList g_eventlist;
 bool g_use_eventlist;
-std::vector<int> g_sequence_labels;
-std::vector<int> g_site_labels;
 std::vector<int> g_lookup;
 int g_seq_numbering;
 int g_howverbose = 0;
-// double g_step_cost;
 int gc_enabled = 0;
-// double g_Temp = 1;
-// double g_run_seed;
-// int g_rec_max, g_rm_max;
-// int g_run_reference = 0;
 HashTable *g_greedy_functioncalls = NULL, *g_greedy_beaglereusable = NULL;
+
 #ifdef DEBUG
 /* Define structure for storing trace of ancestral states as we return
  * from a successful path.

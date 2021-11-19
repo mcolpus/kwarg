@@ -118,31 +118,34 @@ int main(int argc, char **argv)
     }
     g = a->g;
 
-    // Initialise the g_sequence_labels array (this will track the number of recombinations which each of the sequences has undergone)
-    g_sequence_labels = {};
-    g_site_labels = {};
+    // Initialise the sequence_labels array (this will track the number of recombinations which each of the sequences has undergone)
+    std::vector<int> sequence_labels = {};
+    std::vector<int> site_labels = {};
     if ((gene_knownancestor) && (seqtype != GENE_BINARY))
     {
         for (i = 0; i < g->n; i++)
-            g_sequence_labels.push_back(i+1);
+            sequence_labels.push_back(i+1);
     }
     else
     {
         for (i = 0; i < g->n; i++)
-            g_sequence_labels.push_back(i);
+            sequence_labels.push_back(i);
     }
     // Initialise the list of sites
     for (i = 0; i < g->length; i++)
     {
-        g_site_labels.push_back(i);
+        site_labels.push_back(i);
     }
 
     // Print stats for input dataset
     //         printf("Input dataset has %d sequences and %d sites\n", g->n, g->length);
     printf("Input dataset: %d sequences, %d sites\n", g->n, g->length);
 
-    RunData empty_data(true);
-    implode_genes(g, empty_data);
+    RunData run_data;
+    run_data.do_track = true;
+    run_data.sequence_labels = std::move(sequence_labels);
+    run_data.site_labels = std::move(site_labels);
+    implode_genes(g, run_data);
 
     // Print stats for reduced dataset
     //         printf("Reduced dataset has %d sequences and %d sites\n", g->n, g->length);
@@ -151,10 +154,10 @@ int main(int argc, char **argv)
     output_genes(g, fp, NULL);
 
     printf("Sequences:\n");
-    print_int_vector(g_sequence_labels, NULL);
+    print_int_vector(run_data.sequence_labels, NULL);
 
     printf("Sites:\n");
-    print_int_vector(g_site_labels, NULL);
+    print_int_vector(run_data.site_labels, NULL);
 
     // Tidying
     if (g_eventlist.in_use)

@@ -319,8 +319,6 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
     if (Length(stack) == 0)
     {
         auto oldevents = std::move(g_eventlist);
-        auto oldelements = std::move(g_sequence_labels);
-        auto oldsites = std::move(g_site_labels);
         RunData new_path_data;
         /* Coalesce in reverse order to avoid having to keep track of
          * where other sequences are moved when sequences disappear by
@@ -341,8 +339,6 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
 
                     if (g_use_eventlist && oldevents.in_use)
                         g_eventlist.reset();
-                    g_sequence_labels = oldelements;
-                    g_site_labels = oldsites;
                 }
                 coalesce(h, components[i] - 1, i, new_path_data);
                 if (g_use_eventlist && g_eventlist.in_use)
@@ -365,8 +361,6 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
         }
 
         g_eventlist = std::move(oldevents);
-        g_sequence_labels = std::move(oldelements);
-        g_site_labels = std::move(oldsites);
     }
     else
     {
@@ -1850,16 +1844,12 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             f->g = g;
             // f->recombinations = g_step_cost;
             f->step_cost = run_data.current_step_cost;
-            if(run_data.sequence_labels != g_sequence_labels)
-                fprintf(stderr, "sequence labels are different !!!!!\n");
-            if(run_data.site_labels != g_site_labels)
-                fprintf(stderr, "site_labels are different !!!!!\n");
-            f->elements = std::move(run_data.sequence_labels);   //g_sequence_labels;
-            f->sites = std::move(run_data.site_labels); //g_site_labels;
+            f->elements = std::move(run_data.sequence_labels);
+            f->sites = std::move(run_data.site_labels);
             f->action = ac;
             if (!f->elements.empty() && g->n != 0 && g->n != f->elements.size())
             {
-                fprintf(stderr, "Error: number of sequence labels in g_sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", f->elements.size(), g->n, run_data.current_step_cost);
+                fprintf(stderr, "Error: number of sequence labels in sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", f->elements.size(), g->n, run_data.current_step_cost);
                 exit(0);
             }
             if (!f->elements.empty() && g->length > 0 && g->length != f->sites.size())
@@ -1999,11 +1989,6 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             // Set the tracking lists to NULL for the score computation, and destroy the old g_sequence_labels/sites
             tmp = g_eventlist;
             g_eventlist.set_null();
-            g_sequence_labels.clear();
-            g_site_labels.clear();
-            // main_path_run_data.sequence_labels.clear(); //TODO: might not be needed
-            // main_path_run_data.site_labels.clear();
-            // main_path_run_data.do_track = false;
             reset();
 
             nbdsize = predecessors.size(); // number of predecessors we score
@@ -2072,8 +2057,6 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         // greedy_choice is a unique pointer and everything it will be reset so need to copy out elements.
         // output_genes(greedy_choice->g, stderr, "greedy_choice:\n");
         g = greedy_choice->g;
-        g_sequence_labels = greedy_choice->elements;
-        g_site_labels = greedy_choice->sites;
         main_path_run_data.sequence_labels = greedy_choice->elements;
         main_path_run_data.site_labels = greedy_choice->sites;
 
