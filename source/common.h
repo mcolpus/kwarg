@@ -54,7 +54,38 @@ typedef struct _RunSettings
 typedef struct _RunData
 {
     //varies during run. Captures data on one path
+    bool do_track = true; // Will be used to toggle when event_list etc should be added to
+
     double current_step_cost;
+    std::vector<int> sequence_labels;
+    std::vector<int> site_labels;
+
+    _RunData()
+    {
+        do_track = true;
+        current_step_cost = 0;
+    }
+
+    _RunData(bool make_empty)
+    {
+        current_step_cost = 0;
+        if(make_empty)
+        {
+            do_track = false;
+        }
+        else
+        {
+            do_track = true;
+        }
+    }
+
+    void clear_all()
+    {
+        current_step_cost = 0;
+        sequence_labels.clear();
+        site_labels.clear();
+    }
+    
 } RunData;
 
 #include "gene.h"

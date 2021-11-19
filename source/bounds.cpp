@@ -68,7 +68,8 @@ int yun(Genes *g, int best)
                    history[2 * i], history[2 * i + 1]);
             j += history[2 * i + 1];
             remove_gene(h, history[2 * i]);
-            force_safeevents(h);
+            RunData empty_data(true);
+            force_safeevents(h, empty_data);
             output_genes_indexed(h, NULL);
         }
         printf("\n");
@@ -135,7 +136,8 @@ int yun(Genes *g, int best)
 #endif
         h = copy_allbutone(g, chops[i][1]);
         /* Reduce data as much as possible */
-        force_safeevents(h);
+        RunData empty_data(true);
+        force_safeevents(h, empty_data);
 #ifdef ENABLE_VERBOSE
         y = _yun_recursion(h, best - chops[i][0], history, level + 1);
         if (chops[i][0] + y < best)
@@ -1050,7 +1052,7 @@ int haplotype_bound_genes(Genes *g)
  */
 static void eagl_core(Genes *g, int max_length, int **B, HashTable *t,
                       int (*per_region_action)(void),
-                      int (*per_increment_action)(int, int, int **))
+                      int (*per_increment_action)(int, int, int **), RunData &run_data)
 {
     int i, j;
     Genes *h;
@@ -1061,12 +1063,12 @@ static void eagl_core(Genes *g, int max_length, int **B, HashTable *t,
         for (j = 0; j <= g->length - i; j++)
         {
             h = copy_region(g, j, j + i);
-            implode_genes(h);
-            if (!no_recombinations_required(h))
+            implode_genes(h, run_data);
+            if (!no_recombinations_required(h, run_data))
             {
                 B[j][i - 2] = beagle_reusable_bounded(h, NULL,
                                                       (i > 2 ? _intmax(B[j][i - 3], B[j + 1][i - 3]) : 1),
-                                                      INT_MAX, t);
+                                                      INT_MAX, t, run_data);
             }
             free_genes(h);
             /* Check for termination */
@@ -1121,7 +1123,8 @@ int **eagl_local(Genes *g, int max_length, int **B,
         t = new_packedgeneshashtable(msb((g->n - 3) * g->length) + B[0][g->length - 2]);
 
     /* Compute local exact values */
-    eagl_core(g, max_length, B, t, per_region_action, per_increment_action);
+    RunData empty_data(true);
+    eagl_core(g, max_length, B, t, per_region_action, per_increment_action, empty_data);
 
     /* Clean up */
     hashtable_destroy(t, (void (*)(void *))free_packedgenes, NULL,

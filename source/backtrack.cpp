@@ -99,6 +99,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
     ARGNode *node;
     ARGEdge *edge;
     PackedGenes *p;
+
+    RunData empty_run_data(true);
 #ifdef DEBUG
     Genes *old;
 #endif
@@ -429,10 +431,12 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     g = copy_genes(h);
                     tmp_eventlist = std::move(g_eventlist);
                     g_eventlist.set_null();
+
+                    empty_run_data.clear_all();
                     remove_nonsegregating(g);
                     if (g->length > 0)
                     {
-                        remove_siamesetwins(g);
+                        remove_siamesetwins(g, empty_run_data);
                         e.event.c.s1 = find_safe_coalescence(g, e.event.c.s2);
                     }
                     else
@@ -512,7 +516,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                  */
                 Prev(lseq);
                 Dequeue(sequences);
-                coalesce(h, e.event.c.s1, e.event.c.s2);
+                empty_run_data.clear_all();
+                coalesce(h, e.event.c.s1, e.event.c.s2, empty_run_data);
                 //                         output_genes(h, output, "New:\n");
                 break;
             case REMOVE:
@@ -541,9 +546,10 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     g = copy_genes(h);
                     
                     g_eventlist.set_null();
+                    empty_run_data.clear_all();
                     remove_nonsegregating(g);
                     if (g->length > 0)
-                        remove_siamesetwins(g);
+                        remove_siamesetwins(g, empty_run_data);
                 }
                 /* Determine sequence the removed sequence is subsumed in */
                 if (g->length > 0)
@@ -604,11 +610,12 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                     }
                 }
                 /* Now remove subsumed sequence and compact sequence set */
-                coalesce(h, i, e.event.remove);
+                empty_run_data.clear_all();
+                coalesce(h, i, e.event.remove, empty_run_data);
                 if (e.event.remove < h->n - 1)
                     memmove(&(h->data[e.event.remove]), &(h->data[e.event.remove + 1]),
                             (h->n - e.event.remove) * sizeof(Gene));
-                coalesce(g, i, e.event.remove); /* Also remove it in reduced copy */
+                coalesce(g, i, e.event.remove, empty_run_data); /* Also remove it in reduced copy */
                 if (e.event.remove < g->n - 1)
                     memmove(&(g->data[e.event.remove]), &(g->data[e.event.remove + 1]),
                             (g->n - e.event.remove) * sizeof(Gene));
@@ -634,7 +641,8 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                  */
                 i = (intptr_t)Top((LList *)SetCounter(lpos, e.event.r.pos));
                 j = (intptr_t)SetCounter(lseq, e.event.r.seq);
-                split(h, e.event.r.seq, i);
+                empty_run_data.clear_all();
+                split(h, e.event.r.seq, i, empty_run_data);
                 Enqueue(sequences, (void *)next_seq);
                 /* Update ARG */
                 s = (char *)xmalloc((a->g->length + 1) * sizeof(char));

@@ -921,27 +921,41 @@ int main(int argc, char **argv)
                 g_seq_numbering = h->n;
                 g_sequence_labels = {};
                 g_site_labels = {};
+                std::vector<int> sequence_labels = {};
+                std::vector<int> site_labels = {};
+
                 // Initialise list of sequences
                 if ((gene_knownancestor) && (seqtype != GENE_BINARY))
                 {
                     for (i = 0; i < h->n; i++)
+                    {
                         g_sequence_labels.push_back(i+1);
+                        sequence_labels.push_back(i+1);
+                    }
                 }
                 else
                 {
                     for (i = 0; i < h->n; i++)
+                    {
                         g_sequence_labels.push_back(i);
+                        sequence_labels.push_back(i);
+                    }
                 }
 
                 // Initialise the list of sites
                 for (i = 0; i < h->length; i++)
                 {
                     g_site_labels.push_back(i);
+                    site_labels.push_back(i);
                 }
+
+                RunData run_data;
+                run_data.sequence_labels = std::move(sequence_labels);
+                run_data.site_labels = std::move(site_labels);
 
                 // Get a history
                 clock_t tic = clock();
-                n = ggreedy(h, print_progress, select, _reset_selections, ontheflyselection, run_settings);
+                n = ggreedy(h, print_progress, select, _reset_selections, ontheflyselection, run_settings, run_data);
                 clock_t toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);

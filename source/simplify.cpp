@@ -141,7 +141,8 @@ int main(int argc, char **argv)
     //         printf("Input dataset has %d sequences and %d sites\n", g->n, g->length);
     printf("Input dataset: %d sequences, %d sites\n", g->n, g->length);
 
-    implode_genes(g);
+    RunData empty_data(true);
+    implode_genes(g, empty_data);
 
     // Print stats for reduced dataset
     //         printf("Reduced dataset has %d sequences and %d sites\n", g->n, g->length);

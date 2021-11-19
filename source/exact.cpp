@@ -260,7 +260,7 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
  * sequence sets stored in genes as well as by genes itself and return
  * 1; otherwise return 0.
  */
-static int check_for_bottom(const std::vector<std::unique_ptr<HistoryFragment>> &genes)
+static int check_for_bottom(const std::vector<std::unique_ptr<HistoryFragment>> &genes, RunData &run_data)
 {
     int i;
     Genes *g;
@@ -270,7 +270,7 @@ static int check_for_bottom(const std::vector<std::unique_ptr<HistoryFragment>> 
     {
         s = genes[i].get();
         g = s->g;
-        if (no_recombinations_required(g))
+        if (no_recombinations_required(g, run_data))
         {
             /* We can explain the set of sequences with no further recombinations */
 #ifdef ENABLE_VERBOSE
@@ -309,7 +309,7 @@ typedef struct _NodeClass
  */
 static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component, Genes *g,
                                       std::vector<int> E[], int **C, int *components,
-                                      RunData &main_run_data, STORE_FRAGMENT_FUNCTION_TYPE f)
+                                      RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j, n = 0, old;
     Genes *h = NULL;
@@ -321,6 +321,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
         auto oldevents = std::move(g_eventlist);
         auto oldelements = std::move(g_sequence_labels);
         auto oldsites = std::move(g_site_labels);
+        RunData new_path_data;
         /* Coalesce in reverse order to avoid having to keep track of
          * where other sequences are moved when sequences disappear by
          * coalescence.
@@ -336,12 +337,14 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
                      * carrying out the coalescences in.
                      */
                     h = copy_genes(g);
+                    new_path_data = main_path_data;
+
                     if (g_use_eventlist && oldevents.in_use)
                         g_eventlist.reset();
                     g_sequence_labels = oldelements;
                     g_site_labels = oldsites;
                 }
-                coalesce(h, components[i] - 1, i);
+                coalesce(h, components[i] - 1, i, new_path_data);
                 if (g_use_eventlist && g_eventlist.in_use)
                 {
                     Event event;
@@ -357,8 +360,8 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
             /* At least one coalescence carried out, leading to a new
              * ancestral state that should be pursued.
              */
-            implode_genes(h);
-            f(h, main_run_data);
+            implode_genes(h, new_path_data);
+            f(h, new_path_data);
         }
 
         g_eventlist = std::move(oldevents);
@@ -420,7 +423,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
                         }
                     }
                 }
-                _coalesce_cande_recursion(stack, component, g, E, C, components, main_run_data, f);
+                _coalesce_cande_recursion(stack, component, g, E, C, components, main_path_data, f);
                 /* Clean up */
                 if (E[current->node].size() > 0)
                 {
@@ -442,7 +445,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
             if (current->node != current->_class - 1)
             {
                 components[current->node] = -current->_class;
-                _coalesce_cande_recursion(stack, component, g, E, C, components, main_run_data, f);
+                _coalesce_cande_recursion(stack, component, g, E, C, components, main_path_data, f);
             }
 
             /* Restore old components value for current node */
@@ -452,7 +455,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
             /* Decision already made for current, continue with rest of
              * nodes on stack.
              */
-            _coalesce_cande_recursion(stack, component, g, E, C, components, main_run_data, f);
+            _coalesce_cande_recursion(stack, component, g, E, C, components, main_path_data, f);
 
         /* Restore current to stack */
         Push(stack, current);
@@ -560,7 +563,7 @@ static std::vector<std::unique_ptr<HistoryFragment>> _coalesce_compatibleandenta
  * sense maximal.
  */
 static int beagle_recursion(Genes *g, HashTable *t, int target,
-                            int try_coalesces)
+                            int try_coalesces, RunData &run_data)
 {
     int i, j, n;
     Index *start, *end;
@@ -580,7 +583,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
          */
         coalesced = _coalesce_compatibleandentangled(g);
         n = coalesced.size();
-        if (check_for_bottom(coalesced))
+        if (check_for_bottom(coalesced, run_data))
         {
 #ifdef ENABLE_VERBOSE
             if (v)
@@ -609,7 +612,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         set_verbose(v - 1);
 #endif
         prefix = maximal_prefix_coalesces(g, start, end);
-        if (!exact_randomise && check_for_bottom(prefix))
+        if (!exact_randomise && check_for_bottom(prefix, run_data))
         {
             free(start);
             free(end);
@@ -635,7 +638,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         }
         else
             n += prefix.size() + postfix.size();
-        if (check_for_bottom(postfix))
+        if (check_for_bottom(postfix, run_data))
         {
             free(start);
             free(end);
@@ -660,7 +663,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         {
             /* Try all sensible events with two splits */
             infix = maximal_infix_coalesces(g, start, end);
-            if (!exact_randomise && check_for_bottom(infix))
+            if (!exact_randomise && check_for_bottom(infix, run_data))
             {
                 free(start);
                 free(end);
@@ -689,7 +692,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
             else
                 n += infix.size() + overlap.size();
 
-            if (check_for_bottom(overlap))
+            if (check_for_bottom(overlap, run_data))
             {
                 free(start);
                 free(end);
@@ -864,7 +867,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         {
             g = splits[j].g->g;
             if (beagle_recursion(g, t, target - splits[j].splits,
-                                 (splits[j].splits > 0)))
+                                 (splits[j].splits > 0), run_data))
             {
                 /* We found a branch leading to at most target recombinations */
 #ifdef ENABLE_VERBOSE
@@ -970,7 +973,7 @@ static int _intmax(int a, int b)
  * ancestral states encountered.
  */
 static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
-                       HashTable *t)
+                       HashTable *t, RunData &run_data)
 {
     Genes *h;
     int table_size, bound = 0, r1 = 0, r2 = 0;
@@ -990,7 +993,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 #endif
 
     /* Check whether we can rule out the necessity for recombinations */
-    if (no_recombinations_required(g))
+    if (no_recombinations_required(g, run_data))
         return 0;
 
     /* We cannot handle upper bounds larger than half of INT_MAX */
@@ -1048,7 +1051,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 #endif
     /* Create working copy of g */
     g = copy_genes(g);
-    implode_genes(g);
+    implode_genes(g, run_data);
 
 #ifdef DEBUG
     /* Insert initial ancestral state as one that was visited */
@@ -1069,7 +1072,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
         free(g_representativeness_counter);
     }
 #endif
-    if (!no_recombinations_required(g))
+    if (!no_recombinations_required(g, run_data))
     {
         bound = LOWERBOUND(g);
 
@@ -1101,7 +1104,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
         {
             r1 = 1;
         }
-        for (; (bound <= upper) && !beagle_recursion(g, t, bound, 1);)
+        for (; (bound <= upper) && !beagle_recursion(g, t, bound, 1, run_data);)
         {
             bound++;
 #ifdef ENABLE_VERBOSE
@@ -1154,8 +1157,8 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
                 for (j = 0; j <= g->length - i; j++)
                 {
                     h = copy_region(g, j, j + i);
-                    implode_genes(h);
-                    if (!no_recombinations_required(h))
+                    implode_genes(h, run_data);
+                    if (!no_recombinations_required(h, run_data))
                     {
                         p = pack_genes(h);
                         r2 = 0;
@@ -1170,7 +1173,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
                             if (hashtable_update((void *)p, (void *)(localbound << reusable),
                                                  t, NULL) < 0)
                                 r2 = 1;
-                            for (; (localbound <= upper) && !beagle_recursion(h, t, localbound, 1);)
+                            for (; (localbound <= upper) && !beagle_recursion(h, t, localbound, 1, run_data);)
                                 hashtable_update((void *)p, (void *)(++localbound << reusable),
                                                  t, NULL);
                             g_haploblocks[j][i - 2] = localbound;
@@ -1230,9 +1233,9 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 }
 
 /* Compute minimum number of recombinations required by any history for g */
-int beagle(Genes *g, FILE *print_progress)
+int beagle(Genes *g, FILE *print_progress, RunData &run_data)
 {
-    return beagle_core(g, print_progress, 0, INT_MAX, NULL);
+    return beagle_core(g, print_progress, 0, INT_MAX, NULL, run_data);
 }
 
 /* Compute minimum number of recombinations required by any history
@@ -1240,21 +1243,21 @@ int beagle(Genes *g, FILE *print_progress)
  * terminating the search once it has been established that upper does
  * not suffice.
  */
-int beagle_bounded(Genes *g, FILE *print_progress, int lower, int upper)
+int beagle_bounded(Genes *g, FILE *print_progress, int lower, int upper, RunData &run_data)
 {
-    return beagle_core(g, print_progress, lower, upper, NULL);
+    return beagle_core(g, print_progress, lower, upper, NULL, run_data);
 }
 
 /* Compute minimum number of recombinations required by any history
  * for g, using existing hash table t for checking and storing
  * ancestral states encountered.
  */
-int beagle_reusable(Genes *g, FILE *print_progress, HashTable *t)
+int beagle_reusable(Genes *g, FILE *print_progress, HashTable *t, RunData &run_data)
 {
     int n;
 
     reusable = 1;
-    n = beagle_core(g, print_progress, 0, INT_MAX, t);
+    n = beagle_core(g, print_progress, 0, INT_MAX, t, run_data);
     reusable = 0;
 
     return n;
@@ -1267,12 +1270,12 @@ int beagle_reusable(Genes *g, FILE *print_progress, HashTable *t)
  * ancestral states encountered.
  */
 int beagle_reusable_bounded(Genes *g, FILE *print_progress, int lower,
-                            int upper, HashTable *t)
+                            int upper, HashTable *t, RunData &run_data)
 {
     int n;
 
     reusable = 1;
-    n = beagle_core(g, print_progress, lower, upper, t);
+    n = beagle_core(g, print_progress, lower, upper, t, run_data);
     reusable = 0;
 
     return n;
@@ -1287,7 +1290,7 @@ int beagle_reusable_bounded(Genes *g, FILE *print_progress, int lower,
  * Events.
  */
 
-EventList beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
+EventList beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t, RunData &run_data)
 {
     int reuse = 1, i, j, *permutation;
     Genes *h;
@@ -1301,12 +1304,12 @@ EventList beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
      */
     if (t == NULL)
     {
-        t = beagle_allocate_hashtable(g, -1);
+        t = beagle_allocate_hashtable(g, -1, run_data);
         reuse = 0;
     }
 
     /* Determine number of recombinations required for data set */
-    if (beagle_reusable_bounded(g, print_progress, 0, r, t) > r)
+    if (beagle_reusable_bounded(g, print_progress, 0, r, t, run_data) > r)
     {
         g_eventlist = tmp;
         history.set_null();
@@ -1354,12 +1357,12 @@ EventList beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
         configurations = force_mutation(h, events);
         /* Determine configurations reachable by coalescence */
 
-        auto new_configs = force_coalesce(h, events);
+        auto new_configs = force_coalesce(h, events, run_data);
         vector_append(configurations, new_configs);
         /* Determine configurations reachable by recombinations */
         for (i = 0; i < h->n; i++)
         {
-            new_configs = force_split(h, i, events);
+            new_configs = force_split(h, i, events, run_data);
             vector_append(configurations, new_configs);
         }
 
@@ -1375,7 +1378,7 @@ EventList beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
             free_genes(h);
             h = configurations[permutation[i + j]];
             Event e = events[permutation[i + j]];
-            if (beagle_reusable_bounded(h, NULL, 0, r - (e.type == RECOMBINATION), t) <= r - (e.type == RECOMBINATION))
+            if (beagle_reusable_bounded(h, NULL, 0, r - (e.type == RECOMBINATION), t, run_data) <= r - (e.type == RECOMBINATION))
             {
                 /* Found next configuration */
                 history.push_back(e);
@@ -1420,14 +1423,14 @@ EventList beagle_randomised(Genes *g, FILE *print_progress, int r, HashTable *t)
  * and a set of sequences is provided, a reasonable table size is
  * estimated.
  */
-HashTable *beagle_allocate_hashtable(Genes *g, int table_size)
+HashTable *beagle_allocate_hashtable(Genes *g, int table_size, RunData &run_data)
 {
     HashTable *t;
 
     /* Determine size of and allocate hash table */
     if ((g != NULL) && (table_size <= 0))
     {
-        if (no_recombinations_required(g))
+        if (no_recombinations_required(g, run_data))
             table_size = 3;
         else
             table_size = msb((g->n - 3) * g->length) + LOWERBOUND(g);
@@ -1463,18 +1466,18 @@ static int *_greedy_initparam(unsigned long m)
 }
 
 /* Compute minimum number of recombinations needed for current state */
-static void _noexp_rmin()
+static void _noexp_rmin(RunData &run_data)
 {
     /* Set up hash table for common use for all beagle invocations */
     if (g_greedy_beaglereusable == NULL)
     {
-        g_greedy_beaglereusable = beagle_allocate_hashtable(_greedy_currentstate, -1);
+        g_greedy_beaglereusable = beagle_allocate_hashtable(_greedy_currentstate, -1, run_data);
     }
     if (_greedy_rmin < 0)
     {
         /* We haven't computed r_min for this configuration yet */
         _greedy_rmin = beagle_reusable(_greedy_currentstate, NULL,
-                                       g_greedy_beaglereusable);
+                                       g_greedy_beaglereusable, run_data);
     }
 }
 
@@ -1622,7 +1625,7 @@ static void __update(Genes *g)
 /* Score computation for each state in the neighbourhood */
 static double sc_min = DBL_MAX, sc_max = 0;
 static double prev_lb = 0, current_lb = 0, _lb;
-double scoring_function(Genes *g, double step_cost, RunSettings &run_settings)
+double scoring_function(Genes *g, double step_cost, RunSettings &run_settings, RunData &run_data)
 {
     double sc;
     double lb;
@@ -1636,7 +1639,7 @@ double scoring_function(Genes *g, double step_cost, RunSettings &run_settings)
     if (_choice_fixed)
     {
         sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
-        if (no_recombinations_required(g))
+        if (no_recombinations_required(g, run_data))
         {
             sc = sign * step_cost;
         }
@@ -1650,7 +1653,7 @@ double scoring_function(Genes *g, double step_cost, RunSettings &run_settings)
     {
         if (_maxam < 75)
         {
-            _noexp_rmin();
+            _noexp_rmin(run_data);
             lb = _greedy_rmin;
         }
         //         else if(_am < 150) {
@@ -1681,7 +1684,7 @@ double scoring_function(Genes *g, double step_cost, RunSettings &run_settings)
 }
 
 /* Once scores have been computed, renormalise and apply annealing */
-double score_renormalise(Genes *g, double sc, double step_cost, RunSettings &run_settings)
+double score_renormalise(Genes *g, double sc, double step_cost, RunSettings &run_settings, RunData &run_data)
 {
 
     int sign;
@@ -1689,7 +1692,7 @@ double score_renormalise(Genes *g, double sc, double step_cost, RunSettings &run
     if (_choice_fixed)
     {
         sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
-        if (no_recombinations_required(g))
+        if (no_recombinations_required(g, run_data))
         {
             sc = sign * step_cost;
         }
@@ -1749,7 +1752,7 @@ void update_lookup(std::vector<int> &lku, int index, int bd)
 /* Main function of kwarg implementing neighbourhood search.
  */
 double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
-                RunSettings run_settings)
+                RunSettings run_settings, RunData main_path_run_data)
 {
     int global, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
     double r = 0;
@@ -1766,7 +1769,6 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
     /* Store HistoryFragments of possible predecessors in predecessors */
     auto predecessors = std::vector<std::unique_ptr<HistoryFragment>>{};
-    RunData main_path_run_data; //Stores data about the main path being taken
 
 #ifdef ENABLE_VERBOSE
     int v = verbose();
@@ -1792,7 +1794,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     }
 
     // Reduce the dataset
-    implode_genes(g);
+    implode_genes(g, main_path_run_data);
     if (g_howverbose > 0)
     {
         if (g_howverbose == 2)
@@ -1815,7 +1817,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     _choice_function = select;
     if (!ontheflyselection && global)
         predecessors.clear();
-    _choice_fixed = no_recombinations_required(g);
+    _choice_fixed = no_recombinations_required(g, main_path_run_data);
     if (_choice_fixed != 0)
         /* Data set can be explained without recombinations */
         free_genes(g);
@@ -1848,20 +1850,24 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             f->g = g;
             // f->recombinations = g_step_cost;
             f->step_cost = run_data.current_step_cost;
-            f->elements = g_sequence_labels;
-            f->sites = g_site_labels;
+            if(run_data.sequence_labels != g_sequence_labels)
+                fprintf(stderr, "sequence labels are different !!!!!\n");
+            if(run_data.site_labels != g_site_labels)
+                fprintf(stderr, "site_labels are different !!!!!\n");
+            f->elements = std::move(run_data.sequence_labels);   //g_sequence_labels;
+            f->sites = std::move(run_data.site_labels); //g_site_labels;
             f->action = ac;
-            if (!g_sequence_labels.empty() && g->n != 0 && g->n != g_sequence_labels.size())
+            if (!f->elements.empty() && g->n != 0 && g->n != f->elements.size())
             {
-                fprintf(stderr, "Error: number of sequence labels in g_sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", g_sequence_labels.size(), g->n, run_data.current_step_cost);
+                fprintf(stderr, "Error: number of sequence labels in g_sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", f->elements.size(), g->n, run_data.current_step_cost);
                 exit(0);
             }
-            if (!g_sequence_labels.empty() && g->length > 0 && g->length != g_site_labels.size())
+            if (!f->elements.empty() && g->length > 0 && g->length != f->sites.size())
             {
                 fprintf(stderr, "Error: number of site labels in sites not equal to current size of dataset.");
                 exit(0);
             }
-            if (!_choice_fixed && no_recombinations_required(g))
+            if (!_choice_fixed && no_recombinations_required(g, run_data))
             {
                 /* Found a path to the MRCA - choose it */
                 _choice_fixed = 1;
@@ -1995,6 +2001,9 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             g_eventlist.set_null();
             g_sequence_labels.clear();
             g_site_labels.clear();
+            // main_path_run_data.sequence_labels.clear(); //TODO: might not be needed
+            // main_path_run_data.site_labels.clear();
+            // main_path_run_data.do_track = false;
             reset();
 
             nbdsize = predecessors.size(); // number of predecessors we score
@@ -2017,7 +2026,8 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                     _reset_builtins(f->g); // set f to be _greedy_currentstate
                     //g_step_cost = f->recombinations;
                     // Calculate all the scores and update the min and max
-                    score_array[i] = scoring_function(f->g, f->step_cost, run_settings);
+                    RunData empty_data(true);
+                    score_array[i] = scoring_function(f->g, f->step_cost, run_settings, empty_data);
 
                     i++;
                 }
@@ -2030,7 +2040,8 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 _reset_builtins(f->g); // set _greedy_currentstate to be f->g
 
                 //g_step_cost = f->recombinations;
-                printscore = score_renormalise(f->g, score_array[i], f->step_cost, run_settings);
+                RunData empty_data(true);
+                printscore = score_renormalise(f->g, score_array[i], f->step_cost, run_settings, empty_data);
                 if (print_progress != NULL && g_howverbose == 2)
                 {
                     fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->step_cost);
@@ -2063,6 +2074,8 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         g = greedy_choice->g;
         g_sequence_labels = greedy_choice->elements;
         g_site_labels = greedy_choice->sites;
+        main_path_run_data.sequence_labels = greedy_choice->elements;
+        main_path_run_data.site_labels = greedy_choice->sites;
 
         main_path_run_data.current_step_cost = greedy_choice->step_cost;
 

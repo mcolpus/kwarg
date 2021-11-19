@@ -1,67 +1,65 @@
 ggreedy
     copy_genes
 
-    implode_genes  
-        remove_uninformative 
+    implode_genes -             changes run_data
+        remove_uninformative -  changes run_data
             transfer_data  
-        remove_siamesetwins 
+        remove_siamesetwins -   changes run_data
             siamese_site 
             siamese_sites 
-        coalesce_subsumed 
+        coalesce_subsumed -     changes run_data
 
-    update_lookup
+    update_lookup - nothing
 
-    no_recombinations_required 
-        remove_uninformative 
-        ancestral_material_overlap 
+    no_recombinations_required      changes run_data
+        remove_uninformative        changes run_data
+        ancestral_material_overlap
 
-    maximumsubsumedpostfixs 
+    maximumsubsumedpostfixs
 
-    maximumsubsumedprefixs 
+    maximumsubsumedprefixs
 
-    _store 
-        no_recombinations_required 
-        __update 
+    action 
+        no_recombinations_required - changes run_data
+        __update
             count_ancestral_material 
-                weight  done
+                weight
 
 # Generating predecessors 
 
-    _coalesce_compatible_and_entangled_map
+    _coalesce_compatible_and_entangled_map  run_data
         compatible 
         entangled 
-            lsb done
-            msb done
-        _coalesce_cande_recursion  (++ has to make copy and restore)
-            coalesce 
-            implode_genes 
+        _coalesce_cande_recursion   run_data (++ has to make copy and restore)
+            coalesce                run_data
+            implode_genes           run_data
 
-    seqerror_flips 
+    seqerror_flips                  run_data
         get_genes_character 
         set_genes_character 
-        implode_genes 
+        implode_genes               run_data
 
-    recmut_flips  
+    recmut_flips                    run_data
         get_genes_character 
         set_genes_character 
-        implode_genes 
+        implode_genes               run_data
 
-    maximal_prefix_coalesces_map 
-        split_removeprefix 
+    maximal_prefix_coalesces_map    run_data
+        split_removeprefix          run_data
             find_safe_coalescence 
                 subsumed_segregating 
         output_genes_indexed 
             output_genes 
                 _output_genes 
-        implode_genes 
-        split_coalesceprefix 
+        implode_genes               run_data
+        split_coalesceprefix        run-data
 
     maximal_postfix_coalesces_map 
-        split_removepostfix 
+        split_removepostfix         run_data
             find_safe_coalescence 
                     subsumed_segregating 
-        implode_genes 
-        splitafter_coalescepostfix 
+        implode_genes               run_data
+        splitafter_coalescepostfix  run_data
 
     maximal_infix_coalesces_map 
         genes2sites 
@@ -74,23 +72,23 @@ ggreedy
         check_leftflank 
         check_maximality 
         maximumsubsumedpostfix 
-        find_compatibleintervals 
+        find_compatibleintervals        run_data
             check_rightflank 
-            perform_maximal_splits 
-                _split 
-                split_coalesceprefix 
+            perform_maximal_splits      run_data
+                _split                  run_data
+                split_coalesceprefix    run_data
             extend_compatibleinterval 
         extend_compatibleinterval 
         extend_subsumedinterval2 
-        _split 
-        split_removeprefix 
+        _split                          run_data
+        split_removeprefix              run_data
             find_safe_coalescence 
                 subsumed_segregating 
 
-    maximal_overlap_coalesces_map 
+    maximal_overlap_coalesces_map       run_data
         initialise_secondsplit 
-        _split 
-        splitafter_coalescepostfix 
+        _split                          run_data
+        splitafter_coalescepostfix      run_data
 
 
     _reset_builtins  
@@ -112,7 +110,7 @@ ggreedy
             beagle_reusable
                 beagle_core **Big  
 
-        _hb  Done genes
+        _hb         -- Just genes
             haplotype_bound_genes  
                 _global_from_local_genes 
                     genes2sites 
@@ -121,7 +119,7 @@ ggreedy
                 haplotype_bound_local  
                     haplotype_heuristic_local ** Big  
 
-        hudson_kaplan_genes 
+        hudson_kaplan_genes -- Just genes
             genes2sites 
             hudson_kaplan_local 
             local2global 

@@ -2181,7 +2181,7 @@ static _Gene_TwinType siamese_sites(int nindex, int nblock, int index, int block
  * ancestral material. Return value tells whether any sites were
  * merged.
  */
-int remove_siamesetwins(Genes *g)
+int remove_siamesetwins(Genes *g, RunData &run_data)
 {
     int i, j, n = 0, k, kk, p, s, index = 0, mindex, mblock, pindex, pblock, cindex, cblock;
     _SiameseBlock *state;
@@ -2437,6 +2437,7 @@ int remove_siamesetwins(Genes *g)
                         s++;
                     }
                     g_site_labels.erase(g_site_labels.begin() + j - k);
+                    run_data.site_labels.erase(run_data.site_labels.begin() + j - k);
                     k++;
                 }
                 kk = k;
@@ -2453,13 +2454,20 @@ int remove_siamesetwins(Genes *g)
                         s++;
                     }
                     g_site_labels.erase(g_site_labels.begin() + j - k);
+                    run_data.site_labels.erase(run_data.site_labels.begin() + j - k);
                     k++;
                 }
                 // Master site is now at position state[i].start
                 // Change this to be -(number of columns collapsed)
                 //                 printf("%d %d\n", state[i].master-kk, -s);
                 g_site_labels[state[i].master - kk] = -s;
+                run_data.site_labels[state[i].master - kk] = -s;
             }
+
+            if(run_data.sequence_labels != g_sequence_labels)
+                fprintf(stderr, "sequence labels are different !!!!!\n");
+            if(run_data.site_labels != g_site_labels)
+                fprintf(stderr, "site_labels are different !!!!!\n");
         }
 
 #ifdef ENABLE_VERBOSE
@@ -2514,7 +2522,7 @@ int remove_siamesetwins(Genes *g)
  * sequences with ancestral material differs. Return value tells
  * whether any columns were uninformative.
  */
-int remove_uninformative(Genes *g)
+int remove_uninformative(Genes *g, RunData &run_data)
 {
     int i, j, first, nindex = -1, nblock,
                      blocks = divblocksize(g->length - 1) + 1;
@@ -2600,6 +2608,7 @@ int remove_uninformative(Genes *g)
                             //                             printf("Removing site labelled %d by deleting element number %d\n", mulblocksize(i) + j, mulblocksize(i) + j - n);
                             // print_int_vector(sites, "test output: \n");
                             g_site_labels.erase(g_site_labels.begin() + mulblocksize(i) + j - n);
+                            run_data.site_labels.erase(run_data.site_labels.begin() + mulblocksize(i) + j - n);
                         }
                         else
                         {
@@ -2859,7 +2868,7 @@ int remove_nonsegregating(Genes *g)
  * one is a subset of the ancestral material of the other. Return
  * value is number of coalesces performed.
  */
-int coalesce_subsumed(Genes *g)
+int coalesce_subsumed(Genes *g, RunData &run_data)
 {
     int i, j, k, changes = 0, conflicts, blocks = divblocksize(g->length - 1) + 1;
     Event *e;
@@ -2936,6 +2945,8 @@ int coalesce_subsumed(Genes *g)
                             {
                                 g_sequence_labels[i] = -1;
                                 g_sequence_labels[j] = -1;
+                                run_data.sequence_labels[i] = -1;
+                                run_data.sequence_labels[j] = -1;
                             }
 
                             if (conflicts == -1)
@@ -2973,6 +2984,7 @@ int coalesce_subsumed(Genes *g)
         if (!g_sequence_labels.empty())
         {
             g_sequence_labels.erase(g_sequence_labels.begin() + i);
+            run_data.sequence_labels.erase(run_data.sequence_labels.begin() + i);
         }
         if (g_use_eventlist && g_eventlist.in_use)
         {
@@ -2993,6 +3005,7 @@ int coalesce_subsumed(Genes *g)
                 if (!g_sequence_labels.empty())
                 {
                     g_sequence_labels.erase(g_sequence_labels.begin() + i);
+                    run_data.sequence_labels.erase(run_data.sequence_labels.begin() + i);
                 }
                 if (g_use_eventlist && g_eventlist.in_use)
                 {
@@ -3014,7 +3027,7 @@ int coalesce_subsumed(Genes *g)
  * recombinations required. The data structure g is modified to
  * reflect events, and the number of events is returned.
  */
-int implode_genes(Genes *g)
+int implode_genes(Genes *g, RunData &run_data)
 {
     int n = g->n, m = g->length, change = 1, tmp;
 
@@ -3025,17 +3038,17 @@ int implode_genes(Genes *g)
             output_genes_indexed(g, NULL);
 #endif
         /* Look for uninformative sites */
-        change = remove_uninformative(g);
+        change = remove_uninformative(g, run_data);
         if (g->n == 0)
             break;
         /* Look for removable Siamese twins */
         /* Collapsing Siamese twins should not allow _new mutations, and
          * coalesces are handled presently.
          */
-        remove_siamesetwins(g); // collapses identical neighbouring cols
+        remove_siamesetwins(g, run_data); // collapses identical neighbouring cols
 
         /* Look for safe coalesces */
-        tmp = coalesce_subsumed(g);
+        tmp = coalesce_subsumed(g, run_data);
         change |= tmp;
     }
 
@@ -3046,7 +3059,7 @@ int implode_genes(Genes *g)
  * explain g. This is not an exhaustive check, so even if it returns
  * False, g may be explained without recombinations.
  */
-int no_recombinations_required(Genes *g)
+int no_recombinations_required(Genes *g, RunData &run_data)
 {
     int i;
     Event *e;
@@ -3055,7 +3068,7 @@ int no_recombinations_required(Genes *g)
         if (g_use_eventlist && g_eventlist.in_use)
         {
             if (g->length > 0)
-                remove_uninformative(g);
+                remove_uninformative(g, run_data);
             for (i = 1; i < g->n; i++)
             {
                 Event e;
@@ -3091,7 +3104,7 @@ int no_recombinations_required(Genes *g)
  * increase the number of recombinations required. The data structure
  * g may be modified to reflect events.
  */
-void force_safeevents(Genes *g)
+void force_safeevents(Genes *g, RunData &run_data)
 {
     int change = 1, tmp;
 
@@ -3104,7 +3117,7 @@ void force_safeevents(Genes *g)
         /* Look for mutations */
         change = force_mutations(g);
         /* Look for safe coalesces */
-        tmp = coalesce_subsumed(g);
+        tmp = coalesce_subsumed(g, run_data);
         change |= tmp;
     }
 }
@@ -3559,7 +3572,7 @@ int entangled(Genes *g, int a, int b)
  * left in a, while b will be replaced by the last sequence in the
  * data set. It is assumed that a and b are compatible.
  */
-void coalesce(Genes *g, int a, int b)
+void coalesce(Genes *g, int a, int b, RunData &run_data)
 {
     int i, blocks = divblocksize(g->length - 1) + 1, j;
 
@@ -3567,6 +3580,8 @@ void coalesce(Genes *g, int a, int b)
     {
         vector_swap_elements(g_sequence_labels, b, g_sequence_labels.size() - 1);
         g_sequence_labels.pop_back();
+        vector_swap_elements(run_data.sequence_labels, b, run_data.sequence_labels.size() - 1);
+        run_data.sequence_labels.pop_back();
     }
 
     for (i = 0; i < blocks; i++)
@@ -3596,7 +3611,7 @@ void coalesce(Genes *g, int a, int b)
  * in the same order as the resulting configurations are stored in the
  * vector returned.
  */
-std::vector<Genes *> force_coalesce(Genes *g, std::vector<Event> &events)
+std::vector<Genes *> force_coalesce(Genes *g, std::vector<Event> &events, RunData &run_data)
 {
     int i, j;
     Genes *h;
@@ -3615,7 +3630,7 @@ std::vector<Genes *> force_coalesce(Genes *g, std::vector<Event> &events)
                 }
 #endif
                 h = copy_genes(g);
-                coalesce(h, i, j);
+                coalesce(h, i, j, run_data);
                 forced.push_back(h);
                 /* Insert corresponding event in list of events */
                 Event e;
@@ -3631,7 +3646,7 @@ std::vector<Genes *> force_coalesce(Genes *g, std::vector<Event> &events)
 /* Split sequence a into two sequences before site given by index and
  * block. The postfix is inserted as last sequence.
  */
-static void _split(Genes *g, int a, int index, int block)
+static void _split(Genes *g, int a, int index, int block, RunData &run_data)
 {
     int j, blocks = divblocksize(g->length - 1) + 1;
     unsigned long filter;
@@ -3671,11 +3686,13 @@ static void _split(Genes *g, int a, int index, int block)
         if (g_sequence_labels[a] != -1)
         {
             g_sequence_labels.push_back(g_seq_numbering);
+            run_data.sequence_labels.push_back(g_seq_numbering);
             g_seq_numbering++;
         }
         else
         {
             g_sequence_labels.push_back(-1);
+            run_data.sequence_labels.push_back(-1);
             g_seq_numbering++;
         }
     }
@@ -3684,9 +3701,9 @@ static void _split(Genes *g, int a, int index, int block)
 /* Split sequence a into two sequences before site i. The postfix is
  * inserted as last sequence.
  */
-void split(Genes *g, int a, int i)
+void split(Genes *g, int a, int i, RunData &run_data)
 {
-    _split(g, a, modblocksize(i), divblocksize(i));
+    _split(g, a, modblocksize(i), divblocksize(i), run_data);
 }
 
 /* For each split in sequence a of g leading to a unique _new set of
@@ -3695,7 +3712,7 @@ void split(Genes *g, int a, int i)
  * appended to this vector in the same order as the resulting
  * configurations are stored in the vector returned.
  */
-std::vector<Genes *> _force_split(Genes *g, int a, bool use_events, std::vector<Event> *events)
+std::vector<Genes *> _force_split(Genes *g, int a, bool use_events, std::vector<Event> *events, RunData &run_data)
 {
     int i, index = 0, block = 0;
     Genes *h;
@@ -3738,7 +3755,7 @@ std::vector<Genes *> _force_split(Genes *g, int a, bool use_events, std::vector<
             }
 #endif
             h = copy_genes(g);
-            _split(h, a, index, block);
+            _split(h, a, index, block, run_data);
             forced.push_back(h);
             /* Insert corresponding event in list of events */
             if (use_events)
@@ -3755,21 +3772,21 @@ std::vector<Genes *> _force_split(Genes *g, int a, bool use_events, std::vector<
     return std::move(forced);
 }
 
-std::vector<Genes *> force_split(Genes *g, int a)
+std::vector<Genes *> force_split(Genes *g, int a, RunData &run_data)
 {
-    return _force_split(g, a, false, nullptr);
+    return _force_split(g, a, false, nullptr, run_data);
 }
 
-std::vector<Genes *> force_split(Genes *g, int a, std::vector<Event> &events)
+std::vector<Genes *> force_split(Genes *g, int a, std::vector<Event> &events, RunData &run_data)
 {
-    return _force_split(g, a, true, &events);
+    return _force_split(g, a, true, &events, run_data);
 }
 
 /* Split sequence a before site given by index and block and
  * immediately coalesce prefix with sequence b. It is assumed that the
  * prefix is compatible with sequence b.
  */
-void split_coalesceprefix(Genes *g, int a, int index, int block, int b)
+void split_coalesceprefix(Genes *g, int a, int index, int block, int b, RunData &run_data)
 {
     unsigned long filter;
 
@@ -3794,6 +3811,7 @@ void split_coalesceprefix(Genes *g, int a, int index, int block, int b)
     if (!g_sequence_labels.empty())
     {
         g_sequence_labels[b] = -1;
+        run_data.sequence_labels[b] = -1;
     }
 }
 
@@ -3801,7 +3819,7 @@ void split_coalesceprefix(Genes *g, int a, int index, int block, int b)
  * immediately coalesce postfix with sequence b. It is assumed that the
  * postfix is compatible with sequence b.
  */
-void split_coalescepostfix(Genes *g, int a, int index, int block, int b)
+void split_coalescepostfix(Genes *g, int a, int index, int block, int b, RunData &run_data)
 {
     int blocks = divblocksize(g->length - 1) + 1;
     unsigned long filter;
@@ -3829,6 +3847,7 @@ void split_coalescepostfix(Genes *g, int a, int index, int block, int b)
     if (!g_sequence_labels.empty())
     {
         g_sequence_labels[b] = -1;
+        run_data.sequence_labels[b] = -1;
     }
 }
 
@@ -3836,7 +3855,7 @@ void split_coalescepostfix(Genes *g, int a, int index, int block, int b)
  * immediately coalesce postfix with sequence b. It is assumed that
  * the postfix is compatible with sequence b.
  */
-void splitafter_coalescepostfix(Genes *g, int a, int index, int block, int b)
+void splitafter_coalescepostfix(Genes *g, int a, int index, int block, int b, RunData &run_data)
 {
     int blocks = divblocksize(g->length - 1) + 1;
     unsigned long filter;
@@ -3862,6 +3881,7 @@ void splitafter_coalescepostfix(Genes *g, int a, int index, int block, int b)
     if (!g_sequence_labels.empty())
     {
         g_sequence_labels[b] = -1;
+        run_data.sequence_labels[b] = -1;
     }
 }
 
@@ -3869,7 +3889,7 @@ void splitafter_coalescepostfix(Genes *g, int a, int index, int block, int b)
  * prefix. It reflects the prefix being coalesced with some other
  * sequence in which it is subsumed.
  */
-int split_removeprefix(Genes *g, int a, int index, int block)
+int split_removeprefix(Genes *g, int a, int index, int block, RunData &run_data)
 {
     unsigned long filter;
     int blocks = divblocksize(g->length - 1) + 1;
@@ -3908,6 +3928,7 @@ int split_removeprefix(Genes *g, int a, int index, int block)
     if (!g_sequence_labels.empty())
     {
         g_sequence_labels[b] = -1;
+        run_data.sequence_labels[b] = -1;
     }
 
     free_genes(h);
@@ -3919,7 +3940,7 @@ int split_removeprefix(Genes *g, int a, int index, int block)
  * postfix. It reflects the postfix being coalesced with some other
  * sequence in which it is subsumed.
  */
-int split_removepostfix(Genes *g, int a, int index, int block)
+int split_removepostfix(Genes *g, int a, int index, int block, RunData &run_data)
 {
     int blocks = divblocksize(g->length - 1) + 1;
     unsigned long filter;
@@ -3957,6 +3978,7 @@ int split_removepostfix(Genes *g, int a, int index, int block)
     if (!g_sequence_labels.empty())
     {
         g_sequence_labels[b] = -1;
+        run_data.sequence_labels[b] = -1;
     }
 
     free_genes(h);
@@ -4359,11 +4381,12 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &m
         {
             /* Start by splitting off maximum subsumed prefix */
             h = copy_genes(g);
+            RunData new_path_data = main_path_data;
             g_sequence_labels = tmp_elements;
             g_site_labels = tmp_sites;
-            if (split_removeprefix(h, s, a[s].index, a[s].block) != -1)
+            if (split_removeprefix(h, s, a[s].index, a[s].block, new_path_data) != -1)
             {
-                RunData new_path_data = main_path_data;
+                
                 if (g_use_eventlist && g_eventlist.in_use)
                 {
                     g_eventlist.reset();
@@ -4383,7 +4406,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &m
                     e3.event.c.s2 = g->n;
                     g_eventlist.push_back(e3);
                 }
-                implode_genes(h);
+                implode_genes(h, new_path_data);
                 f(h, std::move(new_path_data));
             }
             else
@@ -4527,7 +4550,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &m
                                     RunData new_path_data = main_path_data;
                                     g_sequence_labels = tmp_elements;
                                     g_site_labels = tmp_sites;
-                                    split_coalesceprefix(h, s, index, block, out[i]);
+                                    split_coalesceprefix(h, s, index, block, out[i], new_path_data);
                                     if (g_use_eventlist && g_eventlist.in_use)
                                     {
                                         g_eventlist.reset();
@@ -4547,7 +4570,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &m
                                         e3.event.c.s2 = g->n;
                                         g_eventlist.push_back(e3);
                                     }
-                                    implode_genes(h);
+                                    implode_genes(h, new_path_data);
                                     f(h, std::move(new_path_data));
 
 #ifdef ENABLE_VERBOSE
@@ -4576,7 +4599,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &m
                                         RunData new_path_data = main_path_data;
                                         g_sequence_labels = tmp_elements;
                                         g_site_labels = tmp_sites;
-                                        split_coalesceprefix(h, s, index, block, out[i]);
+                                        split_coalesceprefix(h, s, index, block, out[i], new_path_data);
                                         if (g_use_eventlist && g_eventlist.in_use)
                                         {
                                             g_eventlist.reset();
@@ -4596,7 +4619,7 @@ void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &m
                                             e3.event.c.s2 = g->n;
                                             g_eventlist.push_back(e3);
                                         }
-                                        implode_genes(h);
+                                        implode_genes(h, new_path_data);
                                         f(h, std::move(new_path_data));
 
 #ifdef ENABLE_VERBOSE
@@ -4715,11 +4738,12 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &
             {
                 /* Start by splitting off maximum subsumed postfix */
                 h = copy_genes(g);
+                RunData new_path_data = main_path_data;
                 g_sequence_labels = tmp_elements;
                 g_site_labels = tmp_sites;
-                if (split_removepostfix(h, s, b[s].index, b[s].block) != -1)
+                if (split_removepostfix(h, s, b[s].index, b[s].block, new_path_data) != -1)
                 {
-                    RunData new_path_data = main_path_data;
+                    
                     if (g_use_eventlist && g_eventlist.in_use)
                     {
                         g_eventlist.reset();
@@ -4734,7 +4758,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &
                         e2.event.c.s2 = g->n;
                         g_eventlist.push_back(e2);
                     }
-                    implode_genes(h);
+                    implode_genes(h, new_path_data);
                     f(h, std::move(new_path_data));
                 }
                 else
@@ -4898,7 +4922,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &
                                         h = copy_genes(g);
                                         g_sequence_labels = tmp_elements;
                                         g_site_labels = tmp_sites;
-                                        splitafter_coalescepostfix(h, s, index, block, out[i]);
+                                        splitafter_coalescepostfix(h, s, index, block, out[i], new_path_data);
                                         if (g_use_eventlist && g_eventlist.in_use)
                                         {
                                             g_eventlist.reset();
@@ -4913,7 +4937,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &
                                             e2.event.c.s2 = g->n;
                                             g_eventlist.push_back(e2);
                                         }
-                                        implode_genes(h);
+                                        implode_genes(h, new_path_data);
                                         f(h, new_path_data);
 #ifdef ENABLE_VERBOSE
                                         if (v)
@@ -4941,7 +4965,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &
                                             RunData new_path_data = main_path_data;
                                             g_sequence_labels = tmp_elements;
                                             g_site_labels = tmp_sites;
-                                            splitafter_coalescepostfix(h, s, index, block, out[i]);
+                                            splitafter_coalescepostfix(h, s, index, block, out[i], new_path_data);
                                             if (g_use_eventlist && g_eventlist.in_use)
                                             {
                                                 g_eventlist.reset();
@@ -4956,7 +4980,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &
                                                 e2.event.c.s2 = g->n;
                                                 g_eventlist.push_back(e2);
                                             }
-                                            implode_genes(h);
+                                            implode_genes(h, new_path_data);
                                             f(h, new_path_data);
 #ifdef ENABLE_VERBOSE
                                             if (v)
@@ -5439,8 +5463,8 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                     RunData new_path_data = main_path_data;
                     g_sequence_labels = tmp_elements;
                     g_site_labels = tmp_sites;
-                    _split(h, s, sindex, sblock);
-                    split_coalesceprefix(h, g->n, eindex, eblock, j);
+                    _split(h, s, sindex, sblock, new_path_data);
+                    split_coalesceprefix(h, g->n, eindex, eblock, j, new_path_data);
                     if (g_use_eventlist && g_eventlist.in_use)
                     {
                         g_eventlist.reset();
@@ -5460,7 +5484,7 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                         e3.event.c.s2 = g->n;
                         g_eventlist.push_back(e3);
                     }
-                    implode_genes(h);
+                    implode_genes(h, new_path_data);
                     f(h, new_path_data);
 #ifdef ENABLE_VERBOSE
                     if (v)
@@ -5504,8 +5528,8 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                     RunData new_path_data = main_path_data;
                     g_sequence_labels = tmp_elements;
                     g_site_labels = tmp_sites;
-                    _split(h, s, sindex, sblock);
-                    split_coalesceprefix(h, g->n, eindex, eblock, j);
+                    _split(h, s, sindex, sblock, new_path_data);
+                    split_coalesceprefix(h, g->n, eindex, eblock, j, new_path_data);
                     if (g_use_eventlist && g_eventlist.in_use)
                     {
                         g_eventlist.reset();
@@ -5525,7 +5549,7 @@ static void perform_maximal_splits(int index, int block, int s, int blocks,
                         e3.event.c.s2 = g->n;
                         g_eventlist.push_back(e3);
                     }
-                    implode_genes(h);
+                    implode_genes(h, new_path_data);
                     f(h, new_path_data);
 #ifdef ENABLE_VERBOSE
                     if (v)
@@ -5795,8 +5819,8 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &ma
                 RunData new_path_data = main_path_data;
                 g_sequence_labels = tmp_elements;
                 g_site_labels = tmp_sites;
-                _split(h, i, leftindex, leftblock);
-                if (split_removeprefix(h, g->n, modblocksize(right), divblocksize(right)) != -1)
+                _split(h, i, leftindex, leftblock, new_path_data);
+                if (split_removeprefix(h, g->n, modblocksize(right), divblocksize(right), new_path_data) != -1)
                 {
                     if (g_use_eventlist && g_eventlist.in_use)
                     {
@@ -5817,7 +5841,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &ma
                         e3.event.c.s2 = g->n;
                         g_eventlist.push_back(e3);
                     }
-                    implode_genes(h);
+                    implode_genes(h, new_path_data);
                     f(h, new_path_data);
                 }
                 else
@@ -6149,8 +6173,8 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b, const RunData &
                             RunData new_path_data = main_path_data;
                             g_sequence_labels = tmp_elements;
                             g_site_labels = tmp_sites;
-                            _split(h, s1, index1, block1);
-                            splitafter_coalescepostfix(h, in[s2], index2, block2, s1);
+                            _split(h, s1, index1, block1, new_path_data);
+                            splitafter_coalescepostfix(h, in[s2], index2, block2, s1, new_path_data);
                             if (g_use_eventlist && g_eventlist.in_use)
                             {
                                 g_eventlist.reset();
@@ -6170,7 +6194,7 @@ void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b, const RunData &
                                 e3.event.c.s2 = g->n + 1;
                                 g_eventlist.push_back(e3);
                             }
-                            implode_genes(h);
+                            implode_genes(h, new_path_data);
                             f(h, new_path_data);
 #ifdef ENABLE_VERBOSE
                             if (v)
@@ -6647,7 +6671,7 @@ void seqerror_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNC
                         e.event.flip.site = s;
                         g_eventlist.push_back(e);
                     }
-                    implode_genes(h);
+                    implode_genes(h, new_path_data);
                     f(h, std::move(new_path_data));
                 }
             }
@@ -6712,7 +6736,7 @@ void recmut_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTI
                         e.event.flip.site = s;
                         g_eventlist.push_back(e);
                     }
-                    implode_genes(h);
+                    implode_genes(h, new_path_data);
                     f(h, std::move(new_path_data));
                 }
             }

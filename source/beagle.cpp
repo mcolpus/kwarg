@@ -453,9 +453,12 @@ int main(int argc, char **argv)
 #endif
 
     /* Set up structures for computation */
+    RunData run_data;
+    run_data.do_track = false;
+
     g_use_eventlist = false;
     if (comprehensive_bound >= 0)
-        t = beagle_allocate_hashtable(g, -1);
+        t = beagle_allocate_hashtable(g, -1, run_data);
     else if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
     {
         g_eventlist.reset();
@@ -480,21 +483,21 @@ int main(int argc, char **argv)
         if (comprehensive_bound >= 0)
         {
             i = beagle_reusable_bounded(g, (print_progress ? stdout : NULL), lower,
-                                        upper, t);
+                                        upper, t, run_data);
             comprehensive_bound += i;
         }
         else
-            i = beagle_bounded(g, (print_progress ? stdout : NULL), lower, upper);
+            i = beagle_bounded(g, (print_progress ? stdout : NULL), lower, upper, run_data);
     }
     else
     {
         if (comprehensive_bound >= 0)
         {
-            i = beagle_reusable(g, (print_progress ? stdout : NULL), t);
+            i = beagle_reusable(g, (print_progress ? stdout : NULL), t, run_data);
             comprehensive_bound += i;
         }
         else
-            i = beagle(g, (print_progress ? stdout : NULL));
+            i = beagle(g, (print_progress ? stdout : NULL), run_data);
     }
 
     if (!silent)
@@ -530,7 +533,7 @@ int main(int argc, char **argv)
     {
         if (comprehensive_bound >= 0)
         {
-            g_eventlist = beagle_randomised(g, NULL, comprehensive_bound, t);
+            g_eventlist = beagle_randomised(g, NULL, comprehensive_bound, t, run_data);
             beagle_deallocate_hashtable(t);
         }
         while ((fp = (FILE *)Pop(history_files)) != NULL)

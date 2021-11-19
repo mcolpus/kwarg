@@ -28,43 +28,44 @@ event REMOVE remove: 8
 event SUBSTITUTION seq: -1, site: 5
 event SUBSTITUTION seq: -1, site: 16
 event SEFLIP seq: 5, site: 14
-event SEFLIP seq: 0, site: 3
-event COLLAPSE col: 2
-event SEFLIP seq: 4, site: 14
-event RECOMBINATION seq: 3, pos: 6
+event SEFLIP seq: 4, site: 2
+event RECOMBINATION seq: 5, pos: 8
+event SWAP s1: 5, s2: 9
 event COALESCENCE s1: -1, s2: 9
+event SEFLIP seq: 4, site: 6
+event SUBSTITUTION seq: -1, site: 6
+event REMOVE remove: 3
 event SUBSTITUTION seq: -1, site: 13
+event SEFLIP seq: 0, site: 3
+event SEFLIP seq: 1, site: 2
+event SEFLIP seq: 3, site: 13
 event COLLAPSE col: 12
-event RECOMBINATION seq: 3, pos: 5
-event SWAP s1: 3, s2: 9
-event COALESCENCE s1: -1, s2: 9
+event SEFLIP seq: 4, site: 9
+event COLLAPSE col: 8
+event COLLAPSE col: 8
+event RECOMBINATION seq: 3, pos: 6
+event COALESCENCE s1: -1, s2: 8
+event SEFLIP seq: 7, site: 5
+event SEFLIP seq: 7, site: 5
+event RECOMBINATION seq: 1, pos: 3
+event COALESCENCE s1: -1, s2: 8
+event SUBSTITUTION seq: -1, site: 6
+event REMOVE remove: 2
+event SUBSTITUTION seq: -1, site: 5
+event SUBSTITUTION seq: -1, site: 6
+event SUBSTITUTION seq: -1, site: 7
+event COLLAPSE col: 5
 event REMOVE remove: 3
 event SUBSTITUTION seq: -1, site: 5
-event RECOMBINATION seq: 4, pos: 6
-event SWAP s1: 4, s2: 8
-event COALESCENCE s1: -1, s2: 8
-event RECOMBINATION seq: 3, pos: 2
-event SWAP s1: 3, s2: 8
-event COALESCENCE s1: -1, s2: 8
-event RECOMBINATION seq: 3, pos: 6
-event SWAP s1: 3, s2: 8
-event COALESCENCE s1: -1, s2: 8
-event SUBSTITUTION seq: -1, site: 3
-event REMOVE remove: 3
-event REMOVE remove: 6
-event SUBSTITUTION seq: -1, site: 0
+event RECOMBINATION seq: 2, pos: 3
+event SWAP s1: 2, s2: 6
+event COALESCENCE s1: -1, s2: 6
 event SUBSTITUTION seq: -1, site: 1
-event REMOVE remove: 5
+event REMOVE remove: 2
+event REMOVE remove: 2
 event SUBSTITUTION seq: -1, site: 1
-event SUBSTITUTION seq: -1, site: 2
-event SUBSTITUTION seq: -1, site: 3
-event SUBSTITUTION seq: -1, site: 4
-event COLLAPSE col: 2
-event COLLAPSE col: 2
-event REMOVE remove: 3
-event SUBSTITUTION seq: -1, site: 2
-event SEFLIP seq: 1, site: 0
-event SUBSTITUTION seq: -1, site: 0
+event SUBSTITUTION seq: -1, site: 1
+event SUBSTITUTION seq: -1, site: 1
 event REMOVE remove: 1
 event REMOVE remove: 2
 event SUBSTITUTION seq: -1, site: 0
@@ -89,45 +90,30 @@ Coalescing sequences 8 and 10
 Mutation of site 13 in sequence 8
 Mutation of site 38 in sequence 8
 ---->Sequencing error at site 36 in sequence 6
----->Sequencing error at site 9 in sequence 1
----->Sequencing error at site 37 in sequence 5
----->Recombination in sequence 4 after site 18; suffix is new sequence 12
-Coalescing sequences 3 and 12
+---->Stretch of sequencing errors spanning 2 sites:
+---->Sequencing error at site 4 in sequence 5
+---->Sequencing error at site 5 in sequence 5
+---->Recombination in sequence 6 after site 29; prefix is new sequence 12
+Coalescing sequences 7 and 12
+---->Stretch of sequencing errors spanning 2 sites:
+---->Sequencing error at site 17 in sequence 5
+---->Sequencing error at site 18 in sequence 5
+Mutation of site 17 in sequence 4
+Mutation of site 18 in sequence 4
+Coalescing sequences 3 and 4
 Mutation of site 36 in sequence 3
----->Recombination in sequence 4 after site 16; prefix is new sequence 13
-Coalescing sequences 1 and 13
-Coalescing sequences 5 and 4
-Mutation of site 17 in sequence 5
-Mutation of site 18 in sequence 5
----->Recombination in sequence 6 after site 29; prefix is new sequence 14
-Coalescing sequences 7 and 14
----->Recombination in sequence 5 after site 3; prefix is new sequence 15
-Coalescing sequences 1 and 15
----->Recombination in sequence 5 after site 29; prefix is new sequence 16
-Coalescing sequences 8 and 16
-Mutation of site 11 in sequence 8
-Mutation of site 12 in sequence 8
-Coalescing sequences 1 and 5
-Coalescing sequences 8 and 11
-Mutation of site 1 in sequence 8
-Mutation of site 2 in sequence 8
-Mutation of site 4 in sequence 8
-Mutation of site 5 in sequence 8
-Mutation of site 9 in sequence 8
-Coalescing sequences 7 and 8
-Mutation of site 16 in sequence 7
-Mutation of site 30 in sequence 7
-Mutation of site 32 in sequence 7
-Mutation of site 34 in sequence 7
-Coalescing sequences 7 and 6
-Mutation of site 31 in sequence 7
-Mutation of site 33 in sequence 7
-Mutation of site 35 in sequence 7
-Mutation of site 37 in sequence 7
----->Sequencing error at site 3 in sequence 2
-Mutation of site 3 in sequence 7
-Coalescing sequences 1 and 2
-Coalescing sequences 3 and 7
+---->Sequencing error at site 9 in sequence 1
+---->Stretch of sequencing errors spanning 2 sites:
+---->Sequencing error at site 4 in sequence 2
+---->Sequencing error at site 5 in sequence 2
+---->Sequencing error at site 37 in sequence 5
+---->Sequencing error at site 32 in sequence 6
+---->Recombination in sequence 5 after site 18; suffix is new sequence 13
+Coalescing sequences 3 and 13
+---->Sequencing error at site 16 in sequence 11
+---->Sequencing error at site 16 in sequence 11
+---->Recombination in sequence 2 after site 8; suffix is new sequence 14
+Coalescing sequences 1 and 14
 Mutation of site 19 in sequence 1
 Mutation of site 20 in sequence 1
 Mutation of site 22 in sequence 1
@@ -138,4 +124,28 @@ Mutation of site 27 in sequence 1
 Mutation of site 28 in sequence 1
 Mutation of site 29 in sequence 1
 Coalescing sequences 1 and 3
-Total: 4 sequencing errors, 0 recurrent mutations, 5 recombinations.
+Mutation of site 16 in sequence 1
+Mutation of site 31 in sequence 1
+Mutation of site 32 in sequence 1
+Mutation of site 33 in sequence 1
+Mutation of site 35 in sequence 1
+Mutation of site 37 in sequence 1
+Coalescing sequences 1 and 6
+Mutation of site 30 in sequence 1
+Mutation of site 34 in sequence 1
+---->Recombination in sequence 5 after site 8; prefix is new sequence 15
+Coalescing sequences 1 and 15
+Mutation of site 3 in sequence 1
+Coalescing sequences 8 and 5
+Coalescing sequences 1 and 7
+Mutation of site 4 in sequence 1
+Mutation of site 5 in sequence 1
+Mutation of site 9 in sequence 1
+Mutation of site 11 in sequence 8
+Mutation of site 12 in sequence 8
+Coalescing sequences 1 and 2
+Coalescing sequences 8 and 11
+Mutation of site 1 in sequence 8
+Mutation of site 2 in sequence 8
+Coalescing sequences 1 and 8
+Total: 12 sequencing errors, 0 recurrent mutations, 4 recombinations.
