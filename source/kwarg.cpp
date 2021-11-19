@@ -918,7 +918,6 @@ int main(int argc, char **argv)
 
                 // Copy the data and set up the tracking lists
                 h = copy_genes(g);
-                g_seq_numbering = h->n;
                 std::vector<int> sequence_labels = {};
                 std::vector<int> site_labels = {};
 
@@ -947,6 +946,7 @@ int main(int argc, char **argv)
                 RunData run_data;
                 run_data.sequence_labels = std::move(sequence_labels);
                 run_data.site_labels = std::move(site_labels);
+                run_data.seq_numbering = h->n;
 
                 // Get a history
                 clock_t tic = clock();

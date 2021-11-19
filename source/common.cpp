@@ -43,7 +43,6 @@ int **g_haploblocks = NULL;
 EventList g_eventlist;
 bool g_use_eventlist;
 std::vector<int> g_lookup;
-int g_seq_numbering;
 int g_howverbose = 0;
 int gc_enabled = 0;
 HashTable *g_greedy_functioncalls = NULL, *g_greedy_beaglereusable = NULL;

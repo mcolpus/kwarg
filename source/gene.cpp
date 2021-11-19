@@ -3670,13 +3670,13 @@ static void _split(Genes *g, int a, int index, int block, RunData &run_data)
     {
         if (run_data.sequence_labels[a] != -1)
         {
-            run_data.sequence_labels.push_back(g_seq_numbering);
-            g_seq_numbering++;
+            run_data.sequence_labels.push_back(run_data.seq_numbering);
+            run_data.seq_numbering++;
         }
         else
         {
             run_data.sequence_labels.push_back(-1);
-            g_seq_numbering++;
+            run_data.seq_numbering++;
         }
     }
 }

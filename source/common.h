@@ -59,6 +59,7 @@ typedef struct _RunData
     double current_step_cost;
     std::vector<int> sequence_labels;
     std::vector<int> site_labels;
+    int seq_numbering;
 
     _RunData()
     {
@@ -93,18 +94,8 @@ typedef struct _RunData
 extern EventList g_eventlist;
 extern bool g_use_eventlist;
 extern std::vector<int> g_lookup;
-extern int g_seq_numbering;
-// extern double g_se_cost;
-// extern double g_rm_cost;
-// extern double g_r_cost;
-// extern double g_rr_cost;
 extern int g_howverbose;
-// extern double g_step_cost;
 extern int gc_enabled; // Used in local2global. Not sure what is does. Is not changed
-// extern double g_Temp;
-// extern double g_run_seed;
-// extern int g_rec_max, g_rm_max;
-// extern int g_run_reference;
 extern HashTable *g_greedy_functioncalls, *g_greedy_beaglereusable;
 #ifdef DEBUG
 extern HashTable *ancestral_state_trace;
