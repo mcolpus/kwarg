@@ -45,7 +45,26 @@ bool g_use_eventlist;
 std::vector<int> g_lookup;
 int g_howverbose = 0;
 int gc_enabled = 0;
-HashTable *g_greedy_functioncalls = NULL, *g_greedy_beaglereusable = NULL;
+
+_RunData::~_RunData()
+{
+    sequence_labels.clear();
+    site_labels.clear();
+
+    if (greedy_functioncalls != NULL)
+    {
+        hashtable_destroy(greedy_functioncalls, free, NULL, free);
+        greedy_functioncalls = NULL;
+    }
+
+    if (greedy_beaglereusable != NULL)
+    {
+        // beagle_deallocate_hashtable(greedy_beaglereusable);
+        hashtable_destroy(greedy_beaglereusable, (void (*)(void *))free_packedgenes, NULL,
+                            (void (*)(void *))free);
+        greedy_beaglereusable = NULL;
+    }
+}
 
 #ifdef DEBUG
 /* Define structure for storing trace of ancestral states as we return

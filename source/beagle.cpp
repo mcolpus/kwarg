@@ -474,7 +474,7 @@ int main(int argc, char **argv)
     }
 #endif
 #ifdef DEBUG
-    ancestral_state_trace = beagle_allocate_hashtable(NULL, -1);
+    ancestral_state_trace = beagle_allocate_hashtable(NULL, -1, run_data);
 #endif
 
     /* Compute number of recombinations */

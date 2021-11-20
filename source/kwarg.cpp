@@ -1076,17 +1076,6 @@ int main(int argc, char **argv)
 
     /* Clean up */
 
-    if (g_greedy_beaglereusable != NULL)
-    {
-        beagle_deallocate_hashtable(g_greedy_beaglereusable);
-        g_greedy_beaglereusable = NULL;
-    }
-    if (g_greedy_functioncalls != NULL)
-    {
-        hashtable_destroy(g_greedy_functioncalls, free, NULL, free);
-        g_greedy_functioncalls = NULL;
-    }
-
     DestroyLList(dot_files);
     DestroyLList(gml_files);
     DestroyLList(gdl_files);

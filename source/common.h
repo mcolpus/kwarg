@@ -4,6 +4,7 @@
 #define COMMON_H
 
 #include "llist.h"
+#include "hashtable.h"
 
 #include <vector>
 #include <list>
@@ -40,7 +41,7 @@ void explode_local(int **local, LList *r, int n);
 
 typedef struct _RunSettings
 {
-    //Fixed
+    // Fixed
     double se_cost;
     double rm_cost;
     double r_cost;
@@ -53,13 +54,15 @@ typedef struct _RunSettings
 
 typedef struct _RunData
 {
-    //varies during run. Captures data on one path
+    // varies during run. Captures data on one path
     bool do_track = true; // Will be used to toggle when event_list etc should be added to
 
     double current_step_cost;
     std::vector<int> sequence_labels;
     std::vector<int> site_labels;
     int seq_numbering;
+
+    HashTable *greedy_functioncalls = NULL, *greedy_beaglereusable = NULL;
 
     _RunData()
     {
@@ -70,7 +73,7 @@ typedef struct _RunData
     _RunData(bool make_empty)
     {
         current_step_cost = 0;
-        if(make_empty)
+        if (make_empty)
         {
             do_track = false;
         }
@@ -85,18 +88,25 @@ typedef struct _RunData
         current_step_cost = 0;
         sequence_labels.clear();
         site_labels.clear();
+
+        if (greedy_functioncalls != nullptr)
+            hashtable_cleanout(greedy_functioncalls, free, NULL);
     }
-    
+
+    ~_RunData(); // destructor is in common.cpp so can call functions from elsewhere
+
 } RunData;
 
 #include "gene.h"
 
 extern EventList g_eventlist;
 extern bool g_use_eventlist;
+
+// These should be global as they apply to all runs/paths
 extern std::vector<int> g_lookup;
 extern int g_howverbose;
 extern int gc_enabled; // Used in local2global. Not sure what is does. Is not changed
-extern HashTable *g_greedy_functioncalls, *g_greedy_beaglereusable;
+
 #ifdef DEBUG
 extern HashTable *ancestral_state_trace;
 #endif

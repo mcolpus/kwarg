@@ -752,9 +752,10 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
                 tmp_eventlist = std::move(g_eventlist);
                 g_eventlist.set_null();
                 g = copy_genes(h);
-                implode_genes(g);
+                empty_run_data.clear_all();
+                implode_genes(g, empty_run_data);
                 g_eventlist = std::move(tmp_eventlist);
-                if (!no_recombinations_required(g))
+                if (!no_recombinations_required(g, empty_run_data))
                 {
                     p = pack_genes(g);
                     if (!hashtable_lookup(p, ancestral_state_trace, NULL))

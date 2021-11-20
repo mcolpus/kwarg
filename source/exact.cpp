@@ -1463,22 +1463,22 @@ static int *_greedy_initparam(unsigned long m)
 static void _noexp_rmin(RunData &run_data)
 {
     /* Set up hash table for common use for all beagle invocations */
-    if (g_greedy_beaglereusable == NULL)
+    if (run_data.greedy_beaglereusable == NULL)
     {
-        g_greedy_beaglereusable = beagle_allocate_hashtable(_greedy_currentstate, -1, run_data);
+        run_data.greedy_beaglereusable = beagle_allocate_hashtable(_greedy_currentstate, -1, run_data);
     }
     if (_greedy_rmin < 0)
     {
         /* We haven't computed r_min for this configuration yet */
         _greedy_rmin = beagle_reusable(_greedy_currentstate, NULL,
-                                       g_greedy_beaglereusable, run_data);
+                                       run_data.greedy_beaglereusable, run_data);
     }
 }
 
 /* Compute haplotype lower bound with the heuristic parameters
  * specified by p.
  */
-static int _hb(Genes *g)
+static int _hb(Genes *g, RunData &run_data)
 {
     int i;
     void **a = (void **)xmalloc(4 * sizeof(void *));
@@ -1493,10 +1493,10 @@ static int _hb(Genes *g)
     /* Check whether this function call has previously been invoked; if
      * not, compute and store value.
      */
-    if (!hashtable_lookup(a, g_greedy_functioncalls, (void **)&i))
+    if (!hashtable_lookup(a, run_data.greedy_functioncalls, (void **)&i))
     {
         i = haplotype_bound_genes(g);
-        hashtable_insert(a, (void *)i, g_greedy_functioncalls);
+        hashtable_insert(a, (void *)i, run_data.greedy_functioncalls);
     }
 
     /* Store lower bound in expression */
@@ -1507,7 +1507,7 @@ static int _hb(Genes *g)
 /* Compute lower bound from local exact minimum number of
  * recombinations combined using the composite method.
  */
-static int _eagl(Genes *g)
+static int _eagl(Genes *g, RunData &run_data)
 {
     void **a = (void **)xmalloc(2 * sizeof(void *));
     int b, **B;
@@ -1520,13 +1520,13 @@ static int _eagl(Genes *g)
     /* Check whether this function call has previously been invoked; if
      * not, compute and store value.
      */
-    if (!hashtable_lookup(a, g_greedy_functioncalls, (void **)&b))
+    if (!hashtable_lookup(a, run_data.greedy_functioncalls, (void **)&b))
     {
         s = genes2sites(g);
         B = hudson_kaplan_local(s);
         free_sites(s);
         b = eagl(g, 10, B, NULL, NULL);
-        hashtable_insert(a, (void *)b, g_greedy_functioncalls);
+        hashtable_insert(a, (void *)b, run_data.greedy_functioncalls);
     }
 
     return b;
@@ -1573,7 +1573,7 @@ static int _greedy_compare(void **a, void **b)
  * g, and remove information from previous ancestral state from cache.
  */
 static double _am, _seq, _len;
-static void _reset_builtins(Genes *g)
+static void _reset_builtins(Genes *g, RunData &run_data)
 {
     _greedy_currentstate = g;
 
@@ -1582,14 +1582,14 @@ static void _reset_builtins(Genes *g)
     _len = g->length;
 
     _greedy_rmin = _greedy_hk = -1;
-    if (g_greedy_functioncalls != NULL)
+    if (run_data.greedy_functioncalls != NULL)
     {
-        hashtable_cleanout(g_greedy_functioncalls, free, NULL);
+        hashtable_cleanout(run_data.greedy_functioncalls, free, NULL);
     }
     else
-        g_greedy_functioncalls = hashtable_new(6, (unsigned long (*)(void *, void *))_greedy_hash,
+        run_data.greedy_functioncalls = hashtable_new(6, (unsigned long (*)(void *, void *))_greedy_hash,
                                                (int (*)(void *, void *))_greedy_compare,
-                                               (void *(*)(unsigned long))_greedy_initparam);
+                                               (void *(*)(unsigned long))_greedy_initparam);    
 }
 
 /* Update global quantities with contribution from g and free any
@@ -1655,7 +1655,7 @@ double scoring_function(Genes *g, double step_cost, RunSettings &run_settings, R
         //         }
         else if (_maxam < 200)
         {
-            lb = _hb(g);
+            lb = _hb(g, run_data);
         }
         else
         {
@@ -2007,12 +2007,13 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 int i = 0;
                 for (auto &f : predecessors)
                 {
+                    RunData scoring_data(true);
                     // output_genes(f->g, stderr, "\nGenes of f:\n");
-                    _reset_builtins(f->g); // set f to be _greedy_currentstate
+                    _reset_builtins(f->g, scoring_data); // set f to be _greedy_currentstate
                     //g_step_cost = f->recombinations;
                     // Calculate all the scores and update the min and max
-                    RunData empty_data(true);
-                    score_array[i] = scoring_function(f->g, f->step_cost, run_settings, empty_data);
+                    
+                    score_array[i] = scoring_function(f->g, f->step_cost, run_settings, scoring_data);
 
                     i++;
                 }
@@ -2022,11 +2023,11 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             int i = 0;
             for (auto &f : predecessors)
             {
-                _reset_builtins(f->g); // set _greedy_currentstate to be f->g
+                RunData scoring_data(true);
+                _reset_builtins(f->g, scoring_data); // set _greedy_currentstate to be f->g
 
                 //g_step_cost = f->recombinations;
-                RunData empty_data(true);
-                printscore = score_renormalise(f->g, score_array[i], f->step_cost, run_settings, empty_data);
+                printscore = score_renormalise(f->g, score_array[i], f->step_cost, run_settings, scoring_data);
                 if (print_progress != NULL && g_howverbose == 2)
                 {
                     fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->step_cost);
