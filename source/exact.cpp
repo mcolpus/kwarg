@@ -865,14 +865,14 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                 }
 #endif
 #ifdef DEBUG
-                if (ancestral_state_trace != NULL)
+                if (run_data.ancestral_state_trace != NULL)
                 {
                     /* Insert current ancestral state as one visited in the
                      * minimum history we are in the process of returning back
                      * from.
                      */
                     p = pack_genes(g);
-                    hashtable_insert(p, NULL, ancestral_state_trace);
+                    hashtable_insert(p, NULL, run_data.ancestral_state_trace);
                 }
 #endif
                 if (reusable)
@@ -946,9 +946,9 @@ static int _intmax(int a, int b)
 /* Use branch&bound plus dynamic programming techniques to reconstruct
  * a history for g requiring a minimum number of recombinations. If
  * run_data.eventlist is not NULL, a list of the events leading to this number
- * of recombinations is compiled in run_data.eventlist. If g_haploblocks is not
+ * of recombinations is compiled in run_data.eventlist. If haploblocks is not
  * NULL, local minimum number of recombinations are stored in
- * g_haploblocks; g_haploblocks is assumed to be a table initialised to 0s
+ * haploblocks; haploblocks is assumed to be a table initialised to 0s
  * - entry i, j is set to the minimum number of recombinations
  * required in the region from site i to site i + j + 1. It is assumed
  * that lower is a valid lower bound on the number of recombinations,
@@ -967,8 +967,8 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     void *lookup;
 #ifdef HAPLOTYPE_BLOCKS
     int i, j, n, localbound, oldreusable = reusable;
-    LList *l, *tmprep = g_representativeness;
-    LListCounter *tmprepcount = g_representativeness_counter;
+    LList *l, *tmprep = run_data.representativeness;
+    LListCounter *tmprepcount = run_data.representativeness_counter;
     SuperColumn *c;
 #endif
     PackedGenes *p;
@@ -1019,17 +1019,17 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
     }
 
 #ifdef HAPLOTYPE_BLOCKS
-    if (g_haploblocks != NULL)
+    if (run_data.haploblocks != NULL)
     {
         n = g->length;
-        g_representativeness = MakeLList();
+        run_data.representativeness = MakeLList();
         for (i = 0; i < g->length; i++)
         {
             c = (SuperColumn *)xmalloc(sizeof(SuperColumn));
             c->left = c->right = i;
-            Enqueue(g_representativeness, (void *)c);
+            Enqueue(run_data.representativeness, (void *)c);
         }
-        g_representativeness_counter = MakeCounter(g_representativeness, FIRST);
+        run_data.representativeness_counter = MakeCounter(run_data.representativeness, FIRST);
     }
 #endif
 
@@ -1052,19 +1052,19 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 
 #ifdef DEBUG
     /* Insert initial ancestral state as one that was visited */
-    if ((ancestral_state_trace != NULL) && (g->n > 0))
+    if ((run_data.ancestral_state_trace != NULL) && (g->n > 0))
     {
         p = pack_genes(g);
-        hashtable_insert(p, NULL, ancestral_state_trace);
+        hashtable_insert(p, NULL, run_data.ancestral_state_trace);
     }
 #endif
 
 #ifdef HAPLOTYPE_BLOCKS
-    if (g_haploblocks != NULL)
+    if (run_data.haploblocks != NULL)
     {
-        l = g_representativeness;
-        g_representativeness = NULL;
-        free(g_representativeness_counter);
+        l = run_data.representativeness;
+        run_data.representativeness = NULL;
+        free(run_data.representativeness_counter);
     }
 #endif
     if (!no_recombinations_required(g, run_data))
@@ -1079,7 +1079,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
         }
 
 #ifdef HAPLOTYPE_BLOCKS
-        if (g_haploblocks != NULL)
+        if (run_data.haploblocks != NULL)
             reusable = 1;
 #endif
 #ifdef ENABLE_VERBOSE
@@ -1140,12 +1140,12 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 #endif
 
 #ifdef HAPLOTYPE_BLOCKS
-        if (g_haploblocks != NULL)
+        if (run_data.haploblocks != NULL)
         {
             /* We already computed minimum number of recombinations for full
              * sequence set.
              */
-            g_haploblocks[0][g->length - 2] = bound;
+            run_data.haploblocks[0][g->length - 2] = bound;
             /* Do not remember events from local bound computations */
             RunData empty_data(true);
             /* Run through regions in order of increasing length */
@@ -1164,15 +1164,15 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
                             localbound = (intptr_t)lookup / 2;
                             if (i > 2)
                                 localbound = _intmax(localbound,
-                                                     _intmax(g_haploblocks[j][i - 3],
-                                                             g_haploblocks[j + 1][i - 3]));
+                                                     _intmax(run_data.haploblocks[j][i - 3],
+                                                             run_data.haploblocks[j + 1][i - 3]));
                             if (hashtable_update((void *)p, (void *)(localbound << reusable),
                                                  t, NULL) < 0)
                                 r2 = 1;
                             for (; (localbound <= upper) && !beagle_recursion(h, t, localbound, 1, empty_data);)
                                 hashtable_update((void *)p, (void *)(++localbound << reusable),
                                                  t, NULL);
-                            g_haploblocks[j][i - 2] = localbound;
+                            run_data.haploblocks[j][i - 2] = localbound;
 #ifdef ENABLE_VERBOSE
                             if (v)
                                 printf("%d recombinations required between site %d and site %d\n",
@@ -1180,7 +1180,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 #endif
                         }
                         else
-                            g_haploblocks[j][i - 2] = -(intptr_t)lookup - 1;
+                            run_data.haploblocks[j][i - 2] = -(intptr_t)lookup - 1;
                         if (!r2)
                             free_packedgenes(p);
                     }
@@ -1190,7 +1190,7 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
             /* So far we have worked on imploded sequence set - reconstruct
              * local bounds for original sequence set.
              */
-            explode_local(g_haploblocks, l, n);
+            explode_local(run_data.haploblocks, l, n);
             /* Clean up */
             while (Length(l) > 0)
                 free(Pop(l));
@@ -1204,14 +1204,14 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
                               NULL, (void (*)(void *))free);
     }
 #ifdef HAPLOTYPE_BLOCKS
-    else if (g_haploblocks != NULL)
+    else if (run_data.haploblocks != NULL)
     {
         while (Length(l) > 0)
             DestroyLList((LList *)Pop(l));
         DestroyLList(l);
     }
-    g_representativeness = tmprep;
-    g_representativeness_counter = tmprepcount;
+    run_data.representativeness = tmprep;
+    run_data.representativeness_counter = tmprepcount;
 #endif
 
     if (g_use_eventlist && run_data.eventlist.in_use)

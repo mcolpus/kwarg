@@ -468,13 +468,13 @@ int main(int argc, char **argv)
 #ifdef HAPLOTYPE_BLOCKS
     if (haploblock_file != NULL)
     {
-        g_haploblocks = (int **)xmalloc((g->length - 1) * sizeof(int *));
+        run_data.haploblocks = (int **)xmalloc((g->length - 1) * sizeof(int *));
         for (i = 0; i < g->length - 1; i++)
-            g_haploblocks[i] = (int *)xcalloc((g->length - i - 1), sizeof(int));
+            run_data.haploblocks[i] = (int *)xcalloc((g->length - i - 1), sizeof(int));
     }
 #endif
 #ifdef DEBUG
-    ancestral_state_trace = beagle_allocate_hashtable(NULL, -1, run_data);
+    run_data.ancestral_state_trace = beagle_allocate_hashtable(NULL, -1, run_data);
 #endif
 
     /* Compute number of recombinations */
@@ -519,12 +519,12 @@ int main(int argc, char **argv)
         for (i = 1; i < g->length; i++)
         {
             for (j = 0; j < i - 1; j++)
-                fprintf(haploblock_file, "%d ", g_haploblocks[j][i - j - 1]);
-            fprintf(haploblock_file, "%d\n", g_haploblocks[j][i - j - 1]);
+                fprintf(haploblock_file, "%d ", run_data.haploblocks[j][i - j - 1]);
+            fprintf(haploblock_file, "%d\n", run_data.haploblocks[j][i - j - 1]);
         }
         for (i = 0; i < g->length - 1; i++)
-            free(g_haploblocks[i]);
-        free(g_haploblocks);
+            free(run_data.haploblocks[i]);
+        free(run_data.haploblocks);
         if (haploblock_file != stdout)
             fclose(haploblock_file);
     }
@@ -548,10 +548,10 @@ int main(int argc, char **argv)
             /* Only remember last ARG constructed (they should all be the same) */
             if (arg != NULL)
                 arg_destroy(arg);
-            arg = eventlist2history(a, fp, run_data.eventlist);
+            arg = eventlist2history(a, fp, run_data);
         }
         if (arg == NULL)
-            arg = eventlist2history(a, NULL, run_data.eventlist);
+            arg = eventlist2history(a, NULL, run_data);
         if (arg != NULL)
         {
             /* Output ARG in dot format */
@@ -649,8 +649,8 @@ int main(int argc, char **argv)
     DestroyLList(gdltree_files);
     DestroyLList(history_files);
 #ifdef DEBUG
-    if (ancestral_state_trace != NULL)
-        hashtable_destroy(ancestral_state_trace,
+    if (run_data.ancestral_state_trace != NULL)
+        hashtable_destroy(run_data.ancestral_state_trace,
                           (void (*)(void *))free_packedgenes, NULL,
                           (void (*)(void *))free);
 #endif

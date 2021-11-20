@@ -2476,7 +2476,7 @@ int remove_siamesetwins(Genes *g, RunData &run_data)
             }
 #endif
 #ifdef HAPLOTYPE_BLOCKS
-        if (g_representativeness != NULL)
+        if (run_data.representativeness != NULL)
             /* Update list of blocks of collapsed sites to reflect the
              * Siamese blocks just collapsed.
              */
@@ -2485,14 +2485,14 @@ int remove_siamesetwins(Genes *g, RunData &run_data)
                 /* Find start position of this Siamese block in list of block
                  * of sites that have already been collapsed.
                  */
-                c = (SuperColumn *)SetCounter(g_representativeness_counter,
+                c = (SuperColumn *)SetCounter(run_data.representativeness_counter,
                                               state[i].start);
                 /* Merge with block for other sites in this Siamese block */
                 for (j = state[i].start; j < state[i].end; j++)
                 {
-                    d = (SuperColumn *)Next(g_representativeness_counter);
+                    d = (SuperColumn *)Next(run_data.representativeness_counter);
                     c->right = d->right;
-                    RemoveMoveLeft(g_representativeness, g_representativeness_counter);
+                    RemoveMoveLeft(run_data.representativeness, run_data.representativeness_counter);
                 }
             }
 #endif
@@ -2609,12 +2609,12 @@ int remove_uninformative(Genes *g, RunData &run_data)
                     }
                     n++;
 #ifdef HAPLOTYPE_BLOCKS
-                    if ((g_representativeness != NULL) && (mulblocksize(i) + j < g->length))
+                    if ((run_data.representativeness != NULL) && (mulblocksize(i) + j < g->length))
                     {
                         /* Remove uninformative sites */
-                        SetCounter(g_representativeness_counter, mulblocksize(i) + j - m);
-                        free(RemoveMoveLeft(g_representativeness,
-                                            g_representativeness_counter));
+                        SetCounter(run_data.representativeness_counter, mulblocksize(i) + j - m);
+                        free(RemoveMoveLeft(run_data.representativeness,
+                                            run_data.representativeness_counter));
                         m++;
                     }
 #endif
@@ -2768,12 +2768,12 @@ int remove_nonsegregating(Genes *g, RunData &run_data)
                     }
 #endif
 #ifdef HAPLOTYPE_BLOCKS
-                    if ((g_representativeness != NULL) && (mulblocksize(i) + j < g->length))
+                    if ((run_data.representativeness != NULL) && (mulblocksize(i) + j < g->length))
                     {
                         /* Remove non-segregating sites */
-                        SetCounter(g_representativeness_counter, mulblocksize(i) + j - m);
-                        free(RemoveMoveLeft(g_representativeness,
-                                            g_representativeness_counter));
+                        SetCounter(run_data.representativeness_counter, mulblocksize(i) + j - m);
+                        free(RemoveMoveLeft(run_data.representativeness,
+                                            run_data.representativeness_counter));
                         m++;
                     }
 #endif

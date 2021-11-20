@@ -84,8 +84,10 @@ void output_eventlist_as_text(FILE *output, const EventList &eventlist)
  * returned as an ancestral recombination graph (ARG). If output is
  * not NULL, the history is printed to output.
  */
-ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlist)
+ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, RunData &run_data)
 {
+    EventList eventlist = run_data.eventlist; 
+
     output_eventlist_as_text(output, eventlist);
 
     int i, j, k, l, n = a->g->n, next_seq = a->g->n, *edges, n_se = 0, n_rm = 0, n_re = 0;
@@ -733,14 +735,14 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlis
 
 #ifdef DEBUG
             /* Sanity check - did we see this ancestral state in the forward pass? */
-            if ((ancestral_state_trace != NULL) && (e.type != RECOMBINATION))
+            if ((run_data.ancestral_state_trace != NULL) && (e.type != RECOMBINATION))
             {
                 g = copy_genes(h);
                 implode_genes(g, empty_run_data);
                 if (!no_recombinations_required(g, empty_run_data))
                 {
                     p = pack_genes(g);
-                    if (!hashtable_lookup(p, ancestral_state_trace, NULL))
+                    if (!hashtable_lookup(p, run_data.ancestral_state_trace, NULL))
                     {
                         fprintf(stderr, "Warning - did not encounter state\n\n");
                         output_genes_indexed(h, stderr);

@@ -34,11 +34,6 @@ void set_verbose(int v)
     verbosity = v;
 }
 #endif
-#ifdef HAPLOTYPE_BLOCKS
-LList *g_representativeness = NULL;
-LListCounter *g_representativeness_counter;
-int **g_haploblocks = NULL;
-#endif
 
 bool g_use_eventlist;
 std::vector<int> g_lookup;
@@ -67,7 +62,25 @@ void _RunData::clear_all()
         hashtable_destroy(greedy_beaglereusable, (void (*)(void *))free_packedgenes, NULL,
                           (void (*)(void *))free);
     }
-    
+}
+
+struct _RunData _RunData::copy_for_new_fragment() const
+{
+    struct _RunData new_data;
+    new_data.do_track = do_track;
+    new_data.current_step_cost = current_step_cost;
+    new_data.seq_numbering = seq_numbering;
+    new_data.sequence_labels = sequence_labels;
+    new_data.site_labels = site_labels;
+
+    new_data.eventlist.reset();
+    new_data.eventlist.in_use = eventlist.in_use;
+    return std::move(new_data);
+}
+
+bool _RunData::do_use_eventlist()
+{
+    return do_track && g_use_eventlist && eventlist.in_use;
 }
 
 _RunData::~_RunData()
@@ -89,13 +102,6 @@ _RunData::~_RunData()
         greedy_beaglereusable = NULL;
     }
 }
-
-#ifdef DEBUG
-/* Define structure for storing trace of ancestral states as we return
- * from a successful path.
- */
-HashTable *ancestral_state_trace = NULL;
-#endif
 
 /* xmalloc(n): Allocate n bytes of memory, checking for successful allocation.
  */

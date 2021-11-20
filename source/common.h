@@ -205,10 +205,10 @@ typedef struct _EventList
 
 struct HistoryFragment
 {
-    Genes *g;              /* End configuration */
-    EventList events;      /* List of events leading from start
-                            * configuration to end configuration.
-                            */
+    Genes *g;         /* End configuration */
+    EventList events; /* List of events leading from start
+                       * configuration to end configuration.
+                       */
     double step_cost; /* Number of recombination events */
     std::vector<int> elements;
     std::vector<int> sites;
@@ -221,21 +221,6 @@ struct HistoryFragment
 
     ~HistoryFragment();
 };
-
-
-
-#ifdef HAPLOTYPE_BLOCKS
-typedef struct _SuperColumn
-{
-    int left;
-    int right;
-} SuperColumn;
-
-extern LList *g_representativeness;
-extern LListCounter *g_representativeness_counter;
-extern int **g_haploblocks;
-void explode_local(int **local, LList *r, int n);
-#endif
 
 typedef struct _RunSettings
 {
@@ -250,21 +235,30 @@ typedef struct _RunSettings
     int rec_max, rm_max;
 } RunSettings;
 
-extern bool g_use_eventlist;
-
 typedef struct _RunData
 {
     // varies during run. Captures data on one path
     bool do_track = true; // Will be used to toggle when event_list etc should be added to
 
-    double current_step_cost;           // Note that sequence and site labels aren't used by beagle
+    double current_step_cost; // Note that sequence and site labels aren't used by beagle
     std::vector<int> sequence_labels;
     std::vector<int> site_labels;
     int seq_numbering;
 
     EventList eventlist;
 
+    // Following are only used in scoring section
     HashTable *greedy_functioncalls = NULL, *greedy_beaglereusable = NULL;
+
+#ifdef HAPLOTYPE_BLOCKS
+    LList *representativeness = nullptr;
+    LListCounter *representativeness_counter = nullptr;
+    int **haploblocks = nullptr;
+#endif
+
+#ifdef DEBUG
+    HashTable *ancestral_state_trace = nullptr;
+#endif
 
     _RunData()
     {
@@ -285,41 +279,31 @@ typedef struct _RunData
      * Create a copy of this but with eventlist reset.
      * The values for do_track and eventlist.in_use will match this
      */
-    struct _RunData copy_for_new_fragment() const
-    {
-        struct _RunData new_data;
-        new_data.do_track = do_track;
-        new_data.current_step_cost = current_step_cost;
-        new_data.seq_numbering = seq_numbering;
-        new_data.sequence_labels = sequence_labels;
-        new_data.site_labels = site_labels;
-
-        new_data.eventlist.reset();
-        new_data.eventlist.in_use = eventlist.in_use;
-        return std::move(new_data);
-        
-    }
+    struct _RunData copy_for_new_fragment() const;
 
     ~_RunData(); // destructor is in common.cpp so can call functions from elsewhere
 
-    bool do_use_eventlist()
-    {
-        return do_track && g_use_eventlist && eventlist.in_use;
-    }
+    bool do_use_eventlist();
 
 } RunData;
+
+#ifdef HAPLOTYPE_BLOCKS
+typedef struct _SuperColumn
+{
+    int left;
+    int right;
+} SuperColumn;
+
+void explode_local(int **local, LList *r, int n);
+#endif
 
 #include "gene.h"
 
 // These should be global as they apply to all runs/paths
-
+extern bool g_use_eventlist;
 extern std::vector<int> g_lookup;
 extern int g_howverbose;
 extern int gc_enabled; // Used in local2global. Not sure what is does. Is not changed
-
-#ifdef DEBUG
-extern HashTable *ancestral_state_trace;
-#endif
 
 void *xmalloc(int n);
 void *xcalloc(int m, int n);

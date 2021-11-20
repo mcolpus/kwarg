@@ -17,11 +17,7 @@
 #include "gene.h"
 
 // Moved structs to gene to avoid cyclic references
-
-#ifdef DEBUG
-extern HashTable *ancestral_state_trace;
-#endif
 void output_eventlist_as_text(FILE *output, const EventList &eventlist);
-ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlist);
+ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, RunData &run_data);
 
 #endif
