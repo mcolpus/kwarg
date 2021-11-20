@@ -26,6 +26,204 @@ int verbose();
 void set_verbose(int v);
 #endif
 
+typedef struct _Gene
+{
+    unsigned long *type;      /* Type bit vector */
+    unsigned long *ancestral; /* Ancestral site bit vector */
+} Gene;
+
+typedef struct _Genes
+{
+    int n;      /* Number of sequences */
+    int length; /* Length of sequences */
+    Gene *data; /* Sequences */
+} Genes;
+
+typedef struct _AnnotatedGenes
+{
+    Genes *g;         /* Data */
+    LList *positions; /* Site labels */
+    LList *sequences; /* Sequence labels */
+} AnnotatedGenes;
+
+typedef enum
+{
+    GENE_ANY,
+    GENE_BEAGLE,
+    GENE_FASTA
+} Gene_Format;
+typedef enum
+{
+    GENE_BINARY,
+    GENE_NUCLEIC,
+    GENE_AMINO
+} Gene_SeqType;
+
+typedef struct _PackedGenes
+{
+    int n;              /* Number of sequences */
+    int length;         /* Length of sequences */
+    unsigned int *data; /* Sequences */
+} PackedGenes;
+
+typedef struct _Site
+{
+    unsigned long *type;      /* Type bit vector */
+    unsigned long *ancestral; /* Ancestral sequence bit vector */
+} Site;
+
+typedef struct _Sites
+{
+    int n;      /* Number of sequences */
+    int length; /* Length of sequences */
+    Site *data; /* Sites */
+} Sites;
+
+typedef struct _Index
+{
+    int index;
+    int block;
+} Index;
+
+typedef enum
+{
+    SUBSTITUTION,
+    COALESCENCE,
+    RECOMBINATION,
+    REMOVE,
+    COLLAPSE,
+    SWAP,
+    LOOKUP,
+    SEFLIP,
+    RMFLIP
+} EventType;
+typedef enum
+{
+    COAL,
+    SE,
+    RM,
+    RECOMB1,
+    RECOMB2
+} Action;
+
+typedef struct _Event
+{
+    EventType type;
+    union
+    {
+        struct
+        {
+            int seq;
+            int site;
+        } s;
+        struct
+        {
+            int s1;
+            int s2;
+        } c;
+        struct
+        {
+            int seq;
+            int pos;
+        } r;
+        struct
+        {
+            int s1;
+            int s2;
+        } swap;
+        struct
+        {
+            int seq;
+            int site;
+        } flip;
+        int collapse;
+        int remove;
+        int lookup;
+    } event;
+
+} Event;
+
+typedef struct _EventList
+{
+    bool in_use; // set to false when not wanting to record some section of computation
+    std::list<Event> events;
+
+    _EventList()
+    {
+        in_use = true;
+        events = {};
+    }
+
+    int size() const
+    {
+        if (!in_use)
+        {
+            fprintf(stderr, "EventList is not in use!");
+        }
+        return events.size();
+    }
+
+    void push_back(const Event &e)
+    {
+        if (!in_use)
+        {
+            fprintf(stderr, "EventList is not in use!");
+        }
+        events.push_back(e);
+    }
+
+    void set_null()
+    {
+        events = {};
+        in_use = false;
+    }
+
+    void reset()
+    {
+        events = {};
+        in_use = true;
+    }
+
+    // splices elements from other list to front
+    void prepend(struct _EventList &other)
+    {
+        events.splice(events.begin(), other.events);
+    }
+
+    // splices elements from other list to front
+    void append(struct _EventList &other)
+    {
+        events.splice(events.end(), other.events);
+    }
+
+    void destroy()
+    {
+        in_use = false;
+    }
+
+} EventList;
+
+struct HistoryFragment
+{
+    Genes *g;              /* End configuration */
+    EventList events;      /* List of events leading from start
+                            * configuration to end configuration.
+                            */
+    double step_cost; /* Number of recombination events */
+    std::vector<int> elements;
+    std::vector<int> sites;
+    Action action;
+
+    HistoryFragment() = default;
+
+    HistoryFragment(HistoryFragment const &) = delete;
+    HistoryFragment &operator=(HistoryFragment const &) = delete;
+
+    ~HistoryFragment();
+};
+
+
+
 #ifdef HAPLOTYPE_BLOCKS
 typedef struct _SuperColumn
 {
@@ -61,6 +259,8 @@ typedef struct _RunData
     std::vector<int> sequence_labels;
     std::vector<int> site_labels;
     int seq_numbering;
+
+    EventList eventlist;
 
     HashTable *greedy_functioncalls = NULL, *greedy_beaglereusable = NULL;
 
@@ -100,9 +300,9 @@ typedef struct _RunData
 #include "gene.h"
 
 extern EventList g_eventlist;
-extern bool g_use_eventlist;
 
 // These should be global as they apply to all runs/paths
+extern bool g_use_eventlist;
 extern std::vector<int> g_lookup;
 extern int g_howverbose;
 extern int gc_enabled; // Used in local2global. Not sure what is does. Is not changed

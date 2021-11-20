@@ -70,9 +70,9 @@ void output_event(const Event &e, FILE *output)
     }
 }
 
-void output_g_eventlist_as_text(FILE *output)
+void output_eventlist_as_text(FILE *output, const EventList &eventlist)
 {
-    for (const Event &e : g_eventlist.events)
+    for (const Event &e : eventlist.events)
     {
         output_event(e, output);
     }
@@ -84,9 +84,9 @@ void output_g_eventlist_as_text(FILE *output)
  * returned as an ancestral recombination graph (ARG). If output is
  * not NULL, the history is printed to output.
  */
-ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
+ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlist)
 {
-    output_g_eventlist_as_text(output);
+    output_eventlist_as_text(output, eventlist);
 
     int i, j, k, l, n = a->g->n, next_seq = a->g->n, *edges, n_se = 0, n_rm = 0, n_re = 0;
     LList *positions, *sequences, *tmp;
@@ -105,12 +105,10 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
     Genes *old;
 #endif
 
-    if ((g_use_eventlist && g_eventlist.in_use) && (g_eventlist.size() > 0))
+    if ((g_use_eventlist && eventlist.in_use) && (eventlist.size() > 0))
     {
         /* Determine number of nodes in ARG */
-
-        // lcounter = MakeCounter(g_eventlist, FIRST);
-        for (const Event e : g_eventlist.events)
+        for (const Event e : eventlist.events)
             if (e.type == RECOMBINATION)
                 n++;
         /* Create initial ARG information */
@@ -174,7 +172,7 @@ ARG *eventlist2history(AnnotatedGenes *a, FILE *output)
 
         /* Go through the events recorded */
         std::list<Event>::iterator it;
-        for (it = g_eventlist.events.begin(); it != g_eventlist.events.end(); it++)
+        for (it = eventlist.events.begin(); it != eventlist.events.end(); it++)
         {
             Event e = *it; // it is a pointer to a pointer to Event
 

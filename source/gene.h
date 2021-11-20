@@ -13,65 +13,11 @@
 #include "llist.h"
 #include "hashtable.h"
 
+#include "common.h"
+#include "backtrack.h"
+
 /* Datatypes */
-typedef struct _Gene
-{
-    unsigned long *type;      /* Type bit vector */
-    unsigned long *ancestral; /* Ancestral site bit vector */
-} Gene;
 
-typedef struct _Genes
-{
-    int n;      /* Number of sequences */
-    int length; /* Length of sequences */
-    Gene *data; /* Sequences */
-} Genes;
-
-typedef struct _AnnotatedGenes
-{
-    Genes *g;         /* Data */
-    LList *positions; /* Site labels */
-    LList *sequences; /* Sequence labels */
-} AnnotatedGenes;
-
-typedef enum
-{
-    GENE_ANY,
-    GENE_BEAGLE,
-    GENE_FASTA
-} Gene_Format;
-typedef enum
-{
-    GENE_BINARY,
-    GENE_NUCLEIC,
-    GENE_AMINO
-} Gene_SeqType;
-
-typedef struct _PackedGenes
-{
-    int n;              /* Number of sequences */
-    int length;         /* Length of sequences */
-    unsigned int *data; /* Sequences */
-} PackedGenes;
-
-typedef struct _Site
-{
-    unsigned long *type;      /* Type bit vector */
-    unsigned long *ancestral; /* Ancestral sequence bit vector */
-} Site;
-
-typedef struct _Sites
-{
-    int n;      /* Number of sequences */
-    int length; /* Length of sequences */
-    Site *data; /* Sites */
-} Sites;
-
-typedef struct _Index
-{
-    int index;
-    int block;
-} Index;
 
 /* Global variable for specifying whether the common ancestral
  * sequence is known or not.
@@ -81,150 +27,7 @@ extern int gene_knownancestor;
 void free_genes(Genes *g);
 
 // Moved from backtrack to avoid cyclic references
-typedef enum
-{
-    SUBSTITUTION,
-    COALESCENCE,
-    RECOMBINATION,
-    REMOVE,
-    COLLAPSE,
-    SWAP,
-    LOOKUP,
-    SEFLIP,
-    RMFLIP
-} EventType;
-typedef enum
-{
-    COAL,
-    SE,
-    RM,
-    RECOMB1,
-    RECOMB2
-} Action;
 
-typedef struct _Event
-{
-    EventType type;
-    union
-    {
-        struct
-        {
-            int seq;
-            int site;
-        } s;
-        struct
-        {
-            int s1;
-            int s2;
-        } c;
-        struct
-        {
-            int seq;
-            int pos;
-        } r;
-        struct
-        {
-            int s1;
-            int s2;
-        } swap;
-        struct
-        {
-            int seq;
-            int site;
-        } flip;
-        int collapse;
-        int remove;
-        int lookup;
-    } event;
-
-} Event;
-
-typedef struct _EVENTLIST
-{
-    bool in_use; // set to false when not wanting to record some section of computation
-    std::list<Event> events;
-
-    _EVENTLIST()
-    {
-        in_use = true;
-        events = {};
-    }
-
-    int size()
-    {
-        if (!in_use)
-        {
-            fprintf(stderr, "EventList is not in use!");
-        }
-        return events.size();
-    }
-
-    void push_back(const Event &e)
-    {
-        if (!in_use)
-        {
-            fprintf(stderr, "EventList is not in use!");
-        }
-        events.push_back(e);
-    }
-
-    void set_null()
-    {
-        events = {};
-        in_use = false;
-    }
-
-    void reset()
-    {
-        events = {};
-        in_use = true;
-    }
-
-    // splices elements from other list to front
-    void prepend(struct _EVENTLIST &other)
-    {
-        events.splice(events.begin(), other.events);
-    }
-
-    // splices elements from other list to front
-    void append(struct _EVENTLIST &other)
-    {
-        events.splice(events.end(), other.events);
-    }
-
-    void destroy()
-    {
-        in_use = false;
-    }
-
-} EventList;
-
-struct HistoryFragment
-{
-    Genes *g;              /* End configuration */
-    EventList events;      /* List of events leading from start
-                            * configuration to end configuration.
-                            */
-    double step_cost; /* Number of recombination events */
-    std::vector<int> elements;
-    std::vector<int> sites;
-    Action action;
-
-    HistoryFragment() = default;
-
-    HistoryFragment(HistoryFragment const &) = delete;
-    HistoryFragment &operator=(HistoryFragment const &) = delete;
-
-    ~HistoryFragment()
-    {
-        if (g != NULL)
-            free_genes(g);
-        events.destroy();
-    }
-};
-
-#include "common.h"
-#include "backtrack.h"
 
 void free_annotatedgenes(AnnotatedGenes *g);
 void free_sites(Sites *s);
@@ -284,18 +87,18 @@ Index *maximumsubsumedprefixs(Genes *g);
 Index *maximumsubsumedpostfixs(Genes *g);
 Index *maximumsubsumedprefix(Genes *g, int s);
 Index *maximumsubsumedpostfix(Genes *g, int s);
-std::vector<std::unique_ptr<HistoryFragment>> maximal_prefix_coalesces(Genes *g, Index *a, Index *b);
+std::vector<std::unique_ptr<HistoryFragment>> maximal_prefix_coalesces(Genes *g, Index *a, Index *b, const RunData &main_path_data);
 void maximal_prefix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &main_path_data,
                                   STORE_FRAGMENT_FUNCTION_TYPE f);
-std::vector<std::unique_ptr<HistoryFragment>> maximal_postfix_coalesces(Genes *g, Index *a, Index *b);
+std::vector<std::unique_ptr<HistoryFragment>> maximal_postfix_coalesces(Genes *g, Index *a, Index *b, const RunData &main_path_data);
 void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &main_path_data,
                                    STORE_FRAGMENT_FUNCTION_TYPE f);
 void seqerror_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, RunSettings &run_settings);
 void recmut_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, RunSettings &run_settings);
-std::vector<std::unique_ptr<HistoryFragment>> maximal_infix_coalesces(Genes *g, Index *a, Index *b);
+std::vector<std::unique_ptr<HistoryFragment>> maximal_infix_coalesces(Genes *g, Index *a, Index *b, const RunData &main_path_data);
 void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &main_path_data,
                                  STORE_FRAGMENT_FUNCTION_TYPE f);
-std::vector<std::unique_ptr<HistoryFragment>> maximal_overlap_coalesces(Genes *g, Index *a, Index *b);
+std::vector<std::unique_ptr<HistoryFragment>> maximal_overlap_coalesces(Genes *g, Index *a, Index *b, const RunData &main_path_data);
 void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b, const RunData &main_path_data,
                                    STORE_FRAGMENT_FUNCTION_TYPE f);
 int compare_sites(Sites *s, int a, int b);

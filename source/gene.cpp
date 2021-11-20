@@ -4651,11 +4651,10 @@ static void _maximal_prefix_coalesces_f(Genes *g, RunData run_data)
     f->events = g_eventlist;
     _maximal_prefix_coalesces_list.push_back(std::move(f));
 }
-std::vector<std::unique_ptr<HistoryFragment>> maximal_prefix_coalesces(Genes *g, Index *a, Index *b)
+std::vector<std::unique_ptr<HistoryFragment>> maximal_prefix_coalesces(Genes *g, Index *a, Index *b, const RunData &main_path_data)
 {
     _maximal_prefix_coalesces_list.clear();
-    RunData empty_data;
-    maximal_prefix_coalesces_map(g, a, b, empty_data, _maximal_prefix_coalesces_f);
+    maximal_prefix_coalesces_map(g, a, b, main_path_data, _maximal_prefix_coalesces_f);
     return std::move(_maximal_prefix_coalesces_list);
 }
 
@@ -5000,11 +4999,10 @@ static void _maximal_postfix_coalesces_f(Genes *g, RunData run_data)
     f->events = g_eventlist;
     _maximal_postfix_coalesces_list.push_back(std::move(f));
 }
-std::vector<std::unique_ptr<HistoryFragment>> maximal_postfix_coalesces(Genes *g, Index *a, Index *b)
+std::vector<std::unique_ptr<HistoryFragment>> maximal_postfix_coalesces(Genes *g, Index *a, Index *b, const RunData &main_path_data)
 {
     _maximal_postfix_coalesces_list.clear();
-    RunData empty_data;
-    maximal_postfix_coalesces_map(g, a, b, empty_data, _maximal_postfix_coalesces_f);
+    maximal_postfix_coalesces_map(g, a, b, main_path_data, _maximal_postfix_coalesces_f);
     return std::move(_maximal_postfix_coalesces_list);
 }
 
@@ -5865,11 +5863,10 @@ static void _maximal_infix_coalesces_f(Genes *g, RunData run_data)
     f->events = g_eventlist;
     _maximal_infix_coalesces_list.push_back(std::move(f));
 }
-std::vector<std::unique_ptr<HistoryFragment>> maximal_infix_coalesces(Genes *g, Index *a, Index *b)
+std::vector<std::unique_ptr<HistoryFragment>> maximal_infix_coalesces(Genes *g, Index *a, Index *b, const RunData &main_path_data)
 {
     _maximal_infix_coalesces_list.clear();
-    RunData empty_run_data;
-    maximal_infix_coalesces_map(g, a, b, empty_run_data, _maximal_infix_coalesces_f);
+    maximal_infix_coalesces_map(g, a, b, main_path_data, _maximal_infix_coalesces_f);
     return std::move(_maximal_infix_coalesces_list);
 }
 
@@ -6181,11 +6178,10 @@ static void _maximal_overlap_coalesces_f(Genes *g, RunData run_data)
     f->events = g_eventlist;
     _maximal_overlap_coalesces_list.push_back(std::move(f));
 }
-std::vector<std::unique_ptr<HistoryFragment>> maximal_overlap_coalesces(Genes *g, Index *a, Index *b)
+std::vector<std::unique_ptr<HistoryFragment>> maximal_overlap_coalesces(Genes *g, Index *a, Index *b, const RunData &main_path_data)
 {
     _maximal_overlap_coalesces_list.clear();
-    RunData empty_data;
-    maximal_overlap_coalesces_map(g, a, b, empty_data, _maximal_overlap_coalesces_f);
+    maximal_overlap_coalesces_map(g, a, b, main_path_data, _maximal_overlap_coalesces_f);
     return std::move(_maximal_overlap_coalesces_list);
 }
 

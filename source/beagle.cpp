@@ -548,10 +548,10 @@ int main(int argc, char **argv)
             /* Only remember last ARG constructed (they should all be the same) */
             if (arg != NULL)
                 arg_destroy(arg);
-            arg = eventlist2history(a, fp);
+            arg = eventlist2history(a, fp, g_eventlist);
         }
         if (arg == NULL)
-            arg = eventlist2history(a, NULL);
+            arg = eventlist2history(a, NULL, g_eventlist);
         if (arg != NULL)
         {
             /* Output ARG in dot format */

@@ -121,7 +121,7 @@ static void permute_vector(std::vector<T> &vec)
  */
 static int transfer2splitinformation(BeagleSplitInformation *splits,
                                      std::vector<std::unique_ptr<HistoryFragment>> &genes, int base, int *n,
-                                     HashTable *t, int target)
+                                     HashTable *t, int target, RunData &run_data)
 {
     int i, prevtarget, bound;
     void *lookup;
@@ -309,7 +309,7 @@ typedef struct _NodeClass
  */
 static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component, Genes *g,
                                       std::vector<int> E[], int **C, int *components,
-                                      RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f)
+                                      const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j, n = 0, old;
     Genes *h = NULL;
@@ -465,7 +465,7 @@ static void _coalesce_cande_recursion(LList *stack, std::vector<int> &component,
  * HistoryFragment. It is the responsibility of the calling function
  * to free memory used for the HistoryFragment.
  */
-static void _coalesce_compatibleandentangled_map(Genes *g, RunData &main_run_data, STORE_FRAGMENT_FUNCTION_TYPE f)
+static void _coalesce_compatibleandentangled_map(Genes *g, const RunData &main_run_data, STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j;
     std::vector<int> component = {};
@@ -534,11 +534,10 @@ static void _coalesce_compatibleandentangled_f(Genes *g, RunData run_data)
     f->events = g_eventlist;
     _coalesce_compatibleandentangled_states.push_back(std::move(f));
 }
-static std::vector<std::unique_ptr<HistoryFragment>> _coalesce_compatibleandentangled(Genes *g)
+static std::vector<std::unique_ptr<HistoryFragment>> _coalesce_compatibleandentangled(Genes *g, const RunData &main_path_data)
 {
     _coalesce_compatibleandentangled_states.clear();
-    RunData empty_data;
-    _coalesce_compatibleandentangled_map(g, empty_data, _coalesce_compatibleandentangled_f);
+    _coalesce_compatibleandentangled_map(g, main_path_data, _coalesce_compatibleandentangled_f);
     return std::move(_coalesce_compatibleandentangled_states);
 }
 
@@ -575,7 +574,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
          * coalescing compatible sequences where neither is subsumed in the
          * other but where the ancestral material is still entangled.
          */
-        coalesced = _coalesce_compatibleandentangled(g);
+        coalesced = _coalesce_compatibleandentangled(g, run_data);
         n = coalesced.size();
         if (check_for_bottom(coalesced, run_data))
         {
@@ -605,7 +604,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
 #ifdef ENABLE_VERBOSE
         set_verbose(v - 1);
 #endif
-        prefix = maximal_prefix_coalesces(g, start, end);
+        prefix = maximal_prefix_coalesces(g, start, end, run_data);
         if (!exact_randomise && check_for_bottom(prefix, run_data))
         {
             free(start);
@@ -622,7 +621,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
 #endif
             return 1;
         }
-        postfix = maximal_postfix_coalesces(g, start, end);
+        postfix = maximal_postfix_coalesces(g, start, end, run_data);
         /* If a random solution is required, we need to randomise the splits */
         if (exact_randomise)
         {
@@ -656,7 +655,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         if (target > 1)
         {
             /* Try all sensible events with two splits */
-            infix = maximal_infix_coalesces(g, start, end);
+            infix = maximal_infix_coalesces(g, start, end, run_data);
             if (!exact_randomise && check_for_bottom(infix, run_data))
             {
                 free(start);
@@ -675,7 +674,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
 #endif
                 return 1;
             }
-            overlap = maximal_overlap_coalesces(g, start, end);
+            overlap = maximal_overlap_coalesces(g, start, end, run_data);
             /* If a random solution is required, we need to randomise the splits */
             if (exact_randomise)
             {
@@ -716,7 +715,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
             {
                 splits = (BeagleSplitInformation *)
                     xmalloc(n * sizeof(BeagleSplitInformation));
-                if (!exact_randomise && transfer2splitinformation(splits, infix, 2, &i, t, target))
+                if (!exact_randomise && transfer2splitinformation(splits, infix, 2, &i, t, target, run_data))
                 {
                     free(start);
                     free(end);
@@ -735,7 +734,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
 #endif
                     return 1;
                 }
-                if (transfer2splitinformation(splits, overlap, 2, &i, t, target))
+                if (transfer2splitinformation(splits, overlap, 2, &i, t, target, run_data))
                 {
                     free(start);
                     free(end);
@@ -766,7 +765,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         }
         if (n > 0)
         {
-            if (!exact_randomise && transfer2splitinformation(splits, prefix, 1, &i, t, target))
+            if (!exact_randomise && transfer2splitinformation(splits, prefix, 1, &i, t, target, run_data))
             {
                 free(start);
                 free(end);
@@ -783,7 +782,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
 #endif
                 return 1;
             }
-            if (transfer2splitinformation(splits, postfix, 1, &i, t, target))
+            if (transfer2splitinformation(splits, postfix, 1, &i, t, target, run_data))
             {
                 free(start);
                 free(end);
@@ -816,7 +815,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
     {
         if (coalesced.size() > 0)
         {
-            if (transfer2splitinformation(splits, coalesced, 0, &i, t, target))
+            if (transfer2splitinformation(splits, coalesced, 0, &i, t, target, run_data))
             {
 #ifdef ENABLE_VERBOSE
                 if (v)
