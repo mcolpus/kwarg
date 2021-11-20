@@ -865,14 +865,14 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                 }
 #endif
 #ifdef DEBUG
-                if (run_data.ancestral_state_trace != NULL)
+                if (run_data.using_ancestral_state_trace)
                 {
                     /* Insert current ancestral state as one visited in the
                      * minimum history we are in the process of returning back
                      * from.
                      */
                     p = pack_genes(g);
-                    hashtable_insert(p, NULL, run_data.ancestral_state_trace);
+                    run_data.ancestral_state_trace.insert(p);
                 }
 #endif
                 if (reusable)
@@ -1052,10 +1052,10 @@ static int beagle_core(Genes *g, FILE *print_progress, int lower, int upper,
 
 #ifdef DEBUG
     /* Insert initial ancestral state as one that was visited */
-    if ((run_data.ancestral_state_trace != NULL) && (g->n > 0))
+    if (run_data.using_ancestral_state_trace && (g->n > 0))
     {
         p = pack_genes(g);
-        hashtable_insert(p, NULL, run_data.ancestral_state_trace);
+        run_data.ancestral_state_trace.insert(p);
     }
 #endif
 

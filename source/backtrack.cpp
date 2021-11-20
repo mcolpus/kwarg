@@ -735,14 +735,14 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, RunData &run_data)
 
 #ifdef DEBUG
             /* Sanity check - did we see this ancestral state in the forward pass? */
-            if ((run_data.ancestral_state_trace != NULL) && (e.type != RECOMBINATION))
+            if (run_data.using_ancestral_state_trace && (e.type != RECOMBINATION))
             {
                 g = copy_genes(h);
                 implode_genes(g, empty_run_data);
                 if (!no_recombinations_required(g, empty_run_data))
                 {
                     p = pack_genes(g);
-                    if (!hashtable_lookup(p, run_data.ancestral_state_trace, NULL))
+                    if (run_data.ancestral_state_trace.count(p) > 0)
                     {
                         fprintf(stderr, "Warning - did not encounter state\n\n");
                         output_genes_indexed(h, stderr);

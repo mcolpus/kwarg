@@ -474,7 +474,8 @@ int main(int argc, char **argv)
     }
 #endif
 #ifdef DEBUG
-    run_data.ancestral_state_trace = beagle_allocate_hashtable(NULL, -1, run_data);
+    run_data.ancestral_state_trace.clear();
+    run_data.using_ancestral_state_trace = true;
 #endif
 
     /* Compute number of recombinations */
@@ -648,12 +649,6 @@ int main(int argc, char **argv)
     DestroyLList(gmltree_files);
     DestroyLList(gdltree_files);
     DestroyLList(history_files);
-#ifdef DEBUG
-    if (run_data.ancestral_state_trace != NULL)
-        hashtable_destroy(run_data.ancestral_state_trace,
-                          (void (*)(void *))free_packedgenes, NULL,
-                          (void (*)(void *))free);
-#endif
 
     free_annotatedgenes(a);
 

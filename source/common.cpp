@@ -101,6 +101,14 @@ _RunData::~_RunData()
                           (void (*)(void *))free);
         greedy_beaglereusable = NULL;
     }
+
+    if(using_ancestral_state_trace)
+    {
+        for(auto p : ancestral_state_trace)
+        {
+            free(p);
+        }
+    }
 }
 
 /* xmalloc(n): Allocate n bytes of memory, checking for successful allocation.

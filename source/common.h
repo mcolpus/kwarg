@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <list>
+#include <set>
 
 #define ENABLE_VERBOSE
 
@@ -256,8 +257,11 @@ typedef struct _RunData
     int **haploblocks = nullptr;
 #endif
 
+#define DEBUG
+
 #ifdef DEBUG
-    HashTable *ancestral_state_trace = nullptr;
+    std::set<PackedGenes *> ancestral_state_trace = {};
+    bool using_ancestral_state_trace = false;
 #endif
 
     _RunData()
