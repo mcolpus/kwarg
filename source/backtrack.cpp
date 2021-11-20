@@ -427,11 +427,7 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlis
                      * siamese twins may alter the picture.
                      */
                     g = copy_genes(h);
-                    tmp_eventlist = std::move(g_eventlist);
-                    g_eventlist.set_null();
-
-                    empty_run_data.clear_all();
-                    remove_nonsegregating(g);
+                    remove_nonsegregating(g, empty_run_data);
                     if (g->length > 0)
                     {
                         remove_siamesetwins(g, empty_run_data);
@@ -446,7 +442,6 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlis
                          */
                         e.event.c.s1 = (e.event.c.s2 == 0 ? 1 : 0);
                     }
-                    g_eventlist = std::move(tmp_eventlist);
                     free_genes(g);
                     g = NULL;
                 }
@@ -514,7 +509,6 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlis
                  */
                 Prev(lseq);
                 Dequeue(sequences);
-                empty_run_data.clear_all();
                 coalesce(h, e.event.c.s1, e.event.c.s2, empty_run_data);
                 //                         output_genes(h, output, "New:\n");
                 break;
@@ -528,7 +522,6 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlis
                  * the entire block of sequences following the disappearing
                  * sequence is moved one place up.
                  */
-                tmp_eventlist = std::move(g_eventlist);
 
                 if (g == NULL)
                 {
@@ -542,10 +535,8 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlis
                      * case no further reductions should be made.
                      */
                     g = copy_genes(h);
-                    
-                    g_eventlist.set_null();
-                    empty_run_data.clear_all();
-                    remove_nonsegregating(g);
+        
+                    remove_nonsegregating(g, empty_run_data);
                     if (g->length > 0)
                         remove_siamesetwins(g, empty_run_data);
                 }
@@ -561,7 +552,6 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlis
                      */
                     i = (e.event.remove == 0 ? 1 : 0);
                 }
-                g_eventlist = std::move(tmp_eventlist);
 
 
 
@@ -608,7 +598,6 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlis
                     }
                 }
                 /* Now remove subsumed sequence and compact sequence set */
-                empty_run_data.clear_all();
                 coalesce(h, i, e.event.remove, empty_run_data);
                 if (e.event.remove < h->n - 1)
                     memmove(&(h->data[e.event.remove]), &(h->data[e.event.remove + 1]),
@@ -639,7 +628,6 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlis
                  */
                 i = (intptr_t)Top((LList *)SetCounter(lpos, e.event.r.pos));
                 j = (intptr_t)SetCounter(lseq, e.event.r.seq);
-                empty_run_data.clear_all();
                 split(h, e.event.r.seq, i, empty_run_data);
                 Enqueue(sequences, (void *)next_seq);
                 /* Update ARG */
@@ -747,12 +735,8 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, EventList eventlis
             /* Sanity check - did we see this ancestral state in the forward pass? */
             if ((ancestral_state_trace != NULL) && (e.type != RECOMBINATION))
             {
-                tmp_eventlist = std::move(g_eventlist);
-                g_eventlist.set_null();
                 g = copy_genes(h);
-                empty_run_data.clear_all();
                 implode_genes(g, empty_run_data);
-                g_eventlist = std::move(tmp_eventlist);
                 if (!no_recombinations_required(g, empty_run_data))
                 {
                     p = pack_genes(g);

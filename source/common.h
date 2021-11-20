@@ -250,12 +250,14 @@ typedef struct _RunSettings
     int rec_max, rm_max;
 } RunSettings;
 
+extern bool g_use_eventlist;
+
 typedef struct _RunData
 {
     // varies during run. Captures data on one path
     bool do_track = true; // Will be used to toggle when event_list etc should be added to
 
-    double current_step_cost;
+    double current_step_cost;           // Note that sequence and site labels aren't used by beagle
     std::vector<int> sequence_labels;
     std::vector<int> site_labels;
     int seq_numbering;
@@ -273,36 +275,44 @@ typedef struct _RunData
     _RunData(bool make_empty)
     {
         current_step_cost = 0;
-        if (make_empty)
-        {
-            do_track = false;
-        }
-        else
-        {
-            do_track = true;
-        }
+        do_track = !make_empty;
+        eventlist.in_use = !make_empty;
     }
 
-    void clear_all()
-    {
-        current_step_cost = 0;
-        sequence_labels.clear();
-        site_labels.clear();
+    void clear_all();
 
-        if (greedy_functioncalls != nullptr)
-            hashtable_cleanout(greedy_functioncalls, free, NULL);
+    /**
+     * Create a copy of this but with eventlist reset.
+     * The values for do_track and eventlist.in_use will match this
+     */
+    struct _RunData copy_for_new_fragment() const
+    {
+        struct _RunData new_data;
+        new_data.do_track = do_track;
+        new_data.current_step_cost = current_step_cost;
+        new_data.seq_numbering = seq_numbering;
+        new_data.sequence_labels = sequence_labels;
+        new_data.site_labels = site_labels;
+
+        new_data.eventlist.reset();
+        new_data.eventlist.in_use = eventlist.in_use;
+        return std::move(new_data);
+        
     }
 
     ~_RunData(); // destructor is in common.cpp so can call functions from elsewhere
+
+    bool do_use_eventlist()
+    {
+        return do_track && g_use_eventlist && eventlist.in_use;
+    }
 
 } RunData;
 
 #include "gene.h"
 
-extern EventList g_eventlist;
-
 // These should be global as they apply to all runs/paths
-extern bool g_use_eventlist;
+
 extern std::vector<int> g_lookup;
 extern int g_howverbose;
 extern int gc_enabled; // Used in local2global. Not sure what is does. Is not changed

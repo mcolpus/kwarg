@@ -40,7 +40,6 @@ LListCounter *g_representativeness_counter;
 int **g_haploblocks = NULL;
 #endif
 
-EventList g_eventlist;
 bool g_use_eventlist;
 std::vector<int> g_lookup;
 int g_howverbose = 0;
@@ -51,6 +50,24 @@ HistoryFragment::~HistoryFragment()
     if (g != NULL)
         free_genes(g);
     events.destroy();
+}
+
+void _RunData::clear_all()
+{
+    current_step_cost = 0;
+    sequence_labels.clear();
+    site_labels.clear();
+    eventlist.reset();
+
+    if (greedy_functioncalls != nullptr)
+        hashtable_cleanout(greedy_functioncalls, free, NULL);
+
+    if (greedy_beaglereusable != NULL)
+    {
+        hashtable_destroy(greedy_beaglereusable, (void (*)(void *))free_packedgenes, NULL,
+                          (void (*)(void *))free);
+    }
+    
 }
 
 _RunData::~_RunData()
@@ -167,7 +184,7 @@ double initialise_x2random(double seed)
     return seed;
 #else
     /* Make sure random sequence is the same for every run */
-    srandom(1);
+    srandom(123);
 #endif
 }
 

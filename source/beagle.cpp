@@ -461,7 +461,7 @@ int main(int argc, char **argv)
         t = beagle_allocate_hashtable(g, -1, run_data);
     else if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
     {
-        g_eventlist.reset();
+        run_data.eventlist.reset();
         g_use_eventlist = true;
     }    
 
@@ -533,7 +533,7 @@ int main(int argc, char **argv)
     {
         if (comprehensive_bound >= 0)
         {
-            g_eventlist = beagle_randomised(g, NULL, comprehensive_bound, t, run_data);
+            run_data.eventlist = beagle_randomised(g, NULL, comprehensive_bound, t, run_data);
             beagle_deallocate_hashtable(t);
         }
         while ((fp = (FILE *)Pop(history_files)) != NULL)
@@ -548,10 +548,10 @@ int main(int argc, char **argv)
             /* Only remember last ARG constructed (they should all be the same) */
             if (arg != NULL)
                 arg_destroy(arg);
-            arg = eventlist2history(a, fp, g_eventlist);
+            arg = eventlist2history(a, fp, run_data.eventlist);
         }
         if (arg == NULL)
-            arg = eventlist2history(a, NULL, g_eventlist);
+            arg = eventlist2history(a, NULL, run_data.eventlist);
         if (arg != NULL)
         {
             /* Output ARG in dot format */
@@ -636,10 +636,6 @@ int main(int argc, char **argv)
                     fclose(fp);
             }
             arg_destroy(arg);
-        }
-        if (g_eventlist.in_use)
-        {
-            g_eventlist.destroy();
         }
     }
 

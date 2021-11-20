@@ -55,7 +55,7 @@ char **genes2string(Genes *g);
 void output_sites(Sites *s, FILE *fp, char *comment);
 int remove_siamesetwins(Genes *g, RunData &run_data);
 int remove_uninformative(Genes *g, RunData &run_data);
-int remove_nonsegregating(Genes *g);
+int remove_nonsegregating(Genes *g, RunData &run_data);
 int coalesce_subsumed(Genes *g, RunData &run_data);
 int implode_genes(Genes *g, RunData &run_data);
 int no_recombinations_required(Genes *g, RunData &run_data);

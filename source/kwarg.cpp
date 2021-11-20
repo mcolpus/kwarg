@@ -271,8 +271,8 @@ int main(int argc, char **argv)
           *gmltree_files = MakeLList(),
           *gdltree_files = MakeLList();
 
-    Enqueue(history_files, (void *)"hello.txt");
-    Enqueue(history_files, stdout);
+    // Enqueue(history_files, (void *)"hello.txt");
+    // Enqueue(history_files, stdout);
     
 
     ARG *arg = NULL;
@@ -300,6 +300,8 @@ int main(int argc, char **argv)
     double rm_costs[100] = {0};
     double r_costs[100] = {0};
     double rr_costs[100] = {0};
+
+    RunData run_data;
 
 #ifdef ENABLE_VERBOSE
     set_verbose(1);
@@ -795,7 +797,6 @@ int main(int argc, char **argv)
     g_use_eventlist = false;
     if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))
     {
-        g_eventlist.reset();
         g_use_eventlist = true;
         multruns = 0;
         cost_in = 1;
@@ -945,10 +946,14 @@ int main(int argc, char **argv)
                     site_labels.push_back(i);
                 }
 
-                RunData run_data;
                 run_data.sequence_labels = std::move(sequence_labels);
                 run_data.site_labels = std::move(site_labels);
                 run_data.seq_numbering = h->n;
+                run_data.eventlist.reset();
+                if(g_use_eventlist)
+                    run_data.eventlist.in_use = true;
+                else
+                    run_data.eventlist.in_use = false;
 
                 // Get a history
                 clock_t tic = clock();
@@ -980,10 +985,10 @@ int main(int argc, char **argv)
             /* Only remember last ARG constructed (they should all be the same) */
             if (arg != NULL)
                 arg_destroy(arg);
-            arg = eventlist2history(a, fp, g_eventlist);
+            arg = eventlist2history(a, fp, run_data.eventlist);
         }
         if (arg == NULL)
-            arg = eventlist2history(a, NULL, g_eventlist);
+            arg = eventlist2history(a, NULL, run_data.eventlist);
         if (arg != NULL)
         {
             /* Output ARG in dot format */
@@ -1068,11 +1073,6 @@ int main(int argc, char **argv)
                     fclose(fp);
             }
             arg_destroy(arg);
-        }
-
-        if (g_eventlist.in_use)
-        {
-            g_eventlist.destroy();
         }
     }
 

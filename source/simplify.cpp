@@ -38,7 +38,6 @@ int main(int argc, char **argv)
     FILE *fp;
     fp = stdout;
 
-    g_eventlist.reset();
     g_use_eventlist = true;
 
 /* Analyse command line options */
@@ -145,6 +144,8 @@ int main(int argc, char **argv)
     run_data.do_track = true;
     run_data.sequence_labels = std::move(sequence_labels);
     run_data.site_labels = std::move(site_labels);
+    run_data.eventlist.reset();
+
     implode_genes(g, run_data);
 
     // Print stats for reduced dataset
@@ -158,12 +159,6 @@ int main(int argc, char **argv)
 
     printf("Sites:\n");
     print_int_vector(run_data.site_labels, NULL);
-
-    // Tidying
-    if (g_eventlist.in_use)
-    {
-        g_eventlist.destroy();
-    }
     free_annotatedgenes(a);
 
     return 0;
