@@ -1199,7 +1199,7 @@ void beagle_deallocate_hashtable(HashTable *t)
 }
 
 /* Functions for interfacing with lower bound computations */
-static int _greedy_rmin, _greedy_hk;
+static int _greedy_rmin;
 static Genes *_greedy_currentstate;
 /* Initialise parameters for hashing function call information into m bins */
 static int *_greedy_initparam(unsigned long m)
@@ -1328,16 +1328,14 @@ static int _greedy_compare(void **a, void **b)
 /* Set current ancestral state to g, update am, seq and len to reflect
  * g, and remove information from previous ancestral state from cache.
  */
-static double _am, _seq, _len;
+static double _am;
 void reset_beagle_builtins(Genes *g, RunData &run_data)
 {
     _greedy_currentstate = g;
 
     _am = ancestral_material(g);
-    _seq = g->n;
-    _len = g->length;
 
-    _greedy_rmin = _greedy_hk = -1;
+    _greedy_rmin = -1;
     if (run_data.greedy_functioncalls != NULL)
     {
         hashtable_cleanout(run_data.greedy_functioncalls, free, NULL);

@@ -957,11 +957,11 @@ int main(int argc, char **argv)
 
                 // Get a history
                 clock_t tic = clock();
-                n = ggreedy(h, print_progress, select, _reset_selections, ontheflyselection, run_settings, run_data);
+                n = run_kwarg(h, print_progress, select, _reset_selections, ontheflyselection, run_settings, run_data);
                 clock_t toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
-                // The ggreedy function will update rec_max and the g_lookup array
+                // The run_kwarg function will update rec_max and the g_lookup array
 
                 // Tidy up for the next run
                 free_genes(h);

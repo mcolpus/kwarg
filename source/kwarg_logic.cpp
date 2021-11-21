@@ -29,34 +29,20 @@
 #include "backtrack.h"
 #include "common.h"
 
-
 /* Update global quantities with contribution from g
  */
-static int _choice_fixed;
-static double _minam, _maxam, _minseq, _maxseq, _minlen, _maxlen;
-static Action ac;
-static void __update(Genes *g)
+static double _maxam;
+static void update_maxam(Genes *g)
 {
     int am = ancestral_material(g);
 
-    if (am < _minam)
-        _minam = am;
-    else if (am > _maxam)
+    if (am > _maxam)
         _maxam = am;
-    if (g->n < _minseq)
-        _minseq = g->n;
-    else if (g->n > _maxseq)
-        _maxseq = g->n;
-    if (g->length < _minlen)
-        _minlen = g->length;
-    else if (g->length > _maxlen)
-        _maxlen = g->length;
 }
 
 /* Score computation for each state in the neighbourhood */
 static double sc_min = DBL_MAX, sc_max = 0;
-static double prev_lb = 0, current_lb = 0, _lb;
-double scoring_function(Genes *g, double step_cost, RunSettings &run_settings, RunData &run_data)
+double scoring_function(Genes *g, double step_cost, bool choice_fixed, RunSettings &run_settings, RunData &run_data)
 {
     double sc;
     double lb;
@@ -67,7 +53,7 @@ double scoring_function(Genes *g, double step_cost, RunSettings &run_settings, R
     // We set the score to -(cost of step) if it resolves the last incompatibility,
     // otherwise set the score to -(very big number). The random_select function will
     // pick the move with the least negative score in this case, as needed.
-    if (_choice_fixed)
+    if (choice_fixed)
     {
         sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
         if (no_recombinations_required(g, run_data))
@@ -98,8 +84,6 @@ double scoring_function(Genes *g, double step_cost, RunSettings &run_settings, R
             lb = hudson_kaplan_genes(g);
         }
 
-        _lb = lb;
-
         sc = (step_cost + lb) * _maxam + get_am();
         if (sc < sc_min)
         {
@@ -114,12 +98,11 @@ double scoring_function(Genes *g, double step_cost, RunSettings &run_settings, R
 }
 
 /* Once scores have been computed, renormalise and apply annealing */
-double score_renormalise(Genes *g, double sc, double step_cost, RunSettings &run_settings, RunData &run_data)
+double score_renormalise(Genes *g, double sc, double step_cost, bool choice_fixed, RunSettings &run_settings, RunData &run_data)
 {
-
     int sign;
 
-    if (_choice_fixed)
+    if (choice_fixed)
     {
         sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
         if (no_recombinations_required(g, run_data))
@@ -148,8 +131,6 @@ double score_renormalise(Genes *g, double sc, double step_cost, RunSettings &run
 
     return sc;
 }
-
-static int (*_choice_function)(double);
 
 /* Update the lookup list of SE/RM and recombination numbers
  * This is of length rec_max, and keeps track of the maximum number of RM events seen
@@ -181,20 +162,20 @@ void update_lookup(std::vector<int> &lku, int index, int bd)
 
 /* Main function of kwarg implementing neighbourhood search.
  */
-double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
-               RunSettings run_settings, RunData &main_path_run_data)
+double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
+                 RunSettings run_settings, RunData &main_path_run_data)
 {
-    int global, nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds, bad_soln = 0;
+    int nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds;
+    bool bad_soln = false;
     double r = 0;
-    Index *start, *end;
-    double printscore = 0;
     const char *names[5];
     names[0] = "Coalescence";
     names[1] = "Sequencing error";
     names[2] = "Recurrent mutation";
     names[3] = "Single recombination";
     names[4] = "Double recombination";
-    double *score_array;
+    Action ac;
+    bool choice_fixed = false;
 
     /* Store HistoryFragments of possible predecessors in predecessors */
     auto predecessors = std::vector<std::unique_ptr<HistoryFragment>>{};
@@ -238,35 +219,31 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
             update_lookup(g_lookup, 0, g->n * g->length);
     }
 
-    global = 1;
-
     /* Repeatedly choose an event back in time, until data set has been
      * explained.
      */
-    _choice_function = select;
-    if (!ontheflyselection && global)
+    if (!ontheflyselection)
         predecessors.clear();
-    _choice_fixed = no_recombinations_required(g, main_path_run_data);
-    if (_choice_fixed != 0)
+    choice_fixed = no_recombinations_required(g, main_path_run_data);
+    if (choice_fixed != 0)
         /* Data set can be explained without recombinations */
         free_genes(g);
 
     // greedy_choice will point to History fragment to be selected
     auto greedy_choice = std::make_unique<HistoryFragment>();
 
-    while (!_choice_fixed)
+    while (!choice_fixed)
     {
         /* Reset statistics of reachable configurations */
-        _minam = _minseq = _minlen = INT_MAX;
-        _maxam = _maxseq = _maxlen = 0;
+        _maxam = 0;
         // g = copy_genes(g);
         greedy_choice.reset(nullptr); // = NULL;
         nbdsize = 0;
         preds = 0;
 
         /* Determine interesting recombination ranges */
-        start = maximumsubsumedprefixs(g);
-        end = maximumsubsumedpostfixs(g);
+        Index *start = maximumsubsumedprefixs(g);
+        Index *end = maximumsubsumedpostfixs(g);
 
         // Store current state to a HistoryFragment
         // run_data takes parameter by copy!
@@ -291,15 +268,15 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 fprintf(stderr, "Error: number of site labels in sites not equal to current size of dataset.");
                 exit(0);
             }
-            if (!_choice_fixed && no_recombinations_required(g, run_data))
+            if (!choice_fixed && no_recombinations_required(g, run_data))
             {
                 /* Found a path to the MRCA - choose it */
-                _choice_fixed = 1;
+                choice_fixed = true;
                 //         greedy_choice = f;
             }
 
             predecessors.push_back(std::move(f));
-            __update(g);
+            update_maxam(g);
         };
 
         /* We have just imploded genes, but we still need to pursue paths
@@ -414,7 +391,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         free_genes(g);
 
         /* Still looking for path to MRCA */
-        if (!ontheflyselection && global)
+        if (!ontheflyselection)
         {
             /* So far we have only enumerated putative predecessors -
              * score these and choose one.
@@ -432,8 +409,8 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
             // Calculate all the scores and store in an array
             // Update sc_min and sc_max for renormalising the score later
-            score_array = (double *)malloc(predecessors.size() * sizeof(double));
-            if (!_choice_fixed)
+            double score_array[nbdsize];
+            if (!choice_fixed)
             {
                 sc_min = DBL_MAX, sc_max = 0;
                 int i = 0;
@@ -445,7 +422,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
                     // Calculate all the scores and update the min and max
 
-                    score_array[i] = scoring_function(f->g, f->step_cost, run_settings, scoring_data);
+                    score_array[i] = scoring_function(f->g, f->step_cost, choice_fixed, run_settings, scoring_data);
 
                     i++;
                 }
@@ -459,7 +436,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
                 reset_beagle_builtins(f->g, scoring_data); // set _greedy_currentstate to be f->g
 
                 // g_step_cost = f->recombinations;
-                printscore = score_renormalise(f->g, score_array[i], f->step_cost, run_settings, scoring_data);
+                double printscore = score_renormalise(f->g, score_array[i], f->step_cost, choice_fixed, run_settings, scoring_data);
                 if (print_progress != NULL && g_howverbose == 2)
                 {
                     fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->step_cost);
@@ -480,8 +457,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
 
                 i++;
             }
-
-            free(score_array);
+            
             predecessors.clear();
         }
 
@@ -537,7 +513,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         free(ptr);
         free(start);
         free(end);
-        if (_choice_fixed)
+        if (choice_fixed)
         {
             free_genes(g);
         }
@@ -545,7 +521,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         // Can abandon the run if the number of recombinations already exceeds rec_max
         if (recombs > run_settings.rec_max)
         {
-            bad_soln = 1;
+            bad_soln = true;
             break;
         }
 
@@ -555,7 +531,7 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
         {
             if (seflips + rmflips > g_lookup[recombs])
             {
-                bad_soln = 1;
+                bad_soln = true;
                 break;
             }
         }
@@ -613,4 +589,10 @@ double ggreedy(Genes *g, FILE *print_progress, int (*select)(double), void (*res
     }
 
     return r;
+}
+
+double mass_run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
+                      RunSettings run_settings, RunData &main_path_run_data, int num_samples)
+{
+
 }
