@@ -106,7 +106,6 @@ typedef enum
     RECOMB1,
     RECOMB2
 } Action;
-
 typedef struct _Event
 {
     EventType type;
@@ -256,8 +255,6 @@ typedef struct _RunData
     LListCounter *representativeness_counter = nullptr;
     int **haploblocks = nullptr;
 #endif
-
-#define DEBUG
 
 #ifdef DEBUG
     std::set<PackedGenes *> ancestral_state_trace = {};

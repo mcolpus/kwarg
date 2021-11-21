@@ -18,7 +18,7 @@
 
 #include "gene.h"
 #include "bounds.h"
-#include "exact.h"
+#include "beagle_logic.h"
 #include "common.h"
 #include "backtrack.h"
 

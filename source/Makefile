@@ -87,8 +87,8 @@ LDLIBS := -lm
 endif
 endif
 
-SRCFILES = beagle.cpp kwarg.cpp simplify.cpp flip.cpp gene.cpp llist.cpp elist.cpp hashtable.cpp getwordsize.cpp common.cpp bounds.cpp exact.cpp mergesort.cpp enumerate.cpp arg.cpp backtrack.cpp topological_sort.cpp mystring.cpp
-HDRFILES = gene.h llist.h elist.h hashtable.h common.h bounds.h exact.h mergesort.h enumerate.h arg.h backtrack.h topological_sort.h mystring.h
+SRCFILES = beagle.cpp kwarg.cpp simplify.cpp flip.cpp gene.cpp llist.cpp elist.cpp hashtable.cpp getwordsize.cpp common.cpp bounds.cpp beagle_logic.cpp kwarg_logic.cpp mergesort.cpp enumerate.cpp arg.cpp backtrack.cpp topological_sort.cpp mystring.cpp
+HDRFILES = gene.h llist.h elist.h hashtable.h common.h bounds.h beagle_logic.h kwarg_logic.h mergesort.h enumerate.h arg.h backtrack.h topological_sort.h mystring.h
 EXECUTABLES = beagle kwarg simplify flip getwordsize
 DATA = kreitman_snp.txt
 SCRIPTS = generatebitfunctions.py
@@ -98,7 +98,7 @@ AUTOHDRFILES = bitfunctions.h
 
 all: beagle kwarg simplify flip
 
-beagle: beagle.o gene.o bounds.o exact.o llist.o elist.o hashtable.o common.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
+beagle: beagle.o gene.o bounds.o beagle_logic.o kwarg_logic.o llist.o elist.o hashtable.o common.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
 
 backtrack.o: backtrack.cpp backtrack.h arg.h common.h
 
@@ -106,27 +106,29 @@ arg.o: arg.cpp arg.h llist.h gene.h common.h bitfunctions.h
 
 mystring.o: mystring.cpp mystring.h llist.h
 
-kwarg: kwarg.o gene.o bounds.o common.o exact.o llist.o elist.o hashtable.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
+kwarg: kwarg.o gene.o bounds.o common.o beagle_logic.o kwarg_logic.o llist.o elist.o hashtable.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
 
-simplify: simplify.o gene.o bounds.o exact.o llist.o elist.o hashtable.o common.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
+simplify: simplify.o gene.o bounds.o beagle_logic.o llist.o elist.o hashtable.o common.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
 
-flip: flip.o gene.o bounds.o exact.o llist.o elist.o hashtable.o common.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
+flip: flip.o gene.o bounds.o beagle_logic.o llist.o elist.o hashtable.o common.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
 
-beagle.o: beagle.cpp gene.h bounds.h common.h exact.h Makefile
+beagle.o: beagle.cpp gene.h bounds.h common.h beagle_logic.h Makefile
 
-kwarg.o: kwarg.cpp gene.h bounds.h common.h exact.h backtrack.h Makefile
+kwarg.o: kwarg.cpp gene.h bounds.h common.h beagle_logic.h kwarg_logic.h backtrack.h Makefile
 
-simplify.o: simplify.cpp gene.h bounds.h exact.h common.h backtrack.h Makefile
+simplify.o: simplify.cpp gene.h bounds.h beagle_logic.h common.h backtrack.h Makefile
 
-flip.o: flip.cpp gene.h bounds.h exact.h common.h backtrack.h Makefile
+flip.o: flip.cpp gene.h bounds.h beagle_logic.h common.h backtrack.h Makefile
 
 gene.o: gene.cpp gene.h common.h bitfunctions.h llist.h elist.h mergesort.h Makefile
 
-bounds.o: bounds.cpp bounds.h exact.h gene.h common.h mergesort.h Makefile
+bounds.o: bounds.cpp bounds.h beagle_logic.h gene.h common.h mergesort.h Makefile
 
-exact.o: exact.cpp exact.h gene.h common.h mergesort.h bounds.h llist.h hashtable.h bitfunctions.h
+beagle_logic.o: beagle_logic.cpp beagle_logic.h gene.h common.h mergesort.h bounds.h llist.h hashtable.h bitfunctions.h
 
-enumerate.o: enumerate.cpp enumerate.h gene.h elist.h common.h bounds.h exact.h bitfunctions.h mergesort.h
+kwarg_logic.o: kwarg_logic.cpp kwarg_logic.h beagle_logic.cpp beagle_logic.h gene.h common.h mergesort.h bounds.h llist.h hashtable.h bitfunctions.h
+
+enumerate.o: enumerate.cpp enumerate.h gene.h elist.h common.h bounds.h beagle_logic.h bitfunctions.h mergesort.h
 
 greedy.o: greedy.cpp gene.h common.h bounds.h
 

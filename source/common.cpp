@@ -102,6 +102,7 @@ _RunData::~_RunData()
         greedy_beaglereusable = NULL;
     }
 
+#ifdef DEBUG
     if(using_ancestral_state_trace)
     {
         for(auto p : ancestral_state_trace)
@@ -109,6 +110,7 @@ _RunData::~_RunData()
             free(p);
         }
     }
+#endif
 }
 
 /* xmalloc(n): Allocate n bytes of memory, checking for successful allocation.
@@ -193,12 +195,11 @@ double initialise_x2random(double seed)
     {
         seed = (double)time(NULL) + (double)xrandom();
     }
-
     srandom(seed);
     return seed;
 #else
     /* Make sure random sequence is the same for every run */
-    srandom(123);
+    //srandom(123);
 #endif
 }
 

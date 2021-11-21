@@ -22,8 +22,9 @@
 
 #include "gene.h"
 #include "bounds.h"
-#include "exact.h"
 #include "common.h"
+#include "beagle_logic.h"
+#include "kwarg_logic.h"
 #include "backtrack.h"
 
 static void _print_usage(FILE *f, char *name)
@@ -915,7 +916,6 @@ int main(int argc, char **argv)
             /* Find a history for each iteration */
             for (j = 0; j <= multruns; j++)
             {
-
                 /* Initialise random number generator */
                 run_settings.run_seed = initialise_x2random(run_seed);
 

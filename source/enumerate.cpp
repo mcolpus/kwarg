@@ -13,7 +13,7 @@
 #include "enumerate.h"
 #include "common.h"
 #include "bounds.h"
-#include "exact.h"
+#include "beagle_logic.h"
 #include "bitfunctions.h"
 #include "mergesort.h"
 #include "hashtable.h"
@@ -37,7 +37,7 @@ static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
  * states and pursue branches leading back in time from g.
  */
 static void handle_ancestralstate(Genes *g, int n, int lower, HashTable *t,
-                                  HashTable *states)
+                                  HashTable *states, RunData &run_data)
 {
   void *lookup;
 #ifdef ENABLE_VERBOSE
@@ -55,7 +55,7 @@ static void handle_ancestralstate(Genes *g, int n, int lower, HashTable *t,
      * can extend the history without using more than n further
      * recombinations.
      */
-    if (beagle_reusable_bounded(g, NULL, lower, n, t) > n)
+    if (beagle_reusable_bounded(g, NULL, lower, n, t, run_data) > n)
     {
       free_genes(g);
       free_packedgenes(p);
@@ -107,7 +107,7 @@ static void handle_ancestralstate(Genes *g, int n, int lower, HashTable *t,
  * enumerated ancestral states is stored in.
  */
 static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
-                                HashTable *states)
+                                HashTable *states, RunData &run_data)
 {
   int i, j;
   Genes *h;
@@ -119,7 +119,7 @@ static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
       if (compatible(g, i, j))
       {
         h = copy_genes(g);
-        coalesce(h, i, j);
+        coalesce(h, i, j, run_data);
 #ifdef ENABLE_VERBOSE
         if (verbose() > 1)
         {
@@ -127,7 +127,7 @@ static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
           output_genes_indexed(h, NULL);
         }
 #endif
-        handle_ancestralstate(h, n, lower, t, states);
+        handle_ancestralstate(h, n, lower, t, states, run_data);
       }
 
       /* Try all possible mutations */
@@ -141,7 +141,7 @@ static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
   for (i = 0; i < forced.size(); i++)
   {
     h = forced[i];
-    handle_ancestralstate(h, n, lower, t, states);
+    handle_ancestralstate(h, n, lower, t, states, run_data);
   }
 
   if (n > 0)
@@ -151,14 +151,14 @@ static void enumerate_recursion(Genes *g, int n, int lower, HashTable *t,
 #ifdef ENABLE_VERBOSE
       set_verbose(verbose() - 1);
 #endif
-      forced = force_split(g, i);
+      forced = force_split(g, i, run_data);
 #ifdef ENABLE_VERBOSE
       set_verbose(verbose() + 1);
 #endif
       for (j = 0; j < forced.size(); j++)
       {
         h = forced[j];
-        handle_ancestralstate(h, n - 1, lower - 1, t, states);
+        handle_ancestralstate(h, n - 1, lower - 1, t, states, run_data);
       }
     }
 }
@@ -171,6 +171,7 @@ HashTable *enumerate_absolute(Genes *g, int n)
   HashTable *t, *states = NULL;
   Genes *h;
   int table_size, bound;
+  RunData empty_data(true);
 #ifdef ENABLE_VERBOSE
   int v = verbose();
   set_verbose(v - 1);
@@ -178,8 +179,8 @@ HashTable *enumerate_absolute(Genes *g, int n)
 
   /* Compute a good lower bound on the number of recombinations */
   h = copy_genes(g);
-  implode_genes(h);
-  if (no_recombinations_required(h))
+  implode_genes(h, empty_data);
+  if (no_recombinations_required(h, empty_data))
     bound = 0;
   else
   {
@@ -197,8 +198,8 @@ HashTable *enumerate_absolute(Genes *g, int n)
   table_size = msb(h->n * h->length) + n;
   t = new_packedgeneshashtable(table_size);
   /* Compute minimum number of recombinations required */
-  if (!no_recombinations_required(h))
-    bound = beagle_reusable_bounded(h, NULL, bound, n, t);
+  if (!no_recombinations_required(h, empty_data))
+    bound = beagle_reusable_bounded(h, NULL, bound, n, t, empty_data);
   free_genes(h);
 
   if (bound <= n)
@@ -247,6 +248,7 @@ HashTable *enumerate_relative(Genes *g, int n)
   HashTable *t, *states;
   Genes *h;
   int table_size, bound;
+  RunData empty_data(true);
 #ifdef ENABLE_VERBOSE
   int v = verbose();
   set_verbose(v - 1);
@@ -258,8 +260,8 @@ HashTable *enumerate_relative(Genes *g, int n)
 
   /* Compute a good lower bound on the number of recombinations */
   h = copy_genes(g);
-  implode_genes(h);
-  if (no_recombinations_required(h))
+  implode_genes(h, empty_data);
+  if (no_recombinations_required(h, empty_data))
     bound = 0;
   else
   {
@@ -271,8 +273,8 @@ HashTable *enumerate_relative(Genes *g, int n)
   table_size = msb(h->n * h->length) + n;
   t = new_packedgeneshashtable(table_size);
   /* Compute minimum number of recombinations required */
-  if (!no_recombinations_required(h))
-    bound = beagle_reusable_bounded(h, NULL, bound, INT_MAX, t);
+  if (!no_recombinations_required(h, empty_data))
+    bound = beagle_reusable_bounded(h, NULL, bound, INT_MAX, t, empty_data);
   free_genes(h);
 
   table_size = msb(g->n * g->length) + n;

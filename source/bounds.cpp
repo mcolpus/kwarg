@@ -14,7 +14,7 @@
 #include "common.h"
 #include "mergesort.h"
 #include "bounds.h"
-#include "exact.h"
+#include "beagle_logic.h"
 #include "llist.h"
 #include "bitfunctions.h"
 #ifdef IPBOUNDS
