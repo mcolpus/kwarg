@@ -6788,7 +6788,7 @@ HashTable *new_packedgeneshashtable(int bits)
 
 /* Function to try all possible flips of sequencing errors
  */
-void seqerror_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, RunSettings &run_settings)
+void seqerror_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, const RunSettings &run_settings)
 {
     int q, s, m;
     Genes *h;
@@ -6844,7 +6844,7 @@ void seqerror_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNC
 
 /* Function to try all possible flips of recurrent mutations
  */
-void recmut_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, RunSettings &run_settings)
+void recmut_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, const RunSettings &run_settings)
 {
     int q, s, m;
     Genes *h;

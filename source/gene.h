@@ -107,8 +107,8 @@ std::vector<std::unique_ptr<HistoryFragment>> maximal_overlap_coalesces(Genes *g
 void maximal_overlap_coalesces_map(Genes *g, Index *a, Index *b, const RunData &main_path_data,
                                    STORE_FRAGMENT_FUNCTION_TYPE f);
 
-void seqerror_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, RunSettings &run_settings);
-void recmut_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, RunSettings &run_settings);
+void seqerror_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, const RunSettings &run_settings);
+void recmut_flips(Genes *g, const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f, const RunSettings &run_settings);
 
 int compare_sites(Sites *s, int a, int b);
 int compare_genes(Genes *g, Genes *h);

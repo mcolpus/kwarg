@@ -19,6 +19,9 @@
 #include <errno.h>
 
 #include <iostream>
+#include <map>
+#include <array>
+#include <algorithm>
 
 #include "gene.h"
 #include "bounds.h"
@@ -56,6 +59,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-a", "Assume input consists of amino acid (protein) sequences using the one letter amino acid alphabet; anything not in the amino acid one letter alphabet is treated as an unresolved site (default is to assume sequences in binary, i.e. 0/1, format where anything but a 0 or a 1 is considered an unresolved site). If the most recent common ancestor is assumed known (see option -k), the first sequence in the input data is considered to specify the wild type of each site and is not included as part of the sample set.", 70, -1);
     print_option(f, "-n", "Assume input consists of nucleic sequences; anything but a/c/g/t/u is considered an unresolved site (default is to assume binary, i.e. 0/1, format where anything but a 0 or a 1 is considered an unresolved site). If the most recent common ancestor is assumed known (see option -k), the first sequence in the input data is considered to specify the wild type of each site and is not included as part of the sample set.", 70, -1);
     print_option(f, "-k", "Assume that the common ancestral sequence is known, i.e. that we know which is the wild type and which is the mutant in each site. If the data is in binary format, the all-0 sequence is assumed to be the common ancestral sequence (this does not need to be present in the data). If the data is in amino acid or nucleotide format, the common ancestral sequence has to be specified directly and is taken to be the first sequence in the data file (see options -a and -n)", 70, -1);
+    print_option(f, "-m", "If multiple runs are being done, use a DFS tree search rather than simply repeated random runs", 70, -1);
     print_option(f, "-Q[x]", "Sets the number of runs.", 70, -1);
     print_option(f, "-Z[x]", "Sets the random seed z (only one run is made in this case).", 70, -1);
     print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset (solutions with more than x recombinations will be abandoned).", 70, -1);
@@ -137,7 +141,7 @@ static int _random_select(double a)
     else
         _rs_w += a;
 
-    return (a * XRAND_MAX > _rs_w * x2random());
+    return (a * XRAND_MAX > _rs_w * x2random()); // a > _rs_w * (x2random / XRAND_MAX)
 }
 
 /* Determine whether to select a value according to a scheme where
@@ -205,6 +209,76 @@ static void _reset_selections()
     _prs_offset = 0;
 }
 
+template <std::size_t N>
+static std::array<int, N> _sample_proportional(std::array<double, N> scores, int num_samples)
+{
+    std::array<int, N> samples{};
+
+    double total_score = 0;
+    for (int i = 0; i < N; i++)
+        total_score += scores[i];
+    total_score /= num_samples;
+
+    for (int i = 0; i < N; i++)
+    {
+        double proportion = scores[i] / total_score;
+        int prop_floor = (int)proportion;
+        samples[i] += prop_floor;
+        num_samples -= prop_floor;
+        scores[i] = proportion - prop_floor;
+    }
+
+    // Need to get rest of the samples by taking the largest partial scores left
+    std::multimap<double, int> m;
+    for (int i = 0; i < N; i++)
+    {
+        m.insert(std::pair{scores[i], i});
+    }
+
+    for (auto iter = m.rbegin(); iter != m.rend(); ++iter)
+    {
+        samples[iter->second] += 1;
+        num_samples -= 1;
+        if (num_samples == 0)
+            break;
+    }
+
+    return samples;
+}
+
+static std::vector<int> _sample_random_proportional(std::vector<double> scores, int num_samples)
+{
+    int N = scores.size();
+    std::vector<int> samples(N);
+
+    double total_score = 0;
+    for (int i = 0; i < N; i++)
+        total_score += scores[i];
+
+    // Convert scores to be a cumulative proportion
+    scores[0] /= total_score;
+    for (int i = 1; i < N; i++)
+        scores[i] = (scores[i] / total_score) + scores[i - 1];
+
+    std::vector<double> random_numbers(num_samples);
+    for (int i = 0; i < num_samples; i++)
+    {
+        random_numbers[i] = (double)x2random() / (double)XRAND_MAX;
+    }
+    std::sort(random_numbers.begin(), random_numbers.end());
+    // Random numbers now an increasing sequence of numbers between 0 and 1
+
+    int i = 0;
+    for (double r : random_numbers)
+    {
+        while (r > scores[i])
+            i++;
+        samples[i] += 1;
+    }
+
+    return samples;
+}
+
 /* Parse a floating point option argument and store it in value.
  * Return value states whether the argument could be parsed in full.
  */
@@ -257,11 +331,13 @@ int main(int argc, char **argv)
            intervals = 0,
            multruns = 0,
            costs_in = 0;
+    bool use_dfs = false;
     double n;
     Gene_Format format = GENE_ANY;
     Gene_SeqType seqtype = GENE_BINARY;
     FILE *print_progress = stdout;
     int (*select)(double) = _random_select;
+    auto sample = _sample_random_proportional;
     FILE *fp;
     LList *history_files = MakeLList(),
           *dot_files = MakeLList(),
@@ -274,13 +350,11 @@ int main(int argc, char **argv)
 
     // Enqueue(history_files, (void *)"hello.txt");
     // Enqueue(history_files, stdout);
-    
 
     ARG *arg = NULL;
     ARGLabels nodelabel = ARGLABEL;
     int edgelabel = 0;
     int generate_id = 0;
-    int ontheflyselection = 0;
     gc_enabled = 0;
     Event *e;
     LList *tmp;
@@ -293,7 +367,6 @@ int main(int argc, char **argv)
     char *endptr;
     errno = 0;
     int run_reference = -1;
-    
 
     int T_in = 0, cost_in = 0;
     double T_array[100] = {30};
@@ -309,7 +382,7 @@ int main(int argc, char **argv)
 #endif
 
 /* Analyse command line options */
-#define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::Iv:iekofaZ:Q:sL:nhH?"
+#define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::Iv:iekmofaZ:Q:sL:nhH?"
 
     /* Parse command line options */
     while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0)
@@ -669,6 +742,9 @@ int main(int argc, char **argv)
         case 'k':
             gene_knownancestor = 1;
             break;
+        case 'm':
+            use_dfs = true;
+            break;
         case 'o':
             format = GENE_BEAGLE;
             break;
@@ -800,13 +876,14 @@ int main(int argc, char **argv)
     {
         g_use_eventlist = true;
         multruns = 0;
+        use_dfs = false;
         cost_in = 1;
         T_in = 1;
     }
 
     initialise_xrandom();
 
-    if (run_seed > 0)
+    if (run_seed > 0 && !use_dfs)
     {
         multruns = 0;
         T_in = 1;
@@ -822,10 +899,6 @@ int main(int argc, char **argv)
     }
     else if (cost_in > 0)
     {
-        if (multruns > 0 || cost_in > 1)
-        {
-            g_howverbose = 0;
-        }
         for (t = 0; t < cost_in; t++)
         {
             se_costs[t] = (se_costs[t] != 0 ? se_costs[t] : 0.5);
@@ -836,7 +909,6 @@ int main(int argc, char **argv)
     }
     else
     {
-        g_howverbose = 0;
         cost_in = 13;
         double template1[13] = {-1, 1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.01, 1};
         double template2[13] = {-1, 1.01, 0.91, 0.81, 0.71, 0.61, 0.51, 0.41, 0.31, 0.21, 0.11, 0.02, 1.1};
@@ -913,60 +985,77 @@ int main(int argc, char **argv)
             run_settings.r_cost = r_costs[k];
             run_settings.rr_cost = rr_costs[k];
 
-            /* Find a history for each iteration */
-            for (j = 0; j <= multruns; j++)
+            /* Initialise random number generator */
+            run_settings.run_seed = initialise_x2random(run_seed);
+
+            // Copy the data and set up the tracking lists
+            std::vector<int> sequence_labels = {};
+            std::vector<int> site_labels = {};
+
+            // Initialise list of sequences
+            if ((gene_knownancestor) && (seqtype != GENE_BINARY))
+                for (i = 0; i < g->n; i++)
+                    sequence_labels.push_back(i + 1);
+            else
+                for (i = 0; i < g->n; i++)
+                    sequence_labels.push_back(i);
+
+            // Initialise the list of sites
+            for (i = 0; i < g->length; i++)
+                site_labels.push_back(i);
+
+            RunData base_run_data;
+            base_run_data.sequence_labels = std::move(sequence_labels);
+            base_run_data.site_labels = std::move(site_labels);
+            base_run_data.seq_numbering = g->n;
+            base_run_data.eventlist.reset();
+            if (g_use_eventlist)
+                base_run_data.eventlist.in_use = true;
+            else
+                base_run_data.eventlist.in_use = false;
+
+            if (use_dfs)
             {
-                /* Initialise random number generator */
-                run_settings.run_seed = initialise_x2random(run_seed);
-
-                // Copy the data and set up the tracking lists
+                fprintf(stderr, "using dfs and verbose: %3d \n", g_howverbose);
                 h = copy_genes(g);
-                std::vector<int> sequence_labels = {};
-                std::vector<int> site_labels = {};
-
-                // Initialise list of sequences
-                if ((gene_knownancestor) && (seqtype != GENE_BINARY))
-                {
-                    for (i = 0; i < h->n; i++)
-                    {
-                        sequence_labels.push_back(i+1);
-                    }
-                }
-                else
-                {
-                    for (i = 0; i < h->n; i++)
-                    {
-                        sequence_labels.push_back(i);
-                    }
-                }
-
-                // Initialise the list of sites
-                for (i = 0; i < h->length; i++)
-                {
-                    site_labels.push_back(i);
-                }
-
-                run_data.sequence_labels = std::move(sequence_labels);
-                run_data.site_labels = std::move(site_labels);
-                run_data.seq_numbering = h->n;
-                run_data.eventlist.reset();
-                if(g_use_eventlist)
-                    run_data.eventlist.in_use = true;
-                else
-                    run_data.eventlist.in_use = false;
+                run_data = base_run_data;
 
                 // Get a history
                 clock_t tic = clock();
-                n = run_kwarg(h, print_progress, select, _reset_selections, ontheflyselection, run_settings, run_data);
+                // n = run_kwarg(h, print_progress, select, _reset_selections, run_settings, run_data);
+                auto results = mass_run_kwarg(h, print_progress, sample, run_settings, run_data, multruns);
                 clock_t toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
-                // The run_kwarg function will update rec_max and the g_lookup array
 
-                // Tidy up for the next run
                 free_genes(h);
-                run_seed = 0;
             }
+            else
+            {
+                double total_time = 0;
+                /* Find a history for each iteration */
+                for (j = 0; j <= multruns; j++)
+                {
+                    h = copy_genes(g);
+                    run_data = base_run_data;
+
+                    // Get a history
+                    clock_t tic = clock();
+                    n = run_kwarg(h, print_progress, select, _reset_selections, run_settings, run_data);
+                    clock_t toc = clock();
+                    timer = (double)(toc - tic) / CLOCKS_PER_SEC;
+                    total_time += timer;
+                    printf("%15.8f\n", timer);
+                    // The run_kwarg function will update rec_max and the g_lookup array
+
+                    // Tidy up for the next run
+                    free_genes(h);
+                    run_seed = 0;
+                }
+                printf("Total time: %15.8f\n", total_time);
+            }
+
+            
         }
     }
 

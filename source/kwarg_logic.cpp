@@ -42,11 +42,9 @@ static void update_maxam(Genes *g)
 
 /* Score computation for each state in the neighbourhood */
 static double sc_min = DBL_MAX, sc_max = 0;
-double scoring_function(Genes *g, double step_cost, bool choice_fixed, RunSettings &run_settings, RunData &run_data)
+double scoring_function(Genes *g, double step_cost, bool choice_fixed, const RunSettings &run_settings, RunData &run_data, int &lower_bound)
 {
-    double sc;
-    double lb;
-    int sign;
+    double score;
 
     // If we have already reached the end, we still cycle through all the possible
     // choices of last step and select the cheapest.
@@ -55,50 +53,44 @@ double scoring_function(Genes *g, double step_cost, bool choice_fixed, RunSettin
     // pick the move with the least negative score in this case, as needed.
     if (choice_fixed)
     {
-        sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
+        int sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
         if (no_recombinations_required(g, run_data))
-        {
-            sc = sign * step_cost;
-        }
+            score = sign * step_cost;
         else
-        {
-            sc = sign * DBL_MAX;
-        }
+            score = sign * DBL_MAX;
     }
     // If we have not reached the end, score the move as usual.
     else
     {
         if (_maxam < 75)
-        {
-            lb = noexp_rmin(run_data);
-        }
+            lower_bound = noexp_rmin(run_data);
         //         else if(_am < 150) {
-        //             lb = _eagl(g);
+        //             lower_bound = _eagl(g);
         //         }
         else if (_maxam < 200)
-        {
-            lb = hb(g, run_data);
-        }
+            lower_bound = hb(g, run_data);
         else
-        {
-            lb = hudson_kaplan_genes(g);
-        }
+            lower_bound = hudson_kaplan_genes(g);
 
-        sc = (step_cost + lb) * _maxam + get_am();
-        if (sc < sc_min)
-        {
-            sc_min = sc;
-        }
-        if (sc > sc_max)
-        {
-            sc_max = sc;
-        }
+        score = (step_cost + lower_bound) * _maxam + get_am();
+        // low score better here
+
+        if (score < sc_min)
+            sc_min = score;
+        if (score > sc_max)
+            sc_max = score;
     }
-    return sc;
+    return score;
+}
+
+double scoring_function(Genes *g, double step_cost, bool choice_fixed, const RunSettings &run_settings, RunData &run_data)
+{
+    int lb = 0;
+    return scoring_function(g, step_cost, choice_fixed, run_settings, run_data, lb);
 }
 
 /* Once scores have been computed, renormalise and apply annealing */
-double score_renormalise(Genes *g, double sc, double step_cost, bool choice_fixed, RunSettings &run_settings, RunData &run_data)
+double score_renormalise(Genes *g, double score, double step_cost, bool choice_fixed, const RunSettings &run_settings, RunData &run_data)
 {
     int sign;
 
@@ -107,11 +99,11 @@ double score_renormalise(Genes *g, double sc, double step_cost, bool choice_fixe
         sign = (run_settings.temp < 0) - (run_settings.temp > 0) - (run_settings.temp == 0);
         if (no_recombinations_required(g, run_data))
         {
-            sc = sign * step_cost;
+            score = sign * step_cost;
         }
         else
         {
-            sc = sign * DBL_MAX;
+            score = sign * DBL_MAX;
         }
     }
     else
@@ -120,16 +112,17 @@ double score_renormalise(Genes *g, double sc, double step_cost, bool choice_fixe
         {
             if (run_settings.temp != -1)
             {
-                sc = exp(run_settings.temp * (1 - (sc - sc_min) / (sc_max - sc_min)));
+                score = exp(run_settings.temp * (1 - (score - sc_min) / (sc_max - sc_min)));
+                // high score is better (flipped from before normalising)
             }
         }
         else
         {
-            sc = 1;
+            score = 1;
         }
     }
 
-    return sc;
+    return score;
 }
 
 /* Update the lookup list of SE/RM and recombination numbers
@@ -141,39 +134,189 @@ double score_renormalise(Genes *g, double sc, double step_cost, bool choice_fixe
  */
 void update_lookup(std::vector<int> &lku, int index, int bd)
 {
-    int i, k;
     // Let S = number of SE + RM in the solution
     // Let R = number of recombinations in the solution
     // Then lookup[R] = S, lookup[R + 1 : R + 2*S] <= S, lookup[R + 2*S : end] = 0
-    k = (lku.size() - 1 > index + 2 * bd ? index + 2 * bd : lku.size() - 1);
+    int k = (lku.size() - 1 > index + 2 * bd ? index + 2 * bd : lku.size() - 1);
     lku[index] = bd;
-    for (i = index + 1; i <= k; i++)
+    for (int i = index + 1; i <= k; i++)
     {
         if (lku[i] > bd)
         {
             lku[i] = bd;
         }
     }
-    for (i = k + 1; i < lku.size(); i++)
+    for (int i = k + 1; i < lku.size(); i++)
     {
         lku[i] = 0;
     }
 }
 
+const char *names[5] = {
+    "Coalescence",
+    "Sequencing error",
+    "Recurrent mutation",
+    "Single recombination",
+    "Double recombination"};
+
+static bool _generate_predecessors(std::vector<std::unique_ptr<HistoryFragment>> &predecessors, Genes *g, FILE *print_progress, RunData &path_run_data, const RunSettings &run_settings)
+{
+    bool choice_fixed = false;
+    Action ac;
+    _maxam = 0;
+
+    int preds = 0;
+    int nbdsize = 0;
+    /* Determine interesting recombination ranges */
+    Index *start = maximumsubsumedprefixs(g);
+    Index *end = maximumsubsumedpostfixs(g);
+
+    auto store_to_fragment = [&](Genes *g, RunData run_data)
+    {
+        auto f = std::make_unique<HistoryFragment>();
+
+        /* Wrap configuration and events leading to it in a HistoryFragment */
+        f->events = run_data.eventlist;
+        f->g = g;
+        f->step_cost = run_data.current_step_cost;
+        f->elements = std::move(run_data.sequence_labels);
+        f->sites = std::move(run_data.site_labels);
+        f->action = ac;
+        if (!f->elements.empty() && g->n != 0 && g->n != f->elements.size())
+        {
+            fprintf(stderr, "Error: number of sequence labels in sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", f->elements.size(), g->n, run_data.current_step_cost);
+            exit(0);
+        }
+        if (!f->elements.empty() && g->length > 0 && g->length != f->sites.size())
+        {
+            fprintf(stderr, "Error: number of site labels in sites not equal to current size of dataset.");
+            exit(0);
+        }
+        if (!choice_fixed && no_recombinations_required(g, run_data))
+        {
+            /* Found a path to the MRCA - choose it */
+            choice_fixed = true;
+            //         greedy_choice = f;
+        }
+
+        predecessors.push_back(std::move(f));
+        update_maxam(g);
+    };
+
+    if (g_howverbose > 0)
+    {
+        fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
+        fprintf(print_progress, "Searching possible predecessors:\n");
+    }
+
+    path_run_data.current_step_cost = 0;
+    ac = COAL;
+    coalesce_compatibleandentangled_map(g, path_run_data, store_to_fragment);
+    preds = predecessors.size() - nbdsize;
+    nbdsize = predecessors.size();
+    if (g_howverbose > 0)
+    {
+        fprintf(print_progress, "%-40s %3d\n", "Coalescing entangled: ", preds);
+    }
+
+    if (run_settings.se_cost != -1)
+    {
+        path_run_data.current_step_cost = run_settings.se_cost;
+        ac = SE;
+
+        seqerror_flips(g, path_run_data, store_to_fragment, run_settings);
+        preds = predecessors.size() - nbdsize;
+        nbdsize = predecessors.size();
+        if (g_howverbose > 0)
+        {
+            fprintf(print_progress, "%-40s %3d\n", "Sequencing errors: ", preds);
+        }
+    }
+
+    if (run_settings.rm_cost != -1)
+    {
+        // g_step_cost = run_settings.rm_cost;
+        path_run_data.current_step_cost = run_settings.rm_cost;
+        ac = RM;
+
+        recmut_flips(g, path_run_data, store_to_fragment, run_settings);
+
+        preds = predecessors.size() - nbdsize;
+        nbdsize = predecessors.size();
+        if (g_howverbose > 0)
+        {
+            fprintf(print_progress, "%-40s %3d\n", "Recurrent mutations: ", preds);
+        }
+    }
+
+    /* Try all sensible events with one split */
+    if (run_settings.r_cost != -1)
+    {
+        // g_step_cost = run_settings.r_cost;
+        path_run_data.current_step_cost = run_settings.r_cost;
+        ac = RECOMB1;
+
+        maximal_prefix_coalesces_map(g, start, end, path_run_data, store_to_fragment);
+        preds = predecessors.size() - nbdsize;
+        nbdsize = predecessors.size();
+        if (g_howverbose > 0)
+        {
+            fprintf(print_progress, "%-40s %3d\n", "Prefix recombinations: ", preds);
+        }
+
+        maximal_postfix_coalesces_map(g, start, end, path_run_data, store_to_fragment);
+        preds = predecessors.size() - nbdsize;
+        nbdsize = predecessors.size();
+        if (g_howverbose > 0)
+        {
+            fprintf(print_progress, "%-40s %3d\n", "Postfix recombinations: ", preds);
+        }
+    }
+
+    /* Try all sensible events with two splits */
+    if (run_settings.rr_cost != -1)
+    {
+        // g_step_cost = run_settings.rr_cost;
+        path_run_data.current_step_cost = run_settings.rr_cost;
+        ac = RECOMB2;
+
+        maximal_infix_coalesces_map(g, start, end, path_run_data, store_to_fragment);
+        preds = predecessors.size() - nbdsize;
+        nbdsize = predecessors.size();
+        if (g_howverbose > 0)
+        {
+            fprintf(print_progress, "%-40s %3d\n", "Two recombinations (infix): ", preds);
+        }
+
+        maximal_overlap_coalesces_map(g, start, end, path_run_data, store_to_fragment);
+        preds = predecessors.size() - nbdsize;
+        nbdsize = predecessors.size();
+        if (g_howverbose > 0)
+        {
+            fprintf(print_progress, "%-40s %3d\n", "Two recombinations (overlap): ", preds);
+        }
+    }
+
+    if (g_howverbose > 0)
+    {
+        fprintf(print_progress, "%-40s %3d\n", "Finished constructing predecessors.", predecessors.size());
+        fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
+    }
+
+    free(start);
+    free(end);
+
+    return choice_fixed;
+}
+
 /* Main function of kwarg implementing neighbourhood search.
  */
-double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
+double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void),
                  RunSettings run_settings, RunData &main_path_run_data)
 {
     int nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds;
     bool bad_soln = false;
     double r = 0;
-    const char *names[5];
-    names[0] = "Coalescence";
-    names[1] = "Sequencing error";
-    names[2] = "Recurrent mutation";
-    names[3] = "Single recombination";
-    names[4] = "Double recombination";
     Action ac;
     bool choice_fixed = false;
 
@@ -222,10 +365,10 @@ double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
     /* Repeatedly choose an event back in time, until data set has been
      * explained.
      */
-    if (!ontheflyselection)
-        predecessors.clear();
+    predecessors.clear();
+
     choice_fixed = no_recombinations_required(g, main_path_run_data);
-    if (choice_fixed != 0)
+    if (choice_fixed)
         /* Data set can be explained without recombinations */
         free_genes(g);
 
@@ -234,232 +377,79 @@ double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
 
     while (!choice_fixed)
     {
-        /* Reset statistics of reachable configurations */
-        _maxam = 0;
-        // g = copy_genes(g);
-        greedy_choice.reset(nullptr); // = NULL;
-        nbdsize = 0;
-        preds = 0;
-
-        /* Determine interesting recombination ranges */
-        Index *start = maximumsubsumedprefixs(g);
-        Index *end = maximumsubsumedpostfixs(g);
-
-        // Store current state to a HistoryFragment
-        // run_data takes parameter by copy!
-        auto action = [&](Genes *g, RunData run_data)
-        {
-            auto f = std::make_unique<HistoryFragment>();
-
-            /* Wrap configuration and events leading to it in a HistoryFragment */
-            f->events = run_data.eventlist;
-            f->g = g;
-            f->step_cost = run_data.current_step_cost;
-            f->elements = std::move(run_data.sequence_labels);
-            f->sites = std::move(run_data.site_labels);
-            f->action = ac;
-            if (!f->elements.empty() && g->n != 0 && g->n != f->elements.size())
-            {
-                fprintf(stderr, "Error: number of sequence labels in sequence_labels [%d] not equal to current size of dataset [%d]. Event type: %.1f", f->elements.size(), g->n, run_data.current_step_cost);
-                exit(0);
-            }
-            if (!f->elements.empty() && g->length > 0 && g->length != f->sites.size())
-            {
-                fprintf(stderr, "Error: number of site labels in sites not equal to current size of dataset.");
-                exit(0);
-            }
-            if (!choice_fixed && no_recombinations_required(g, run_data))
-            {
-                /* Found a path to the MRCA - choose it */
-                choice_fixed = true;
-                //         greedy_choice = f;
-            }
-
-            predecessors.push_back(std::move(f));
-            update_maxam(g);
-        };
-
-        /* We have just imploded genes, but we still need to pursue paths
-         * coalescing compatible sequences where neither is subsumed in the
-         * other but where the ancestral material is still entangled.
-         */
-        if (g_howverbose > 0)
-        {
-            fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
-            fprintf(print_progress, "Searching possible predecessors:\n");
-        }
-        // g_step_cost = 0;
-        main_path_run_data.current_step_cost = 0;
-        ac = COAL;
-        preds = 0;
-        nbdsize = 0;
-
-        coalesce_compatibleandentangled_map(g, main_path_run_data, action);
-        preds = predecessors.size() - nbdsize;
-        nbdsize = predecessors.size();
-        if (g_howverbose > 0)
-        {
-            fprintf(print_progress, "%-40s %3d\n", "Coalescing entangled: ", preds);
-        }
-
-        if (run_settings.se_cost != -1)
-        {
-            // g_step_cost = run_settings.se_cost;
-            main_path_run_data.current_step_cost = run_settings.se_cost;
-            ac = SE;
-
-            seqerror_flips(g, main_path_run_data, action, run_settings);
-            preds = predecessors.size() - nbdsize;
-            nbdsize = predecessors.size();
-            if (g_howverbose > 0)
-            {
-                fprintf(print_progress, "%-40s %3d\n", "Sequencing errors: ", preds);
-            }
-        }
-
-        if (run_settings.rm_cost != -1)
-        {
-            // g_step_cost = run_settings.rm_cost;
-            main_path_run_data.current_step_cost = run_settings.rm_cost;
-            ac = RM;
-
-            recmut_flips(g, main_path_run_data, action, run_settings);
-
-            preds = predecessors.size() - nbdsize;
-            nbdsize = predecessors.size();
-            if (g_howverbose > 0)
-            {
-                fprintf(print_progress, "%-40s %3d\n", "Recurrent mutations: ", preds);
-            }
-        }
-
-        /* Try all sensible events with one split */
-        if (run_settings.r_cost != -1)
-        {
-            // g_step_cost = run_settings.r_cost;
-            main_path_run_data.current_step_cost = run_settings.r_cost;
-            ac = RECOMB1;
-
-            maximal_prefix_coalesces_map(g, start, end, main_path_run_data, action);
-            preds = predecessors.size() - nbdsize;
-            nbdsize = predecessors.size();
-            if (g_howverbose > 0)
-            {
-                fprintf(print_progress, "%-40s %3d\n", "Prefix recombinations: ", preds);
-            }
-
-            maximal_postfix_coalesces_map(g, start, end, main_path_run_data, action);
-            preds = predecessors.size() - nbdsize;
-            nbdsize = predecessors.size();
-            if (g_howverbose > 0)
-            {
-                fprintf(print_progress, "%-40s %3d\n", "Postfix recombinations: ", preds);
-            }
-        }
-
-        /* Try all sensible events with two splits */
-        if (run_settings.rr_cost != -1)
-        {
-            // g_step_cost = run_settings.rr_cost;
-            main_path_run_data.current_step_cost = run_settings.rr_cost;
-            ac = RECOMB2;
-
-            maximal_infix_coalesces_map(g, start, end, main_path_run_data, action);
-            preds = predecessors.size() - nbdsize;
-            nbdsize = predecessors.size();
-            if (g_howverbose > 0)
-            {
-                fprintf(print_progress, "%-40s %3d\n", "Two recombinations (infix): ", preds);
-            }
-
-            maximal_overlap_coalesces_map(g, start, end, main_path_run_data, action);
-            preds = predecessors.size() - nbdsize;
-            nbdsize = predecessors.size();
-            if (g_howverbose > 0)
-            {
-                fprintf(print_progress, "%-40s %3d\n", "Two recombinations (overlap): ", preds);
-            }
-        }
-
-        if (g_howverbose > 0)
-        {
-            fprintf(print_progress, "%-40s %3d\n", "Finished constructing predecessors.", predecessors.size());
-            fprintf(print_progress, "-------------------------------------------------------------------------------------\n");
-        }
+        choice_fixed = _generate_predecessors(predecessors, g, print_progress, main_path_run_data, run_settings);
 
         /* Finalise choice and prepare for next iteration */
         free_genes(g);
 
         /* Still looking for path to MRCA */
-        if (!ontheflyselection)
+
+        /* So far we have only enumerated putative predecessors -
+         * score these and choose one.
+         */
+
+        // Set the tracking lists to NULL for the score computation, and destroy the old g_sequence_labels/sites
+        reset();
+
+        nbdsize = predecessors.size(); // number of predecessors we score
+        if (nbdsize == 0)
         {
-            /* So far we have only enumerated putative predecessors -
-             * score these and choose one.
-             */
+            fprintf(stderr, "No neighbours left to search but MRCA not reached.");
+        }
+        total_nbdsize = total_nbdsize + nbdsize;
 
-            // Set the tracking lists to NULL for the score computation, and destroy the old g_sequence_labels/sites
-            reset();
-
-            nbdsize = predecessors.size(); // number of predecessors we score
-            if (nbdsize == 0)
-            {
-                fprintf(stderr, "No neighbours left to search but MRCA not reached.");
-            }
-            total_nbdsize = total_nbdsize + nbdsize;
-
-            // Calculate all the scores and store in an array
-            // Update sc_min and sc_max for renormalising the score later
-            double score_array[nbdsize];
-            if (!choice_fixed)
-            {
-                sc_min = DBL_MAX, sc_max = 0;
-                int i = 0;
-                for (auto &f : predecessors)
-                {
-                    RunData scoring_data(true); // Empty RunData that won't track anything
-                    // output_genes(f->g, stderr, "\nGenes of f:\n");
-                    reset_beagle_builtins(f->g, scoring_data); // set f to be _greedy_currentstate
-
-                    // Calculate all the scores and update the min and max
-
-                    score_array[i] = scoring_function(f->g, f->step_cost, choice_fixed, run_settings, scoring_data);
-
-                    i++;
-                }
-            }
-
-            // Now consider each predecessor one by one, score, and set as the new choice if the score is lower
+        // Calculate all the scores and store in an array
+        // Update sc_min and sc_max for renormalising the score later
+        double score_array[nbdsize];
+        if (!choice_fixed)
+        {
+            sc_min = DBL_MAX, sc_max = 0;
             int i = 0;
             for (auto &f : predecessors)
             {
-                RunData scoring_data(true);
-                reset_beagle_builtins(f->g, scoring_data); // set _greedy_currentstate to be f->g
+                RunData scoring_data(true); // Empty RunData that won't track anything
+                // output_genes(f->g, stderr, "\nGenes of f:\n");
+                reset_beagle_builtins(f->g, scoring_data); // set f to be _greedy_currentstate
 
-                // g_step_cost = f->recombinations;
-                double printscore = score_renormalise(f->g, score_array[i], f->step_cost, choice_fixed, run_settings, scoring_data);
-                if (print_progress != NULL && g_howverbose == 2)
-                {
-                    fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->step_cost);
-                    output_genes(f->g, print_progress, NULL);
-                    print_int_vector(f->elements, "Sequences: ");
-                    print_int_vector(f->sites, "Sites: ");
-                    fprintf(print_progress, "Predecessor score: %.0f \n\n",
-                            (printscore == -DBL_MAX ? -INFINITY : (printscore == DBL_MAX ? INFINITY : printscore)));
-                    fflush(print_progress);
-                }
-                if (select(printscore))
-                {
-                    // compute score and check if better than that of greedy_choice
-                    /* Set f to be new choice */
-                    greedy_choice = std::move(f);
-                    // output_genes(greedy_choice->g, stderr, "greedy_choice update:\n");
-                }
+                // Calculate all the scores and update the min and max
+
+                score_array[i] = scoring_function(f->g, f->step_cost, choice_fixed, run_settings, scoring_data);
 
                 i++;
             }
-            
-            predecessors.clear();
         }
+
+        // Now consider each predecessor one by one, score, and set as the new choice if the score is lower
+        int i = 0;
+        for (auto &f : predecessors)
+        {
+            RunData scoring_data(true);
+            reset_beagle_builtins(f->g, scoring_data); // set _greedy_currentstate to be f->g
+
+            // g_step_cost = f->recombinations;
+            double printscore = score_renormalise(f->g, score_array[i], f->step_cost, choice_fixed, run_settings, scoring_data);
+            if (print_progress != NULL && g_howverbose == 2)
+            {
+                fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->step_cost);
+                output_genes(f->g, print_progress, NULL);
+                print_int_vector(f->elements, "Sequences: ");
+                print_int_vector(f->sites, "Sites: ");
+                fprintf(print_progress, "Predecessor score: %.0f \n\n",
+                        (printscore == -DBL_MAX ? -INFINITY : (printscore == DBL_MAX ? INFINITY : printscore)));
+                fflush(print_progress);
+            }
+            if (select(printscore))
+            {
+                // compute score and check if better than that of greedy_choice
+                /* Set f to be new choice */
+                greedy_choice = std::move(f);
+                // output_genes(greedy_choice->g, stderr, "greedy_choice update:\n");
+            }
+
+            i++;
+        }
+
+        predecessors.clear();
 
         // greedy_choice is a unique pointer and everything it will be reset so need to copy out elements.
         // output_genes(greedy_choice->g, stderr, "greedy_choice:\n");
@@ -511,8 +501,7 @@ double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
         /* Clean up */
         HistoryFragment *ptr = greedy_choice.release(); // Needed so that it doesn't delete all it's members (which other variables are now pointing to)
         free(ptr);
-        free(start);
-        free(end);
+
         if (choice_fixed)
         {
             free_genes(g);
@@ -591,8 +580,339 @@ double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
     return r;
 }
 
-double mass_run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void), int ontheflyselection,
-                      RunSettings run_settings, RunData &main_path_run_data, int num_samples)
+static void _print_depth_indent(FILE *print_progress, int depth)
 {
+    fprintf(print_progress, (std::string(3 * depth, ' ')).c_str());
+}
 
+std::vector<Result> results{};
+
+static void add_result(RunSettings &run_settings, int seflips, int rmflips, int recombs, int depth)
+{
+    Result result{
+        .seflips = seflips,
+        .rmflips = rmflips,
+        .recombs = recombs,
+        .depth = depth};
+    results.push_back(result);
+
+    if (!g_lookup.empty())
+    {
+        if (seflips + rmflips < g_lookup[recombs])
+        {
+            // If found a better bound r < rec_max for Rmin, update.
+            if (seflips + rmflips == 0)
+            {
+                run_settings.rec_max = recombs;
+            }
+            update_lookup(g_lookup, recombs, seflips + rmflips);
+        }
+    }
+}
+
+static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vector<int> (*take_sample)(std::vector<double>, int),
+                                      RunSettings &run_settings, RunData &path_run_data, int num_samples, int seflips, int rmflips, int recombs, int depth)
+{
+    if (g_howverbose >= 1)
+    {
+        _print_depth_indent(print_progress, depth);
+        fprintf(print_progress, "Recurse with (se, rm, r): (%2d, %2d, %2d) at depth: %2d \n", seflips, rmflips, recombs, depth);
+    }
+
+    // Note we assume that the g passed in belongs to a unique pointer to a HistoryFragment. So we do not free it.
+
+    int nbdsize = 0, total_nbdsize = 0, preds;
+    bool bad_soln = false;
+    double r = 0;
+    Action ac;
+    bool choice_fixed = false;
+
+    // Check if we have got to the end (no more recombinations required)
+    choice_fixed = no_recombinations_required(g, path_run_data);
+    if (choice_fixed)
+    {
+        if (g_howverbose >= 1)
+        {
+            _print_depth_indent(print_progress, depth);
+            fprintf(print_progress, "Found result(1) with (se, rm, r): (%2d, %2d, %2d) at depth: %2d \n", seflips, rmflips, recombs, depth);
+        }
+        add_result(run_settings, seflips, rmflips, recombs, depth);
+        return;
+    }
+
+    // 3. Create nbhd for current state
+    /* Store HistoryFragments of possible predecessors in predecessors */
+    auto predecessors = std::vector<std::unique_ptr<HistoryFragment>>{};
+
+    choice_fixed = _generate_predecessors(predecessors, g, print_progress, path_run_data, run_settings);
+
+    // 4. Score all predecessors
+    nbdsize = predecessors.size(); // number of predecessors we score
+    if (nbdsize == 0)
+    {
+        fprintf(stderr, "No neighbours left to search but MRCA not reached.");
+    }
+    total_nbdsize = total_nbdsize + nbdsize;
+
+    // Calculate all the scores and store in an array
+    // Update sc_min and sc_max for renormalising the score later
+    std::vector<double> score_array(nbdsize);
+    std::vector<double> lb_array(nbdsize);
+    if (!choice_fixed)
+    {
+        sc_min = DBL_MAX, sc_max = 0;
+        int i = 0;
+        for (auto &f : predecessors)
+        {
+            RunData scoring_data(true); // Empty RunData that won't track anything
+            // output_genes(f->g, stderr, "\nGenes of f:\n");
+            reset_beagle_builtins(f->g, scoring_data); // set f to be _greedy_currentstate
+
+            // Calculate all the scores and update the min and max
+
+            int lower_bound; // In worse case this is the hudson-kaplan bound
+            score_array[i] = scoring_function(f->g, f->step_cost, choice_fixed, run_settings, scoring_data, lower_bound);
+            lb_array[i] = lower_bound;
+
+            i++;
+        }
+    }
+
+    // Now consider each predecessor one by one, score, and set as the new choice if the score is lower
+    int i = 0;
+    for (auto &f : predecessors)
+    {
+        RunData scoring_data(true);
+        reset_beagle_builtins(f->g, scoring_data); // set _greedy_currentstate to be f->g
+
+        // g_step_cost = f->recombinations;
+        double printscore = score_renormalise(f->g, score_array[i], f->step_cost, choice_fixed, run_settings, scoring_data);
+        if (print_progress != NULL && g_howverbose == 2)
+        {
+            fprintf(print_progress, "Predecessor %d obtained with event cost %.1f:\n", i + 1, f->step_cost);
+            output_genes(f->g, print_progress, NULL);
+            print_int_vector(f->elements, "Sequences: ");
+            print_int_vector(f->sites, "Sites: ");
+            fprintf(print_progress, "Predecessor score: %.0f \n\n",
+                    (printscore == -DBL_MAX ? -INFINITY : (printscore == DBL_MAX ? INFINITY : printscore)));
+            fflush(print_progress);
+        }
+        score_array[i] = printscore;
+
+        i++;
+    }
+
+    if (!choice_fixed)
+    {
+        // Now take samples
+        auto samples = take_sample(score_array, num_samples);
+
+        for (int j = 0; j < nbdsize; j++)
+        {
+            if (samples[j] > 0)
+            {
+                RunData new_path_data = path_run_data;
+                new_path_data.sequence_labels = predecessors[j]->elements;
+                new_path_data.site_labels = predecessors[j]->sites;
+                new_path_data.current_step_cost = predecessors[j]->step_cost;
+
+                int new_seflips = seflips, new_rmflips = rmflips, new_recombs = recombs;
+                switch (predecessors[j]->action)
+                {
+                case COAL:
+                    break;
+                case SE:
+                    new_seflips += predecessors[j]->step_cost / run_settings.se_cost;
+                    break;
+                case RM:
+                    new_rmflips += predecessors[j]->step_cost / run_settings.rm_cost;
+                    break;
+                case RECOMB1:
+                    new_recombs++;
+                    break;
+                case RECOMB2:
+                    new_recombs += 2;
+                    break;
+                }
+
+                // Can abandon the run if the number of recombinations already exceeds rec_max
+                if (new_recombs > run_settings.rec_max)
+                {
+                    // bad_soln = true;
+                    if (g_howverbose >= 1)
+                    {
+                        _print_depth_indent(print_progress, depth);
+                        fprintf(print_progress, "Abandon run as new_recombs: %3d > rec_max: %3d\n", new_recombs, run_settings.rec_max);
+                    }
+                    continue;
+                }
+
+                // Can also abandon the run if the number of SE+RM when we have r recombinations is greater than what we've
+                // seen in earlier solutions.
+                if (run_settings.rec_max != INT_MAX && !g_lookup.empty())
+                {
+                    // if (new_seflips + new_rmflips >= g_lookup[new_recombs])
+                    // {
+                    //     // bad_soln = true;
+                    //     if (g_howverbose >= 1)
+                    //     {
+                    //         _print_depth_indent(print_progress, depth);
+                    //         fprintf(print_progress, "Abandon run as new_seflips + new_rmflips: %3d + %3d >= g_lookup[new_recombs]: %3d\n", new_seflips, new_rmflips, g_lookup[new_recombs]);
+                    //     }
+                    //     continue;
+                    // }
+
+                    if (new_seflips + new_rmflips + (lb_array[j] / 2) >= g_lookup[new_recombs])
+                    {
+                        // bad_soln = true;
+                        if (g_howverbose >= 1)
+                        {
+                            _print_depth_indent(print_progress, depth);
+                            fprintf(print_progress, "Abandon run as new_seflips + new_rmflips + (lower_bound/2): %3d + %3d + (%3d/2) >= g_lookup[new_recombs]: (%2d, %3d)\n", new_seflips, new_rmflips, lb_array[j], new_recombs, g_lookup[new_recombs]);
+                            _print_depth_indent(print_progress, depth);
+                            fprintf(print_progress, "g_lookup: (0, %2d), (1, %2d), (2, %2d), (3, %2d), (4, %2d), (5, %2d), (6, %2d), (7, %2d)\n",
+                                g_lookup[0], g_lookup[1], g_lookup[2], g_lookup[3], g_lookup[4], g_lookup[5], g_lookup[6], g_lookup[7]);
+                        }
+                        continue;
+                    }
+                }
+
+                _mass_run_kwarg_recursion(predecessors[j]->g, print_progress, take_sample, run_settings, new_path_data, samples[j], new_seflips, new_rmflips, new_recombs, depth + 1);
+            }
+        }
+    }
+    else
+    {
+        // lowest magnitude score is the best option
+        double lowest_score = -DBL_MAX;
+        int lowest_index = -1;
+        for (int i = 0; i < nbdsize; i++)
+        {
+            if (score_array[i] < 0 && score_array[i] > lowest_score)
+            {
+                lowest_score = score_array[i];
+                lowest_index = i;
+            }
+        }
+
+        switch (predecessors[lowest_index]->action)
+        {
+        case COAL:
+            break;
+        case SE:
+            seflips += predecessors[lowest_index]->step_cost / run_settings.se_cost;
+            break;
+        case RM:
+            rmflips += predecessors[lowest_index]->step_cost / run_settings.rm_cost;
+            break;
+        case RECOMB1:
+            recombs++;
+            break;
+        case RECOMB2:
+            recombs += 2;
+            break;
+        }
+
+        if (recombs > run_settings.rec_max)
+        {
+            if (g_howverbose >= 1)
+            {
+                _print_depth_indent(print_progress, depth);
+                fprintf(print_progress, "Abandon run as recombs: %3d > max: %3d\n", recombs, run_settings.rec_max);
+            }
+            return;
+        }
+
+        // Can also abandon the run if the number of SE+RM when we have r recombinations is greater than what we've
+        // seen in earlier solutions.
+        if (run_settings.rec_max != INT_MAX && !g_lookup.empty())
+        {
+            if (seflips + rmflips >= g_lookup[recombs])
+            {
+                // bad_soln = true;
+                if (g_howverbose >= 1)
+                {
+                    _print_depth_indent(print_progress, depth);
+                    fprintf(print_progress, "Abandon run as seflips + rmflips: %3d + %3d >= g_lookup[recombs]: %3d\n", seflips, rmflips, g_lookup[recombs]);
+                }
+                return;
+            }
+        }
+
+        if (g_howverbose >= 1)
+        {
+            _print_depth_indent(print_progress, depth);
+            fprintf(print_progress, "Found result(2) with (se, rm, r): (%2d, %2d, %2d) at depth: %2d \n", seflips, rmflips, recombs, depth + 1);
+        }
+        add_result(run_settings, seflips, rmflips, recombs, depth + 1);
+    }
+}
+
+std::vector<Result> mass_run_kwarg(Genes *g, FILE *print_progress, std::vector<int> (*take_sample)(std::vector<double>, int),
+                                   RunSettings run_settings, RunData &main_path_run_data, int num_samples)
+{
+    // Roughly same result as running kwarg num_samples times. Each time a nbhd is created we will take
+    // many samples from it rather than just 1. We then take a dfs approach
+    results.clear();
+
+#ifdef ENABLE_VERBOSE
+    int v = verbose();
+    set_verbose(0);
+#endif
+
+    // 1. Clean input g
+    if (run_settings.rm_max < INT_MAX)
+    {
+        update_lookup(g_lookup, 0, run_settings.rm_max);
+    }
+
+    /* Create working copy of g */
+    g = copy_genes(g);
+
+    if (g_howverbose >= 1)
+    {
+        fprintf(print_progress, "Input data:\n");
+        if (g_howverbose == 2)
+        {
+            output_genes(g, print_progress, NULL);
+        }
+        fprintf(print_progress, "%d sequences with %d sites\n", g->n, g->length);
+    }
+
+    // Reduce the dataset
+    implode_genes(g, main_path_run_data);
+    if (g_howverbose >= 1)
+    {
+        if (g_howverbose == 2)
+        {
+            output_genes(g, print_progress, NULL);
+        }
+        printf("%d sequences with %d sites after reducing\n", g->n, g->length);
+    }
+    if (!g_lookup.empty())
+    {
+        if (g_lookup[0] == INT_MAX)
+            update_lookup(g_lookup, 0, g->n * g->length);
+    }
+
+    // 2. Start recursion
+    _mass_run_kwarg_recursion(g, print_progress, take_sample, run_settings, main_path_run_data, num_samples, 0, 0, 0, 0);
+
+    free_genes(g);
+
+    // Now can read from results
+
+    if (print_progress != NULL && g_howverbose >= 1)
+    {
+        fprintf(print_progress, "Printing %3d Results from DFS search:\n", results.size());
+        fprintf(print_progress, "%13s %6s %8s %8s %8s %8s %3s %3s %3s %10s %15s\n", "Seed", "Temp", "SE_cost", "RM_cost", "R_cost", "RR_cost", "SE", "RM", "R", "N_states", "Depth");
+    }
+
+    for (Result result : results)
+    {
+        fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d\n",
+                run_settings.run_seed, run_settings.temp, run_settings.se_cost, run_settings.rm_cost, run_settings.r_cost, run_settings.rr_cost, result.seflips, result.rmflips, result.recombs, -1, result.depth);
+    }
+
+    return results;
 }

@@ -199,7 +199,8 @@ double initialise_x2random(double seed)
     return seed;
 #else
     /* Make sure random sequence is the same for every run */
-    //srandom(123);
+    srandom(123);
+    return 123;
 #endif
 }
 
