@@ -6,4 +6,5 @@ beagle
 venv/
 .vscode/
 .vs/
-eng_sample_100_1_temp.fasta
+eng_alignment_cleaned_noref.fasta
+eng_alignment_cleaned.fasta
