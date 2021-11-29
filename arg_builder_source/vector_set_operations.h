@@ -1,0 +1,17 @@
+#ifndef VECTOR_SET_OPERATIONS_H
+#define VECTOR_SET_OPERATIONS_H
+
+#include <vector>
+#include <string>
+#include <map>
+#include <set>
+#include <memory>
+#include <algorithm>
+
+std::vector<int> vector_intersect(const std::vector<int> &u, const std::vector<int> &v);
+int vector_intersect_count(const std::vector<int> &u, const std::vector<int> &v);
+std::vector<int> vector_difference(const std::vector<int> &u, const std::vector<int> &v);
+std::pair<std::vector<int>, std::vector<int>> vector_split(const std::vector<int> &u, const std::vector<int> &v);
+std::vector<int> vector_union(const std::vector<int> &u, const std::vector<int> &v);
+
+#endif
