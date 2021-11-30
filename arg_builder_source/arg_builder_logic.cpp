@@ -63,7 +63,7 @@ void print_arg(const ARG &arg)
         {
             fprintf(print_progress, " %d,", i);
         }
-        fprintf(print_progress,  " back_muts:");
+        fprintf(print_progress, " back_muts:");
         for (int i : edge_ptr->back_mutations)
         {
             fprintf(print_progress, " %d,", i);
@@ -227,46 +227,28 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
 
     auto [removable_rms, required_rms] = vector_split(recurrent_mutations, best_edge->back_mutations);
     auto [removable_back_muts, required_back_muts] = vector_split(back_mutations, best_edge->mutations);
+    auto new_mutations = vector_difference(g.mutations, existing_mutations);
 
     if (removable_rms.size() > 0 || removable_back_muts.size() > 0)
     {
-        // TODO: what about case where splitting is enough on it's own!
-        // Split the edge first
-        auto split_node = std::make_unique<Node>();
-        auto new_node = std::make_unique<Node>();
-        auto new_edge = std::make_unique<Edge>();   // From split_node to new_node
-        auto split_edge = std::make_unique<Edge>(); // From best_node to split_node
+        // Should split, but is splitting enough
+        // 1. Split edge first
+        auto split_node = std::make_unique<Node>(); // Between the top and bottom of best_edge
+        auto split_edge = std::make_unique<Edge>(); // From top to split_node
 
-        // Sort out edge connections
-        new_edge->from = split_node.get();
-        new_edge->to = new_node.get();
         split_edge->from = best_edge->from;
         split_edge->to = best_edge->from = split_node.get();
 
-        // Sort out edge mutations
         split_edge->mutations = vector_difference(best_edge->mutations, removable_back_muts);
         split_edge->back_mutations = vector_difference(best_edge->back_mutations, removable_rms);
         best_edge->mutations = removable_back_muts;
         best_edge->back_mutations = removable_rms;
-        new_edge->mutations = vector_union(required_rms, vector_difference(g.mutations, existing_mutations));
-        new_edge->back_mutations = required_back_muts;
 
-        // Sort of nodes
         split_node->label = "ancestral" + std::to_string(arg.number_of_ancestral_nodes);
         split_node->type = ANCESTOR;
         split_node->predecessor.one = split_edge.get();
-        split_node->mutations = vector_union(required_back_muts, vector_difference(g.mutations, new_edge->mutations));
+        split_node->mutations = vector_difference(vector_union(split_edge->from->mutations, split_edge->mutations), split_edge->back_mutations);
 
-        new_node->label = g.label;
-        new_node->type = SAMPLE;
-        new_node->predecessor.one = new_edge.get();
-        new_node->mutations = g.mutations;
-
-        // Update mutations_to_edges
-        for (int m : new_edge->mutations)
-            arg.mutations_to_edges.insert({m, new_edge.get()});
-        for (int m : new_edge->back_mutations)
-            arg.mutations_to_edges.insert({m, new_edge.get()});
         for (int m : split_edge->mutations)
         {
             arg.mutations_to_edges.insert({m, split_edge.get()});
@@ -278,11 +260,43 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
             remove_edge_from_multimap(arg.mutations_to_edges, m, best_edge);
         }
 
-        arg.edges.push_back(std::move(new_edge));
-        arg.edges.push_back(std::move(split_edge));
-        arg.nodes.push_back(std::move(new_node));
-        arg.nodes.push_back(std::move(split_node));
-        arg.number_of_ancestral_nodes += 1;
+        // Now check if the split node is the node we wish to insert
+        if (split_node->mutations == g.mutations)
+        {
+            // Then relabel split
+            split_node->label = g.label;
+            split_node->type = SAMPLE;
+
+            arg.edges.push_back(std::move(split_edge));
+            arg.nodes.push_back(std::move(split_node));
+        }
+        else
+        {
+            auto new_node = std::make_unique<Node>();
+            auto new_edge = std::make_unique<Edge>(); // From split_node to new_node
+
+            new_edge->from = split_node.get();
+            new_edge->to = new_node.get();
+
+            new_edge->mutations = vector_union(required_rms, vector_difference(g.mutations, existing_mutations));
+            new_edge->back_mutations = required_back_muts;
+
+            new_node->label = g.label;
+            new_node->type = SAMPLE;
+            new_node->predecessor.one = new_edge.get();
+            new_node->mutations = g.mutations;
+
+            for (int m : new_edge->mutations)
+                arg.mutations_to_edges.insert({m, new_edge.get()});
+            for (int m : new_edge->back_mutations)
+                arg.mutations_to_edges.insert({m, new_edge.get()});
+
+            arg.edges.push_back(std::move(new_edge));
+            arg.edges.push_back(std::move(split_edge));
+            arg.nodes.push_back(std::move(new_node));
+            arg.nodes.push_back(std::move(split_node));
+            arg.number_of_ancestral_nodes += 1;
+        }
     }
     else
     {
