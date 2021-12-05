@@ -33,6 +33,21 @@ typedef enum
 
 typedef enum
 {
+    ARGDOT, /* Output ARG as ARG in DOT format */
+    ARGGDL, /* Output ARG as ARG in GDL format */
+    ARGGML  /* Output ARG as ARG in GML format */
+} ARGOutputFormat;
+
+typedef enum
+{
+    LABEL_NONE,     /* Do not label nodes */
+    LABEL_BOTH,     /* Label nodes with both label and sequence */
+    LABEL_SEQUENCE, /* Label nodes only with sequence */
+    LABEL_LABEL     /* Label nodes only with label */
+} ARGOutputLabels;
+
+typedef enum
+{
     UNSET,         /* Node type has not been set yet */
     SAMPLE,        /* Node represents a sampled sequence */
     COALESCENCE,   /* Node represents a coalescence */
@@ -69,12 +84,10 @@ typedef struct _Node
 
         U()
         {
-
         }
 
         ~U()
         {
-
         }
     } predecessor;
 } Node;

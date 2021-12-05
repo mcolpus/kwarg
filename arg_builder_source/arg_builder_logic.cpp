@@ -72,6 +72,290 @@ void print_arg(const ARG &arg)
     }
 }
 
+std::string vector_to_string(const std::vector<int> &v)
+{
+    std::string s = "";
+    bool first = true;
+    for(const int i : v)
+    {
+        if(!first)
+            s += ", ";
+        s += std::to_string(i);
+    }
+
+    return s;
+}
+
+void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
+                ARGOutputFormat format, bool annotate_edges, ARGOutputLabels node_labels)
+{
+    int intervals;
+
+    if (fp == NULL)
+        fp = stdout;
+
+    /* Output prelude */
+    switch (format)
+    {
+    case ARGDOT:
+        fprintf(fp, "digraph ARG {\n  { rank = same;");
+        for (int i = 0; i < genes.genes.size(); i++)
+            fprintf(fp, " %d;", i);
+        fprintf(fp, " }\n");
+        break;
+    case ARGGDL:
+        fprintf(fp, "graph: {\n");
+        break;
+    case ARGGML:
+        fprintf(fp, "graph [\n  directed 1\n");
+        break;
+    }
+
+    bool maiden = false;
+    /* Output nodes and their edges */
+    for (int i = 0; i < arg.nodes.size(); i++)
+    {
+        /* Output node i */
+        maiden = true;
+        switch (format)
+        {
+        case ARGDOT:
+            fprintf(fp, "  %d [label=\"", i);
+            break;
+        case ARGGDL:
+            fprintf(fp, "  node: { title: \"%d\" label: \"", i);
+            break;
+        case ARGGML:
+            fprintf(fp, "  node [\n    id %d\n    label \"", i);
+            break;
+        }
+
+        /* Generate node label */
+        if (arg.nodes[i]->label != "" && (node_labels == LABEL_BOTH || node_labels == LABEL_LABEL))
+        {
+            fprintf(fp, "%s", arg.nodes[i]->label);
+            maiden = false;
+        }
+        if (node_labels == LABEL_BOTH || node_labels == LABEL_SEQUENCE)
+        {
+            if (!maiden)
+                fprintf(fp, "; %s", vector_to_string(arg.nodes[i]->mutations));
+            else
+                fprintf(fp, "%s", vector_to_string(arg.nodes[i]->mutations));
+            maiden = false;
+        }
+        if (maiden)
+        {
+            /* No node label printed */
+            if ((arg.nodes[i].type == ARGRECOMBINATION) && (arg.nodes[i].label != NULL))
+                /* If a recombination node is still unlabeled, label it (label
+                 * should be recombination point) if possible.
+                 */
+                fprintf(fp, "%s\"", arg.nodes[i].label);
+            else
+            {
+                switch (format)
+                {
+                case ARGDOT:
+                    fprintf(fp, "\",shape=point");
+                    break;
+                case ARGGDL:
+                    fprintf(fp, "\" scaling: 0.0");
+                    break;
+                case ARGGML:
+                    fprintf(fp, " \"");
+                    break;
+                }
+            }
+        }
+        else
+            fprintf(fp, "\"");
+            
+        switch (format)
+        {
+        case ARGDOT:
+            fprintf(fp, ",color=");
+            break;
+        case ARGGDL:
+            fprintf(fp, " shape: circle bordercolor: ");
+            break;
+        case ARGGML:
+            fprintf(fp, "\n    graphics [\n      outline \"");
+            break;
+        }
+        switch (arg.nodes[i].type)
+        {
+        case ARGSAMPLE:
+            fprintf(fp, "red");
+            break;
+        case ARGCOALESCENCE:
+            fprintf(fp, "green");
+            break;
+        case ARGRECOMBINATION:
+            fprintf(fp, "blue");
+            break;
+        case ARGANCESTOR:
+            fprintf(fp, "yellow");
+            break;
+        }
+        /* End node description */
+        switch (format)
+        {
+        case ARGDOT:
+            fprintf(fp, "];\n");
+            break;
+        case ARGGDL:
+            if (i < a->g->n)
+                fprintf(fp, " vertical_order: maxlevel");
+            fprintf(fp, " }\n");
+            break;
+        case ARGGML:
+            fprintf(fp,
+                    "\"\n    ]\n    vgj [\n      type \"Oval\"\n      labelPosition \"in\"\n    ]\n  ]\n");
+            break;
+        }
+        /* Output edges out of this node */
+        switch (arg.nodes[i].type)
+        {
+        case ARGSAMPLE:
+        case ARGCOALESCENCE:
+            /* One outgoing edge */
+            switch (format)
+            {
+            case ARGDOT:
+                fprintf(fp, "  %d -> %d", arg.nodes[i].predecessor.one.target, i);
+                break;
+            case ARGGDL:
+                fprintf(fp, "  edge: { sourcename: \"%d\" targetname: \"%d\"",
+                        arg.nodes[i].predecessor.one.target, i);
+                break;
+            case ARGGML:
+                fprintf(fp,
+                        "  edge [\n    linestyle \"solid\"\n    source %d\n    target %d",
+                        arg.nodes[i].predecessor.one.target, i);
+                break;
+            }
+            /* Output edge label */
+            if (annotate_edges && (arg.nodes[i].predecessor.one.mutations != NULL) && (Length(arg.nodes[i].predecessor.one.mutations) > 0))
+            {
+                switch (format)
+                {
+                case ARGDOT:
+                    fprintf(fp, " [label=\"");
+                    break;
+                case ARGGDL:
+                    fprintf(fp, " label: \"");
+                    break;
+                case ARGGML:
+                    fprintf(fp, "\n    label \"");
+                    break;
+                }
+                output_edgelabels(arg.nodes[i].predecessor.one.mutations, a, 1, fp);
+                fprintf(fp, "\"");
+                if (format == ARGDOT)
+                    fprintf(fp, "]");
+            }
+            switch (format)
+            {
+            case ARGDOT:
+                fprintf(fp, ";\n");
+                break;
+            case ARGGDL:
+                fprintf(fp, " }\n");
+                break;
+            case ARGGML:
+                fprintf(fp, "\n  ]\n");
+                break;
+            }
+            break;
+        case ARGRECOMBINATION:
+            /* Two outgoing edges */
+            /* Prefix edge */
+            switch (format)
+            {
+            case ARGDOT:
+                fprintf(fp, "  %d -> %d [label=\"P",
+                        arg.nodes[i].predecessor.two.prefix.target, i);
+                break;
+            case ARGGDL:
+                fprintf(fp,
+                        "  edge: { sourcename: \"%d\" targetname: \"%d\" label: \"P",
+                        arg.nodes[i].predecessor.two.prefix.target, i);
+                break;
+            case ARGGML:
+                fprintf(fp,
+                        "  edge [\n    linestyle \"solid\"\n    source %d\n    target %d\n    label \"P",
+                        arg.nodes[i].predecessor.two.prefix.target, i);
+                break;
+            }
+            if (annotate_edges && (arg.nodes[i].predecessor.two.prefix.mutations != NULL) && (Length(arg.nodes[i].predecessor.two.prefix.mutations) > 0))
+                output_edgelabels(arg.nodes[i].predecessor.two.prefix.mutations, a, 0,
+                                  fp);
+            switch (format)
+            {
+            case ARGDOT:
+                fprintf(fp, "\"]\n");
+                break;
+            case ARGGDL:
+                fprintf(fp, "\" }\n");
+                break;
+            case ARGGML:
+                fprintf(fp, "\"\n  ]\n");
+                break;
+            }
+            /* Suffix edge */
+            switch (format)
+            {
+            case ARGDOT:
+                fprintf(fp, "  %d -> %d [label=\"S",
+                        arg.nodes[i].predecessor.two.suffix.target, i);
+                break;
+            case ARGGDL:
+                fprintf(fp,
+                        "  edge: { sourcename: \"%d\" targetname: \"%d\" label: \"S",
+                        arg.nodes[i].predecessor.two.suffix.target, i);
+                break;
+            case ARGGML:
+                fprintf(fp,
+                        "  edge [\n    linestyle \"solid\"\n    source %d\n    target %d\n    label \"S",
+                        arg.nodes[i].predecessor.two.suffix.target, i);
+                break;
+            }
+            if (annotate_edges && (arg.nodes[i].predecessor.two.suffix.mutations != NULL) && (Length(arg.nodes[i].predecessor.two.suffix.mutations) > 0))
+                output_edgelabels(arg.nodes[i].predecessor.two.suffix.mutations, a, 0,
+                                  fp);
+            switch (format)
+            {
+            case ARGDOT:
+                fprintf(fp, "\"]\n");
+                break;
+            case ARGGDL:
+                fprintf(fp, "\" }\n");
+                break;
+            case ARGGML:
+                fprintf(fp, "\"\n  ]\n");
+                break;
+            }
+            break;
+        case ARGANCESTOR:
+            /* No outgoing edges */
+            break;
+        }
+    }
+
+    /* Output postlude */
+    switch (format)
+    {
+    case ARGDOT:
+    case ARGGDL:
+        fprintf(fp, "}\n");
+        break;
+    case ARGGML:
+        fprintf(fp, "]\n");
+        break;
+    }
+}
+
 void remove_edge_from_multimap(std::multimap<int, Edge *> &map, int mut, Edge *edge)
 {
     auto iterpair = map.equal_range(mut);
@@ -272,6 +556,7 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
         }
         else
         {
+            // Add new node as child of split_node
             auto new_node = std::make_unique<Node>();
             auto new_edge = std::make_unique<Edge>(); // From split_node to new_node
 
@@ -300,6 +585,7 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
     }
     else
     {
+        // Add new_node as child of target of best_edge
         auto new_node = std::make_unique<Node>();
         auto new_edge = std::make_unique<Edge>();
 
