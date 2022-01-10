@@ -141,6 +141,35 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
         break;
     }
 
+    // Output the root node
+    switch (format)
+    {
+    case ARGDOT:
+        fprintf(fp, "  -1 [label=\"-1 root");
+        break;
+    case ARGGDL:
+        fprintf(fp, "  node: { title: \"-1\" label: \"-1 root");
+        break;
+    case ARGGML:
+        fprintf(fp, "  node [\n    id -1\n    label \"-1 root");
+        break;
+    }
+    fprintf(fp, "\"");
+    
+    switch (format)
+        {
+        case ARGDOT:
+            fprintf(fp, ",color=black];\n");
+            break;
+        case ARGGDL:
+            fprintf(fp, " shape: circle bordercolor: black }\n");
+            break;
+        case ARGGML:
+            fprintf(fp, "\n    graphics [\n      outline \"black");
+            fprintf(fp, "\"\n    ]\n    vgj [\n      type \"Oval\"\n      labelPosition \"in\"\n    ]\n  ]\n");
+            break;
+        }
+
     /* Output nodes and their edges */
     for (int i = 0; i < arg.nodes.size(); i++)
     {
