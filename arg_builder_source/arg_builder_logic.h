@@ -100,6 +100,9 @@ typedef struct _ARG
     std::multimap<int, Edge *> mutations_to_edges;
     Node root;
     int number_of_ancestral_nodes = 0;
+    int number_of_back_mutations = 0;
+    int number_of_recurrent_mutations = 0;
+    std::set<int> back_and_recurrent_mutations;
 
     _ARG()
     {
@@ -124,6 +127,6 @@ typedef struct _GENEs
 
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 ARGOutputFormat format, bool annotate_edges, ARGOutputLabels node_labels);
-ARG build_arg(Genes genes, FILE *print_progress, bool print_steps);
+ARG build_arg(Genes genes, FILE *print_progress, int how_verbose);
 
 #endif

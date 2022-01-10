@@ -339,9 +339,9 @@ int main(int argc, char **argv)
             break;
         case 'V':
             how_verbose = std::stoi(optarg);
-            if (errno != 0 || (how_verbose > 2 && how_verbose < 0))
+            if (errno != 0 || (how_verbose > 3 && how_verbose < 0))
             {
-                fprintf(stderr, "Verbosity input should be 0, 1 or 2.\n");
+                fprintf(stderr, "Verbosity input should be between 0 and 3 inclusive.\n");
                 exit(1);
             }
             break;
@@ -493,7 +493,7 @@ int main(int argc, char **argv)
 
 
 
-    auto arg = build_arg(genes, print_progress, how_verbose==2);
+    auto arg = build_arg(genes, print_progress, how_verbose);
 
     /* Output ARG in dot format */
     for (auto dot_file : dot_files)

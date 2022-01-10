@@ -155,7 +155,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
         break;
     }
     fprintf(fp, "\"");
-    
+
     switch (format)
         {
         case ARGDOT:
@@ -582,6 +582,13 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
         arg.edges.push_back(std::move(new_edge));
         arg.nodes.push_back(std::move(new_node));
 
+        // All the existing mutations are now count towards recurrent mutations
+        arg.number_of_recurrent_mutations += existing_mutations.size();
+        for (auto m : existing_mutations)
+        {
+            arg.back_and_recurrent_mutations.insert(m);
+        }
+
         return;
     }
 
@@ -695,9 +702,17 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
         arg.edges.push_back(std::move(new_edge));
         arg.nodes.push_back(std::move(new_node));
     }
+
+    // Either way we add the required rms and back_muts to arg
+    arg.number_of_recurrent_mutations += required_rms.size();
+    arg.number_of_back_mutations += required_back_muts.size();
+    for (auto m : required_rms)
+        arg.back_and_recurrent_mutations.insert(m);
+    for (auto m : required_back_muts)
+        arg.back_and_recurrent_mutations.insert(m);
 }
 
-ARG build_arg(Genes genes, FILE *in_print_progress, bool print_steps = false)
+ARG build_arg(Genes genes, FILE *in_print_progress, int how_verbose)
 {
     print_progress = in_print_progress;
     fprintf(print_progress, "starting build\n");
@@ -707,7 +722,7 @@ ARG build_arg(Genes genes, FILE *in_print_progress, bool print_steps = false)
     {
         add_seq_to_arg_rm_only(arg, g);
         step += 1;
-        if (print_steps)
+        if (how_verbose >= 3)
         {
             std::string filename = "dotty";
             filename += std::to_string(step) + ".dot";
@@ -717,9 +732,14 @@ ARG build_arg(Genes genes, FILE *in_print_progress, bool print_steps = false)
         }
     }
 
-    print_arg(arg);
+    if (how_verbose >= 2)
+        print_arg(arg);
 
     fprintf(print_progress, "ARG built\n");
+    std::vector<int> rare_mutations;
+    rare_mutations.assign(arg.back_and_recurrent_mutations.begin(), arg.back_and_recurrent_mutations.end());
+    fprintf(print_progress, "rare mutations were: %s\n", vector_to_string(rare_mutations).c_str());
+    fprintf(print_progress, "ARG made using %d recurrent mutations and %d back mutations\n", arg.number_of_recurrent_mutations, arg.number_of_back_mutations);
 
     return arg;
 }
