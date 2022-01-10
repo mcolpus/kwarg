@@ -52,7 +52,6 @@ typedef enum
     SAMPLE,        /* Node represents a sampled sequence */
     COALESCENCE,   /* Node represents a coalescence */
     RECOMBINATION, /* Node represents a recombination */
-    ANCESTOR,      /* Node represents an ancestral sequence */
     ROOT           /* Node representing the root */
 } NodeType;
 
@@ -68,8 +67,9 @@ typedef struct _Edge
 
 typedef struct _Node
 {
+    int id; // This is used to identify the node, particularly useful for printing graph
     NodeType type;
-    std::string label;
+    std::string label; // This is a description of the node. Has no effect on logic
     std::vector<int> mutations; // Most sequences have very few mutations, so easier to store as a vector
     union U
     {
@@ -104,6 +104,7 @@ typedef struct _ARG
     _ARG()
     {
         root.type = ROOT;
+        root.id = -1;
         root.mutations.clear();
         root.label = "Root";
         root.predecessor.none = true;
@@ -121,6 +122,8 @@ typedef struct _GENEs
     std::vector<Gene> genes;
 } Genes;
 
-void build_arg(Genes genes, FILE *print_progress);
+void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
+                ARGOutputFormat format, bool annotate_edges, ARGOutputLabels node_labels);
+ARG build_arg(Genes genes, FILE *print_progress, bool print_steps);
 
 #endif

@@ -194,6 +194,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-j[name]", "Output ancestral recombination graph of minimum recombination history in GML format to file name.", 70, -1);
     print_option(f, "-i", "Sequences not having a sequence id in the data file are assigned their index in the data file as id, e.g. the first sequence in the data file would be assigned '1' as id.", 70, -1);
     print_option(f, "-e", "Label edges in ancestral recombination graphs with the sites undergoing mutation along the edge.", 70, -1);
+    print_option(f, "-s", "Label nodes in ancestral recombination graphs with mutations of that node.", 70, -1);
     print_option(f, "-o", "Assume input data is in own format. Default is to first try to parse data in own format, and if that fails to try to parse it in fasta format. Specifying this option, no attempt will be made to try to parse the data in fasta format.", 70, -1);
     print_option(f, "-f", "Assume input data is in fasta format. No attempt will be made to try to parse the data in own format. Note that the -o and the -f options override each other, so only the last one occurring in the command line will have an effect.", 70, -1);
     print_option(f, "-a", "Assume input consists of amino acid (protein) sequences using the one letter amino acid alphabet; anything not in the amino acid one letter alphabet is treated as an unresolved site (default is to assume sequences in binary, i.e. 0/1, format where anything but a 0 or a 1 is considered an unresolved site). If the most recent common ancestor is assumed known (see option -k), the first sequence in the input data is considered to specify the wild type of each site and is not included as part of the sample set.", 70, -1);
@@ -282,12 +283,14 @@ int main(int argc, char **argv)
     char *token;
     int run_reference = -1;
     bool do_label_edges = false;
+    bool do_label_node_mutations = false;
     bool do_generate_ids = false;
 
     int run_seed = 0;
     int num_runs = 0;
     int how_verbose = 0;
     bool label_sequences = false;
+    
 
     int rec_max = 0, rm_max = 0;
 
@@ -295,7 +298,7 @@ int main(int argc, char **argv)
     std::vector<std::string> gml_files = {};
     std::vector<std::string> gdl_files = {};
 
-#define KWARG_OPTIONS "L:S:M:R:C:V:d::g::j::ieofanlQ:Z:X:Y:hH?"
+#define KWARG_OPTIONS "L:S:M:R:C:V:d::g::j::iesofanlQ:Z:X:Y:hH?"
 
     /* Parse command line options */
     while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0)
@@ -420,6 +423,9 @@ int main(int argc, char **argv)
         case 'e':
             do_label_edges = true;
             break;
+        case 's':
+            do_label_node_mutations = true;
+            break;
         case 'o':
             format = GENE_BEAGLE;
             break;
@@ -485,7 +491,42 @@ int main(int argc, char **argv)
 
     fprintf(print_progress, "read input\n");
 
-    build_arg(genes, print_progress);
+
+
+    auto arg = build_arg(genes, print_progress, how_verbose==2);
+
+    /* Output ARG in dot format */
+    for (auto dot_file : dot_files)
+    {
+        fp = fopen(dot_file.c_str(), "w");
+        auto label_format = LABEL_LABEL;
+        if (do_label_node_mutations)
+            label_format = LABEL_BOTH;
+        arg_output(arg, genes, fp, ARGDOT, do_label_edges, label_format);
+        fclose(fp);
+    }
+
+    /* Output GML in dot format */
+    for (auto gml_file : gml_files)
+    {
+        fp = fopen(gml_file.c_str(), "w");
+        auto label_format = LABEL_LABEL;
+        if (do_label_node_mutations)
+            label_format = LABEL_BOTH;
+        arg_output(arg, genes, fp, ARGGML, do_label_edges, label_format);
+        fclose(fp);
+    }
+
+    /* Output GDL in dot format */
+    for (auto gdl_file : gdl_files)
+    {
+        fp = fopen(gdl_file.c_str(), "w");
+        auto label_format = LABEL_LABEL;
+        if (do_label_node_mutations)
+            label_format = LABEL_BOTH;
+        arg_output(arg, genes, fp, ARGGDL, do_label_edges, label_format);
+        fclose(fp);
+    }
 
     return 0;
 }

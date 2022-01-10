@@ -70,9 +70,32 @@ void print_arg(const ARG &arg)
         }
         fprintf(print_progress, "\n");
     }
+
+    fprintf(print_progress, "-----------printing edges from nodes:\n");
+    for (auto &node_ptr : arg.nodes)
+    {
+        if (node_ptr->label != "")
+        {
+            fprintf(print_progress, node_ptr->label.c_str());
+            fprintf(print_progress, ":  ");
+        }
+
+        /* Output edges out of this node */
+        if (node_ptr->type == SAMPLE || node_ptr->type == COALESCENCE)
+        {
+            fprintf(print_progress, "%d -> %d,", node_ptr->predecessor.one->from->id, node_ptr->id);
+        }
+        else if (node_ptr->type == RECOMBINATION)
+        {
+            fprintf(print_progress, "%d -> %d, and %d -> %d", node_ptr->predecessor.two.prefix->from->id, node_ptr->id,
+                    node_ptr->predecessor.two.suffix->from->id, node_ptr->id);
+        }
+
+        fprintf(print_progress, "\n");
+    }
 }
 
-std::string vector_to_string(const std::vector<int> &v)
+std::string vector_to_string(const std::vector<int> &v, bool make_negative = false)
 {
     std::string s = "";
     bool first = true;
@@ -80,7 +103,11 @@ std::string vector_to_string(const std::vector<int> &v)
     {
         if(!first)
             s += ", ";
-        s += std::to_string(i);
+        if (make_negative)
+            s += std::to_string(-i);
+        else
+            s += std::to_string(i);
+        first = false;
     }
 
     return s;
@@ -99,8 +126,11 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
     {
     case ARGDOT:
         fprintf(fp, "digraph ARG {\n  { rank = same;");
-        for (int i = 0; i < genes.genes.size(); i++)
-            fprintf(fp, " %d;", i);
+        for (auto const& n : arg.nodes)
+        {
+            if (n->type == SAMPLE)
+                fprintf(fp, " %d;", n->id);
+        }
         fprintf(fp, " }\n");
         break;
     case ARGGDL:
@@ -111,47 +141,48 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
         break;
     }
 
-    bool maiden = false;
     /* Output nodes and their edges */
     for (int i = 0; i < arg.nodes.size(); i++)
     {
+        int node_id = arg.nodes[i]->id;
+
         /* Output node i */
-        maiden = true;
+        bool label_printed = false;
         switch (format)
         {
         case ARGDOT:
-            fprintf(fp, "  %d [label=\"", i);
+            fprintf(fp, "  %d [label=\"", node_id);
             break;
         case ARGGDL:
-            fprintf(fp, "  node: { title: \"%d\" label: \"", i);
+            fprintf(fp, "  node: { title: \"%d\" label: \"", node_id);
             break;
         case ARGGML:
-            fprintf(fp, "  node [\n    id %d\n    label \"", i);
+            fprintf(fp, "  node [\n    id %d\n    label \"", node_id);
             break;
         }
 
         /* Generate node label */
         if (arg.nodes[i]->label != "" && (node_labels == LABEL_BOTH || node_labels == LABEL_LABEL))
         {
-            fprintf(fp, "%s", arg.nodes[i]->label);
-            maiden = false;
+            fprintf(fp, "%s", arg.nodes[i]->label.c_str());
+            label_printed= true;
         }
         if (node_labels == LABEL_BOTH || node_labels == LABEL_SEQUENCE)
         {
-            if (!maiden)
-                fprintf(fp, "; %s", vector_to_string(arg.nodes[i]->mutations));
+            if (label_printed)
+                fprintf(fp, "; %s", vector_to_string(arg.nodes[i]->mutations).c_str());
             else
-                fprintf(fp, "%s", vector_to_string(arg.nodes[i]->mutations));
-            maiden = false;
+                fprintf(fp, "%s", vector_to_string(arg.nodes[i]->mutations).c_str());
+            label_printed = true;
         }
-        if (maiden)
+        if (!label_printed)
         {
             /* No node label printed */
-            if ((arg.nodes[i].type == ARGRECOMBINATION) && (arg.nodes[i].label != NULL))
+            if ((arg.nodes[i]->type == RECOMBINATION) && (arg.nodes[i]->label != ""))
                 /* If a recombination node is still unlabeled, label it (label
                  * should be recombination point) if possible.
                  */
-                fprintf(fp, "%s\"", arg.nodes[i].label);
+                fprintf(fp, "%s\"", arg.nodes[i]->label.c_str());
             else
             {
                 switch (format)
@@ -170,7 +201,8 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
         }
         else
             fprintf(fp, "\"");
-            
+        
+
         switch (format)
         {
         case ARGDOT:
@@ -183,20 +215,23 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
             fprintf(fp, "\n    graphics [\n      outline \"");
             break;
         }
-        switch (arg.nodes[i].type)
+        switch (arg.nodes[i]->type)
         {
-        case ARGSAMPLE:
+        case SAMPLE:
             fprintf(fp, "red");
             break;
-        case ARGCOALESCENCE:
+        case COALESCENCE:
             fprintf(fp, "green");
             break;
-        case ARGRECOMBINATION:
+        case RECOMBINATION:
             fprintf(fp, "blue");
             break;
-        case ARGANCESTOR:
-            fprintf(fp, "yellow");
+        case ROOT:
+            fprintf(fp, "black");
             break;
+        case UNSET:
+            fprintf(fp, "purple");
+            break;  
         }
         /* End node description */
         switch (format)
@@ -205,7 +240,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
             fprintf(fp, "];\n");
             break;
         case ARGGDL:
-            if (i < a->g->n)
+            if (i < genes.genes.size())
                 fprintf(fp, " vertical_order: maxlevel");
             fprintf(fp, " }\n");
             break;
@@ -214,29 +249,32 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                     "\"\n    ]\n    vgj [\n      type \"Oval\"\n      labelPosition \"in\"\n    ]\n  ]\n");
             break;
         }
+
         /* Output edges out of this node */
-        switch (arg.nodes[i].type)
+        switch (arg.nodes[i]->type)
         {
-        case ARGSAMPLE:
-        case ARGCOALESCENCE:
+        case SAMPLE:
+        case COALESCENCE:
+        {
             /* One outgoing edge */
+            int from_id = arg.nodes[i]->predecessor.one->from->id;
             switch (format)
             {
             case ARGDOT:
-                fprintf(fp, "  %d -> %d", arg.nodes[i].predecessor.one.target, i);
+                fprintf(fp, "  %d -> %d", from_id, node_id);
                 break;
             case ARGGDL:
                 fprintf(fp, "  edge: { sourcename: \"%d\" targetname: \"%d\"",
-                        arg.nodes[i].predecessor.one.target, i);
+                        from_id, node_id);
                 break;
             case ARGGML:
                 fprintf(fp,
                         "  edge [\n    linestyle \"solid\"\n    source %d\n    target %d",
-                        arg.nodes[i].predecessor.one.target, i);
+                        from_id, node_id);
                 break;
             }
             /* Output edge label */
-            if (annotate_edges && (arg.nodes[i].predecessor.one.mutations != NULL) && (Length(arg.nodes[i].predecessor.one.mutations) > 0))
+            if (annotate_edges)
             {
                 switch (format)
                 {
@@ -250,7 +288,9 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                     fprintf(fp, "\n    label \"");
                     break;
                 }
-                output_edgelabels(arg.nodes[i].predecessor.one.mutations, a, 1, fp);
+                auto muts = vector_to_string(arg.nodes[i]->predecessor.one->mutations);
+                auto back_muts = vector_to_string(arg.nodes[i]->predecessor.one->back_mutations, true);
+                fprintf(fp, "%s|%s", muts.c_str(), back_muts.c_str());
                 fprintf(fp, "\"");
                 if (format == ARGDOT)
                     fprintf(fp, "]");
@@ -267,30 +307,38 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 fprintf(fp, "\n  ]\n");
                 break;
             }
+        }
             break;
-        case ARGRECOMBINATION:
+        case RECOMBINATION:
+        {
             /* Two outgoing edges */
             /* Prefix edge */
+            int prefix_id = arg.nodes[i]->predecessor.two.prefix->from->id;
+            int suffix_id = arg.nodes[i]->predecessor.two.suffix->from->id;
+            int crossover_position = arg.nodes[i]->predecessor.two.position;
             switch (format)
             {
             case ARGDOT:
                 fprintf(fp, "  %d -> %d [label=\"P",
-                        arg.nodes[i].predecessor.two.prefix.target, i);
+                        prefix_id, node_id);
                 break;
             case ARGGDL:
                 fprintf(fp,
                         "  edge: { sourcename: \"%d\" targetname: \"%d\" label: \"P",
-                        arg.nodes[i].predecessor.two.prefix.target, i);
+                        prefix_id, node_id);
                 break;
             case ARGGML:
                 fprintf(fp,
                         "  edge [\n    linestyle \"solid\"\n    source %d\n    target %d\n    label \"P",
-                        arg.nodes[i].predecessor.two.prefix.target, i);
+                        prefix_id, node_id);
                 break;
             }
-            if (annotate_edges && (arg.nodes[i].predecessor.two.prefix.mutations != NULL) && (Length(arg.nodes[i].predecessor.two.prefix.mutations) > 0))
-                output_edgelabels(arg.nodes[i].predecessor.two.prefix.mutations, a, 0,
-                                  fp);
+            if (annotate_edges)
+            {
+                auto muts = vector_to_string(arg.nodes[i]->predecessor.two.prefix->mutations);
+                auto back_muts = vector_to_string(arg.nodes[i]->predecessor.two.prefix->back_mutations, true);
+                fprintf(fp, " %s|%s", muts, back_muts);
+            }
             switch (format)
             {
             case ARGDOT:
@@ -308,22 +356,25 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
             {
             case ARGDOT:
                 fprintf(fp, "  %d -> %d [label=\"S",
-                        arg.nodes[i].predecessor.two.suffix.target, i);
+                        suffix_id, node_id);
                 break;
             case ARGGDL:
                 fprintf(fp,
                         "  edge: { sourcename: \"%d\" targetname: \"%d\" label: \"S",
-                        arg.nodes[i].predecessor.two.suffix.target, i);
+                        suffix_id, node_id);
                 break;
             case ARGGML:
                 fprintf(fp,
                         "  edge [\n    linestyle \"solid\"\n    source %d\n    target %d\n    label \"S",
-                        arg.nodes[i].predecessor.two.suffix.target, i);
+                        suffix_id, node_id);
                 break;
             }
-            if (annotate_edges && (arg.nodes[i].predecessor.two.suffix.mutations != NULL) && (Length(arg.nodes[i].predecessor.two.suffix.mutations) > 0))
-                output_edgelabels(arg.nodes[i].predecessor.two.suffix.mutations, a, 0,
-                                  fp);
+            if (annotate_edges)
+            {
+                auto muts = vector_to_string(arg.nodes[i]->predecessor.two.suffix->mutations);
+                auto back_muts = vector_to_string(arg.nodes[i]->predecessor.two.suffix->back_mutations, true);
+                fprintf(fp, " %s|%s", muts, back_muts);
+            }
             switch (format)
             {
             case ARGDOT:
@@ -336,8 +387,9 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 fprintf(fp, "\"\n  ]\n");
                 break;
             }
+        }
             break;
-        case ARGANCESTOR:
+        case ROOT:
             /* No outgoing edges */
             break;
         }
@@ -380,14 +432,14 @@ void add_seq_to_arg_rm_only_all_samples(ARG &arg, const Gene &g)
     for (int mut : g.mutations)
     {
         auto range = arg.mutations_to_edges.equal_range(mut);
-        bool containeded = false;
+        bool contained = false;
         for (auto i = range.first; i != range.second; ++i)
         {
             related_nodes.insert(i->second->to);
-            containeded = true;
+            contained = true;
         }
 
-        if (containeded)
+        if (contained)
             existing_mutations.push_back(mut); // These should be accounted for or else RM
     }
 
@@ -443,14 +495,14 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
     for (int mut : g.mutations)
     {
         auto range = arg.mutations_to_edges.equal_range(mut);
-        bool containeded = false;
+        bool contained = false;
         for (auto i = range.first; i != range.second; ++i)
         {
             related_edges.insert(i->second);
-            containeded = true;
+            contained = true;
         }
 
-        if (containeded)
+        if (contained)
             existing_mutations.push_back(mut); // These should be accounted for or else RM
     }
 
@@ -483,6 +535,7 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
         auto new_node = std::make_unique<Node>();
         auto new_edge = std::make_unique<Edge>();
 
+        new_node->id = arg.nodes.size();
         new_node->label = g.label;
         new_node->mutations = g.mutations;
         new_node->type = SAMPLE;
@@ -515,7 +568,7 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
 
     if (removable_rms.size() > 0 || removable_back_muts.size() > 0)
     {
-        // Should split, but is splitting enough
+        // Should split, but is splitting enough?
         // 1. Split edge first
         auto split_node = std::make_unique<Node>(); // Between the top and bottom of best_edge
         auto split_edge = std::make_unique<Edge>(); // From top to split_node
@@ -528,8 +581,9 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
         best_edge->mutations = removable_back_muts;
         best_edge->back_mutations = removable_rms;
 
+        split_node->id = arg.nodes.size();
         split_node->label = "ancestral" + std::to_string(arg.number_of_ancestral_nodes);
-        split_node->type = ANCESTOR;
+        split_node->type = COALESCENCE;
         split_node->predecessor.one = split_edge.get();
         split_node->mutations = vector_difference(vector_union(split_edge->from->mutations, split_edge->mutations), split_edge->back_mutations);
 
@@ -566,6 +620,7 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
             new_edge->mutations = vector_union(required_rms, vector_difference(g.mutations, existing_mutations));
             new_edge->back_mutations = required_back_muts;
 
+            new_node->id = arg.nodes.size() + 1; // split_node has id before
             new_node->label = g.label;
             new_node->type = SAMPLE;
             new_node->predecessor.one = new_edge.get();
@@ -589,6 +644,7 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
         auto new_node = std::make_unique<Node>();
         auto new_edge = std::make_unique<Edge>();
 
+        new_node->id = arg.nodes.size();
         new_node->label = g.label;
         new_node->mutations = g.mutations;
         new_node->type = SAMPLE;
@@ -612,18 +668,29 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
     }
 }
 
-void build_arg(Genes genes, FILE *in_print_progress)
+ARG build_arg(Genes genes, FILE *in_print_progress, bool print_steps = false)
 {
     print_progress = in_print_progress;
     fprintf(print_progress, "starting build\n");
     ARG arg;
-
+    int step = 0;
     for (Gene &g : genes.genes)
     {
         add_seq_to_arg_rm_only(arg, g);
+        step += 1;
+        if (print_steps)
+        {
+            std::string filename = "dotty";
+            filename += std::to_string(step) + ".dot";
+            auto fp = fopen(filename.c_str(), "w");
+            arg_output(arg, genes, fp, ARGDOT, true, LABEL_BOTH);
+            fclose(fp);
+        }
     }
 
     print_arg(arg);
 
     fprintf(print_progress, "ARG built\n");
+
+    return arg;
 }
