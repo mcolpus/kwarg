@@ -538,6 +538,7 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
     // TODO: currently inserts via greedy alg to minimize RM's
 
     int best_score = existing_mutations.size(); // This is by just attaching to root
+    fprintf(print_progress, " gene %s \n has %d related edges\n", g.label.c_str(), related_edges.size());
     Edge *best_edge = nullptr;
     for (Edge *edge : related_edges)
     {
@@ -712,6 +713,229 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
         arg.back_and_recurrent_mutations.insert(m);
 }
 
+
+void replace_cost_if_better(std::map<int, std::tuple<Edge *, int, int>> &costs, int pos, Edge *edge, int rms, int bms)
+{
+    // add entry to prefix_costs
+    auto search = costs.find(pos);
+    if (search != costs.end())
+    {
+        std::tuple<Edge *, int, int> current_value = search->second;
+        //TODO: improve costs 
+        int current_cost = std::get<1>(current_value) + std::get<2>(current_value); 
+        if (rms + bms < current_cost)
+            costs.insert_or_assign(pos, std::make_tuple(edge, rms, bms));
+    }
+    else
+    {
+        costs.insert({pos, std::make_tuple(edge, rms, bms)});
+    }
+}
+
+void find_recomb_locations(ARG &arg, const Gene &g)
+{
+    /**
+     * This function will return a list of pairs of edges and associated metrics.
+     * Each item in list represents a potential recombination join location.
+     * Only considers single cross-over recombination. 
+     */
+
+    // Build up set of edges referenced by g's mutations
+    std::set<Edge *> related_edges;
+
+    std::vector<int> existing_mutations;
+    for (int mut : g.mutations)
+    {
+        auto range = arg.mutations_to_edges.equal_range(mut);
+        bool contained = false;
+        for (auto i = range.first; i != range.second; ++i)
+        {
+            related_edges.insert(i->second);
+            contained = true;
+        }
+
+        if (contained)
+            existing_mutations.push_back(mut); // These should be accounted for or else RM
+    }
+
+    /**
+     * For each edge we want to calculate the cost of using it as a prefix or suffix.
+     * position 0 refers to just before site 0, 1 just before 1 etc.
+     * We don't bother considering the position after the end.
+     * 
+     * prefix_costs is a map from cross-over position to a (edge, rms, bms) pair.
+     * suffix_costs will be similar and even have the same keys.
+     */
+    std::map<int, std::tuple<Edge *, int, int>> prefix_costs;
+    std::map<int, std::tuple<Edge *, int, int>> suffix_costs;
+
+    for (Edge *edge : related_edges)
+    {
+        // First find needed mutations relative to target node of edge
+        std::vector<int> recurrent_mutations = vector_difference(existing_mutations, edge->to->mutations); // TODO: a symmetric difference is going on
+        std::vector<int> back_mutations = vector_difference(edge->to->mutations, existing_mutations);
+
+        // Now consider if some can be removed by splitting edge
+        auto req_recurrent_mutations = vector_difference(recurrent_mutations, edge->back_mutations);
+        auto req_back_mutations = vector_difference(back_mutations, edge->mutations);
+
+        int i = 0;
+        int j = 0;
+        int pos = 0;
+        int rms = req_recurrent_mutations.size();
+        int bms = req_back_mutations.size();
+
+        // set 0 suffix cost and prefix cost
+        replace_cost_if_better(suffix_costs, 0, edge, rms, bms);
+
+        while(i < rms && j < bms)
+        {
+            bool inc_i;
+            if (req_recurrent_mutations[i] <= req_back_mutations[j])
+            {
+                pos = req_recurrent_mutations[i];
+                inc_i = true;
+            }
+            else
+            {
+                pos = req_back_mutations[j];
+                inc_i = false;
+            }
+
+            // update prefix and suffix costs
+            replace_cost_if_better(prefix_costs, pos, edge, i, j);
+            replace_cost_if_better(suffix_costs, pos, edge, rms - i, bms - j);
+
+            if (inc_i)
+                i += 1;
+            else
+                j += 1;
+        }
+
+        while (i < rms)
+        {
+            // So j must equal bms
+            pos = req_recurrent_mutations[i];
+
+            // update prefix and suffix costs
+            replace_cost_if_better(prefix_costs, pos, edge, i, bms);
+            replace_cost_if_better(suffix_costs, pos, edge, rms - i, 0);
+
+            i += 1;
+        }
+        while (j < bms)
+        {
+            // So j must equal bms
+            pos = req_back_mutations[j];
+
+            // update prefix and suffix costs
+            replace_cost_if_better(prefix_costs, pos, edge, rms, j);
+            replace_cost_if_better(suffix_costs, pos, edge, 0, bms - j);
+
+            j += 1;
+        }
+
+        replace_cost_if_better(suffix_costs, pos+1, edge, 0, 0);
+    }
+
+    // Now we can go through the costs (which should be sorted by key)
+    // First turn maps into vectors so that we can iterate through both nicely
+    std::vector<std::tuple<int, Edge *, int, int>> prefix_costs_vec;
+    std::vector<std::tuple<int, Edge *, int, int>> suffix_costs_vec;
+    for (const auto& [site, value] : prefix_costs)
+    {
+        auto [edge, rms, bms] = value;
+        prefix_costs_vec.push_back(std::make_tuple(site, edge, rms, bms));
+    }
+    for (const auto& [site, value] : suffix_costs)
+    {
+        auto [edge, rms, bms] = value;
+        suffix_costs_vec.push_back(std::make_tuple(site, edge, rms, bms));
+    }
+
+    // Now go through backwards to create optimal prefix costs, and forwards for optimal suffix costs
+    std::vector<std::tuple<int, Edge *, int, int>> optimal_prefix_costs;
+    std::vector<std::tuple<int, Edge *, int, int>> optimal_suffix_costs;
+    int best_cost = -1;
+    for (int i = prefix_costs_vec.size() - 1; i >= 0; i--)
+    {
+        auto [site, edge, rms, bms] = prefix_costs_vec[i];
+        int cost = rms + bms;
+        if (cost < best_cost || best_cost < 0)
+        {
+            optimal_prefix_costs.push_back(prefix_costs_vec[i]);
+            best_cost = cost;
+        }
+    }
+    std::reverse(optimal_prefix_costs.begin(), optimal_prefix_costs.end());
+    best_cost = -1;
+    for (int i = 0; i < suffix_costs_vec.size(); i++)
+    {
+        auto [site, edge, rms, bms] = suffix_costs_vec[i];
+        int cost = rms + bms;
+        if (cost < best_cost || best_cost < 0)
+        {
+            optimal_suffix_costs.push_back(suffix_costs_vec[i]);
+            best_cost = cost;
+        }
+    }
+
+    if (optimal_prefix_costs.size() == 0 or optimal_suffix_costs.size() == 0)
+    {
+        fprintf(print_progress, "Error, size of costs is zero!\n");
+        return;
+    }
+
+
+    int p_index = 0, s_index = 0;
+    auto [p_site, p_edge, p_rms, p_bms] = optimal_prefix_costs[p_index];
+    auto [s_site, s_edge, s_rms, s_bms] = optimal_suffix_costs[s_index];
+
+    // Note that optimal_suffix_costs[0] will always start at site 0
+    int best_pos = 0;
+    best_cost = s_rms + s_bms;
+    Edge *best_prefix = nullptr;
+    Edge *best_suffix = s_edge;
+
+    while(p_index < optimal_prefix_costs.size())
+    {
+        // Now need to find the highest s_index such that
+        while (s_index < optimal_suffix_costs.size() - 1)
+        {
+            int next_site = std::get<0>(optimal_suffix_costs[s_index + 1]);
+            if(next_site <= p_site)
+            {
+                s_index += 1;
+                std::tie(s_site, s_edge, s_rms, s_bms) = optimal_suffix_costs[s_index];
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        int current_cost = p_rms + p_bms + s_rms + s_bms;
+        if (current_cost < best_cost)
+        {
+            best_pos = p_site;
+            best_cost = current_cost;
+            best_prefix = p_edge;
+            best_suffix = s_edge;
+        }
+
+        p_index++;
+        std::tie(p_site, p_edge, p_rms, p_bms) = optimal_prefix_costs[p_index];
+    }
+
+    if (best_prefix == nullptr)
+        fprintf(print_progress, "Best recomb (cost: %d) all from %s\n", best_cost, best_suffix->to->label.c_str());
+    else
+        fprintf(print_progress, "Best recomb is at pos: %d, cost: %d, prefix: %s, suffix: %s\n", best_pos, best_cost, best_prefix->to->label.c_str(), best_suffix->to->label.c_str());
+}
+
+
+
+
 ARG build_arg(Genes genes, FILE *in_print_progress, int how_verbose)
 {
     print_progress = in_print_progress;
@@ -720,6 +944,7 @@ ARG build_arg(Genes genes, FILE *in_print_progress, int how_verbose)
     int step = 0;
     for (Gene &g : genes.genes)
     {
+        find_recomb_locations(arg, g);
         add_seq_to_arg_rm_only(arg, g);
         step += 1;
         if (how_verbose >= 3)
