@@ -15,5 +15,6 @@ std::pair<std::vector<int>, std::vector<int>> vector_split(const std::vector<int
 std::vector<int> vector_union(const std::vector<int> &u, const std::vector<int> &v);
 std::vector<int> vector_values_below(const std::vector<int> &v, const int threshold);
 std::vector<int> vector_values_above(const std::vector<int> &v, const int threshold);
+std::string vector_to_string(const std::vector<int> &v, bool make_negative = false);
 
 #endif

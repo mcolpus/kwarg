@@ -18,6 +18,9 @@
 #include "vector_set_operations.h"
 
 FILE *print_progress;
+float cost_recurrent_mutation = 1.0;
+float cost_back_mutation = 1.0;
+float cost_recombination = 1.0;
 
 void print_gene(const Gene &g)
 {
@@ -95,27 +98,11 @@ void print_arg(const ARG &arg)
     }
 }
 
-std::string vector_to_string(const std::vector<int> &v, bool make_negative = false)
-{
-    std::string s = "";
-    bool first = true;
-    for (const int i : v)
-    {
-        if (!first)
-            s += ", ";
-        if (make_negative)
-            s += std::to_string(-i);
-        else
-            s += std::to_string(i);
-        first = false;
-    }
-
-    return s;
-}
-
 float get_cost(const int rms, const int bms, const int rcs)
 {
-    return static_cast<float>(rms + bms + rcs);
+    return static_cast<float>(rms) * cost_recurrent_mutation + 
+           static_cast<float>(bms) * cost_back_mutation + 
+           static_cast<float>(rcs) * cost_recombination;
 }
 
 float get_cost(const int rms, const int bms)
@@ -135,13 +122,14 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
     switch (format)
     {
     case ARGDOT:
-        fprintf(fp, "digraph ARG {\n  { rank = same;");
-        for (auto const &n : arg.nodes)
-        {
-            if (n->type == SAMPLE)
-                fprintf(fp, " %d;", n->id);
-        }
-        fprintf(fp, " }\n");
+        fprintf(fp, "digraph ARG {\n");
+        // fprintf(fp, "  { rank = same;");
+        // for (auto const &n : arg.nodes)
+        // {
+        //     if (n->type == SAMPLE)
+        //         fprintf(fp, " %d;", n->id);
+        // }
+        // fprintf(fp, " }\n");
         break;
     case ARGGDL:
         fprintf(fp, "graph: {\n");
@@ -371,12 +359,6 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                         prefix_id, node_id);
                 break;
             }
-            if (annotate_edges)
-            {
-                auto muts = vector_to_string(arg.nodes[i]->predecessor.two.prefix->mutations);
-                auto back_muts = vector_to_string(arg.nodes[i]->predecessor.two.prefix->back_mutations, true);
-                fprintf(fp, " %s|%s", muts.c_str(), back_muts.c_str());
-            }
             switch (format)
             {
             case ARGDOT:
@@ -406,12 +388,6 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                         "  edge [\n    linestyle \"solid\"\n    source %d\n    target %d\n    label \"S",
                         suffix_id, node_id);
                 break;
-            }
-            if (annotate_edges)
-            {
-                auto muts = vector_to_string(arg.nodes[i]->predecessor.two.suffix->mutations);
-                auto back_muts = vector_to_string(arg.nodes[i]->predecessor.two.suffix->back_mutations, true);
-                fprintf(fp, " %s|%s", muts.c_str(), back_muts.c_str());
             }
             switch (format)
             {
@@ -835,7 +811,6 @@ Node *recombine_nodes(ARG &arg, const int pos, Node *prefix, Node *suffix)
     return return_value;
 }
 
-
 std::tuple<Edge *, int, int> find_best_single_parent_location(ARG &arg, const Gene &g, const std::set<Edge *> &related_edges, const std::vector<int> &existing_mutations)
 {
     // TODO: currently inserts via greedy alg to minimize RM's
@@ -915,7 +890,7 @@ void replace_cost_if_better(std::map<int, std::tuple<Edge *, int, int>> &costs, 
     auto search = costs.find(pos);
     if (search != costs.end())
     {
-        auto [edge , current_rms, current_bms] = search->second;
+        auto [edge, current_rms, current_bms] = search->second;
 
         if (get_cost(rms, bms) < get_cost(current_rms, current_bms))
             costs.insert_or_assign(pos, std::make_tuple(edge, rms, bms));
