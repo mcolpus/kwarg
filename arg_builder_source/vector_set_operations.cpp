@@ -98,7 +98,7 @@ std::vector<int> vector_difference(const std::vector<int> &u, const std::vector<
     return std::move(difference);
 }
 
-/* Returns pair with (u intersect v, u\v and ) */
+/* Returns pair with (u intersect v, u\\v) */
 std::pair<std::vector<int>, std::vector<int>> vector_split(const std::vector<int> &u, const std::vector<int> &v)
 {
     int N = u.size();
@@ -172,4 +172,30 @@ std::vector<int> vector_union(const std::vector<int> &u, const std::vector<int> 
     }
 
     return std::move(v_union);
+}
+
+/* Will return vector containing all element of v which are < threshold */
+std::vector<int> vector_values_below(const std::vector<int> &v, const int threshold)
+{
+    std::vector<int> u;
+    for (int a : v)
+    {
+        if (a >= threshold)
+            break;
+        u.push_back(a);
+    }
+    return std::move(u);
+}
+
+/* Will return vector containing all element of v which are >= threshold */
+std::vector<int> vector_values_above(const std::vector<int> &v, const int threshold)
+{
+    std::vector<int> u;
+    for (int a : v)
+    {
+        if (a < threshold)
+            continue;
+        u.push_back(a);
+    }
+    return std::move(u);
 }

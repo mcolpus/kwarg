@@ -99,9 +99,9 @@ std::string vector_to_string(const std::vector<int> &v, bool make_negative = fal
 {
     std::string s = "";
     bool first = true;
-    for(const int i : v)
+    for (const int i : v)
     {
-        if(!first)
+        if (!first)
             s += ", ";
         if (make_negative)
             s += std::to_string(-i);
@@ -111,6 +111,16 @@ std::string vector_to_string(const std::vector<int> &v, bool make_negative = fal
     }
 
     return s;
+}
+
+float get_cost(const int rms, const int bms, const int rcs)
+{
+    return static_cast<float>(rms + bms + rcs);
+}
+
+float get_cost(const int rms, const int bms)
+{
+    return get_cost(rms, bms, 0);
 }
 
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
@@ -126,7 +136,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
     {
     case ARGDOT:
         fprintf(fp, "digraph ARG {\n  { rank = same;");
-        for (auto const& n : arg.nodes)
+        for (auto const &n : arg.nodes)
         {
             if (n->type == SAMPLE)
                 fprintf(fp, " %d;", n->id);
@@ -157,18 +167,18 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
     fprintf(fp, "\"");
 
     switch (format)
-        {
-        case ARGDOT:
-            fprintf(fp, ",color=black];\n");
-            break;
-        case ARGGDL:
-            fprintf(fp, " shape: circle bordercolor: black }\n");
-            break;
-        case ARGGML:
-            fprintf(fp, "\n    graphics [\n      outline \"black");
-            fprintf(fp, "\"\n    ]\n    vgj [\n      type \"Oval\"\n      labelPosition \"in\"\n    ]\n  ]\n");
-            break;
-        }
+    {
+    case ARGDOT:
+        fprintf(fp, ",color=black];\n");
+        break;
+    case ARGGDL:
+        fprintf(fp, " shape: circle bordercolor: black }\n");
+        break;
+    case ARGGML:
+        fprintf(fp, "\n    graphics [\n      outline \"black");
+        fprintf(fp, "\"\n    ]\n    vgj [\n      type \"Oval\"\n      labelPosition \"in\"\n    ]\n  ]\n");
+        break;
+    }
 
     /* Output nodes and their edges */
     for (int i = 0; i < arg.nodes.size(); i++)
@@ -194,7 +204,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
         if (arg.nodes[i]->label != "" && (node_labels == LABEL_BOTH || node_labels == LABEL_LABEL))
         {
             fprintf(fp, "%s", arg.nodes[i]->label.c_str());
-            label_printed= true;
+            label_printed = true;
         }
         if (node_labels == LABEL_BOTH || node_labels == LABEL_SEQUENCE)
         {
@@ -230,7 +240,6 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
         }
         else
             fprintf(fp, "\"");
-        
 
         switch (format)
         {
@@ -260,7 +269,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
             break;
         case UNSET:
             fprintf(fp, "purple");
-            break;  
+            break;
         }
         /* End node description */
         switch (format)
@@ -337,7 +346,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 break;
             }
         }
-            break;
+        break;
         case RECOMBINATION:
         {
             /* Two outgoing edges */
@@ -366,7 +375,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
             {
                 auto muts = vector_to_string(arg.nodes[i]->predecessor.two.prefix->mutations);
                 auto back_muts = vector_to_string(arg.nodes[i]->predecessor.two.prefix->back_mutations, true);
-                fprintf(fp, " %s|%s", muts, back_muts);
+                fprintf(fp, " %s|%s", muts.c_str(), back_muts.c_str());
             }
             switch (format)
             {
@@ -402,7 +411,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
             {
                 auto muts = vector_to_string(arg.nodes[i]->predecessor.two.suffix->mutations);
                 auto back_muts = vector_to_string(arg.nodes[i]->predecessor.two.suffix->back_mutations, true);
-                fprintf(fp, " %s|%s", muts, back_muts);
+                fprintf(fp, " %s|%s", muts.c_str(), back_muts.c_str());
             }
             switch (format)
             {
@@ -417,7 +426,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 break;
             }
         }
-            break;
+        break;
         case ROOT:
             /* No outgoing edges */
             break;
@@ -713,6 +722,192 @@ void add_seq_to_arg_rm_only(ARG &arg, const Gene &g)
         arg.back_and_recurrent_mutations.insert(m);
 }
 
+/* Splits the edge into two and returns the new node. removable mutations are put below, rest are above */
+Node *split_edge(ARG &arg, Edge *edge, std::vector<int> removable_muts, std::vector<int> removable_back_muts)
+{
+    auto split_node = std::make_unique<Node>(); // Between the top and bottom of best_edge
+    auto split_edge = std::make_unique<Edge>(); // From top to split_node
+
+    split_edge->from = edge->from;
+    split_edge->to = edge->from = split_node.get();
+
+    split_edge->mutations = vector_difference(edge->mutations, removable_back_muts);
+    split_edge->back_mutations = vector_difference(edge->back_mutations, removable_muts);
+    edge->mutations = removable_back_muts;
+    edge->back_mutations = removable_muts;
+
+    split_node->id = arg.nodes.size();
+    split_node->label = "ancestral" + std::to_string(arg.number_of_ancestral_nodes);
+    split_node->type = COALESCENCE;
+    split_node->predecessor.one = split_edge.get();
+    split_node->mutations = vector_difference(vector_union(split_edge->from->mutations, split_edge->mutations), split_edge->back_mutations);
+
+    for (int m : split_edge->mutations)
+    {
+        arg.mutations_to_edges.insert({m, split_edge.get()});
+        remove_edge_from_multimap(arg.mutations_to_edges, m, edge);
+    }
+    for (int m : split_edge->back_mutations)
+    {
+        arg.mutations_to_edges.insert({m, split_edge.get()});
+        remove_edge_from_multimap(arg.mutations_to_edges, m, edge);
+    }
+
+    Node *new_node = split_node.get();
+
+    arg.edges.push_back(std::move(split_edge));
+    arg.nodes.push_back(std::move(split_node));
+    arg.number_of_ancestral_nodes += 1;
+
+    return new_node;
+}
+
+Node *insert_seq_as_direct_child(ARG &arg, const Gene &g, Node *parent, const std::vector<int> &existing_mutations)
+{
+    auto new_node = std::make_unique<Node>();
+    auto new_edge = std::make_unique<Edge>();
+
+    new_node->id = arg.nodes.size();
+    new_node->label = g.label;
+    new_node->mutations = g.mutations;
+    new_node->type = SAMPLE;
+    new_node->predecessor.one = new_edge.get();
+
+    new_edge->from = parent;
+    new_edge->to = new_node.get();
+
+    new_edge->mutations = vector_difference(g.mutations, parent->mutations);
+    new_edge->back_mutations = vector_difference(parent->mutations, g.mutations);
+    auto recurrent_muts = vector_intersect(new_edge->mutations, existing_mutations);
+
+    for (int m : new_edge->mutations)
+        arg.mutations_to_edges.insert({m, new_edge.get()});
+    for (int m : new_edge->back_mutations)
+        arg.mutations_to_edges.insert({m, new_edge.get()});
+
+    // All the existing mutations are now count towards recurrent mutations
+    arg.number_of_recurrent_mutations += recurrent_muts.size();
+    arg.number_of_back_mutations += new_edge->back_mutations.size();
+    for (auto m : recurrent_muts)
+    {
+        arg.back_and_recurrent_mutations.insert(m);
+    }
+    for (auto m : new_edge->back_mutations)
+    {
+        arg.back_and_recurrent_mutations.insert(m);
+    }
+
+    Node *return_value = new_node.get();
+
+    arg.edges.push_back(std::move(new_edge));
+    arg.nodes.push_back(std::move(new_node));
+
+    return return_value;
+}
+
+Node *recombine_nodes(ARG &arg, const int pos, Node *prefix, Node *suffix)
+{
+    auto recomb_node = std::make_unique<Node>();
+    auto prefix_edge = std::make_unique<Edge>();
+    auto suffix_edge = std::make_unique<Edge>();
+
+    prefix_edge->from = prefix;
+    prefix_edge->to = recomb_node.get();
+    suffix_edge->from = suffix;
+    suffix_edge->to = recomb_node.get();
+
+    recomb_node->id = arg.nodes.size();
+    recomb_node->label = "recomb" + std::to_string(arg.number_of_ancestral_nodes);
+    recomb_node->mutations = vector_union(vector_values_below(prefix->mutations, pos),
+                                          vector_values_above(suffix->mutations, pos));
+    recomb_node->type = RECOMBINATION;
+    recomb_node->predecessor.two.position = pos;
+    recomb_node->predecessor.two.prefix = prefix_edge.get();
+    recomb_node->predecessor.two.suffix = suffix_edge.get();
+
+    Node *return_value = recomb_node.get();
+
+    arg.nodes.push_back(std::move(recomb_node));
+    arg.edges.push_back(std::move(prefix_edge));
+    arg.edges.push_back(std::move(suffix_edge));
+    arg.number_of_ancestral_nodes += 1;
+
+    return return_value;
+}
+
+
+std::tuple<Edge *, int, int> find_best_single_parent_location(ARG &arg, const Gene &g, const std::set<Edge *> &related_edges, const std::vector<int> &existing_mutations)
+{
+    // TODO: currently inserts via greedy alg to minimize RM's
+
+    // set best score initially to correspond to attaching to root
+    int best_rms = static_cast<float>(existing_mutations.size()), best_bms = 0;
+    float best_score = get_cost(best_rms, best_bms);
+    fprintf(print_progress, " gene %s \n has %d related edges\n", g.label.c_str(), related_edges.size());
+    Edge *best_edge = nullptr;
+    for (Edge *edge : related_edges)
+    {
+        // First find needed mutations relative to target node of edge
+        std::vector<int> recurrent_mutations = vector_difference(existing_mutations, edge->to->mutations); // TODO: a symmetric difference is going on
+        std::vector<int> back_mutations = vector_difference(edge->to->mutations, existing_mutations);
+
+        // Now consider if some can be removed by splitting edge
+        recurrent_mutations = vector_difference(recurrent_mutations, edge->back_mutations);
+        back_mutations = vector_difference(back_mutations, edge->mutations);
+
+        float score = get_cost(recurrent_mutations.size(), back_mutations.size());
+
+        if (score < best_score)
+        {
+            best_score = score;
+            best_rms = recurrent_mutations.size();
+            best_bms = back_mutations.size();
+            best_edge = edge;
+        }
+    }
+
+    return std::make_tuple(best_edge, best_rms, best_bms);
+}
+
+void insert_seq_at_edge(ARG &arg, const Gene &g, Edge *best_edge, const std::vector<int> &existing_mutations)
+{
+    if (best_edge == nullptr)
+    {
+        // Insert at root
+        insert_seq_as_direct_child(arg, g, &arg.root, existing_mutations);
+        return;
+    }
+
+    // Need to check if best required splitting edge
+    std::vector<int> recurrent_mutations = vector_difference(existing_mutations, best_edge->to->mutations);
+    std::vector<int> back_mutations = vector_difference(best_edge->to->mutations, existing_mutations);
+
+    auto [removable_rms, required_rms] = vector_split(recurrent_mutations, best_edge->back_mutations);
+    auto [removable_back_muts, required_back_muts] = vector_split(back_mutations, best_edge->mutations);
+    auto new_mutations = vector_difference(g.mutations, existing_mutations);
+
+    if (removable_rms.size() > 0 || removable_back_muts.size() > 0)
+    {
+        Node *split_node = split_edge(arg, best_edge, removable_rms, removable_back_muts);
+
+        // Now check if the split node is the node we wish to insert
+        if (split_node->mutations == g.mutations)
+        {
+            // Then relabel split
+            split_node->label = g.label;
+            split_node->type = SAMPLE;
+            arg.number_of_ancestral_nodes -= 1;
+        }
+        else
+        {
+            insert_seq_as_direct_child(arg, g, split_node, existing_mutations);
+        }
+    }
+    else
+    {
+        insert_seq_as_direct_child(arg, g, best_edge->to, existing_mutations);
+    }
+}
 
 void replace_cost_if_better(std::map<int, std::tuple<Edge *, int, int>> &costs, int pos, Edge *edge, int rms, int bms)
 {
@@ -720,10 +915,9 @@ void replace_cost_if_better(std::map<int, std::tuple<Edge *, int, int>> &costs, 
     auto search = costs.find(pos);
     if (search != costs.end())
     {
-        std::tuple<Edge *, int, int> current_value = search->second;
-        //TODO: improve costs 
-        int current_cost = std::get<1>(current_value) + std::get<2>(current_value); 
-        if (rms + bms < current_cost)
+        auto [edge , current_rms, current_bms] = search->second;
+
+        if (get_cost(rms, bms) < get_cost(current_rms, current_bms))
             costs.insert_or_assign(pos, std::make_tuple(edge, rms, bms));
     }
     else
@@ -732,37 +926,19 @@ void replace_cost_if_better(std::map<int, std::tuple<Edge *, int, int>> &costs, 
     }
 }
 
-void find_recomb_locations(ARG &arg, const Gene &g)
+std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, const Gene &g, const std::set<Edge *> &related_edges, const std::vector<int> &existing_mutations)
 {
     /**
      * This function will return a list of pairs of edges and associated metrics.
      * Each item in list represents a potential recombination join location.
-     * Only considers single cross-over recombination. 
+     * Only considers single cross-over recombination.
      */
-
-    // Build up set of edges referenced by g's mutations
-    std::set<Edge *> related_edges;
-
-    std::vector<int> existing_mutations;
-    for (int mut : g.mutations)
-    {
-        auto range = arg.mutations_to_edges.equal_range(mut);
-        bool contained = false;
-        for (auto i = range.first; i != range.second; ++i)
-        {
-            related_edges.insert(i->second);
-            contained = true;
-        }
-
-        if (contained)
-            existing_mutations.push_back(mut); // These should be accounted for or else RM
-    }
 
     /**
      * For each edge we want to calculate the cost of using it as a prefix or suffix.
      * position 0 refers to just before site 0, 1 just before 1 etc.
      * We don't bother considering the position after the end.
-     * 
+     *
      * prefix_costs is a map from cross-over position to a (edge, rms, bms) pair.
      * suffix_costs will be similar and even have the same keys.
      */
@@ -788,7 +964,7 @@ void find_recomb_locations(ARG &arg, const Gene &g)
         // set 0 suffix cost and prefix cost
         replace_cost_if_better(suffix_costs, 0, edge, rms, bms);
 
-        while(i < rms && j < bms)
+        while (i < rms && j < bms)
         {
             bool inc_i;
             if (req_recurrent_mutations[i] <= req_back_mutations[j])
@@ -835,19 +1011,19 @@ void find_recomb_locations(ARG &arg, const Gene &g)
             j += 1;
         }
 
-        replace_cost_if_better(suffix_costs, pos+1, edge, 0, 0);
+        replace_cost_if_better(suffix_costs, pos + 1, edge, 0, 0);
     }
 
     // Now we can go through the costs (which should be sorted by key)
     // First turn maps into vectors so that we can iterate through both nicely
     std::vector<std::tuple<int, Edge *, int, int>> prefix_costs_vec;
     std::vector<std::tuple<int, Edge *, int, int>> suffix_costs_vec;
-    for (const auto& [site, value] : prefix_costs)
+    for (const auto &[site, value] : prefix_costs)
     {
         auto [edge, rms, bms] = value;
         prefix_costs_vec.push_back(std::make_tuple(site, edge, rms, bms));
     }
-    for (const auto& [site, value] : suffix_costs)
+    for (const auto &[site, value] : suffix_costs)
     {
         auto [edge, rms, bms] = value;
         suffix_costs_vec.push_back(std::make_tuple(site, edge, rms, bms));
@@ -883,9 +1059,8 @@ void find_recomb_locations(ARG &arg, const Gene &g)
     if (optimal_prefix_costs.size() == 0 or optimal_suffix_costs.size() == 0)
     {
         fprintf(print_progress, "Error, size of costs is zero!\n");
-        return;
+        return std::make_tuple(-1, nullptr, nullptr, 0, 0);
     }
-
 
     int p_index = 0, s_index = 0;
     auto [p_site, p_edge, p_rms, p_bms] = optimal_prefix_costs[p_index];
@@ -894,16 +1069,18 @@ void find_recomb_locations(ARG &arg, const Gene &g)
     // Note that optimal_suffix_costs[0] will always start at site 0
     int best_pos = 0;
     best_cost = s_rms + s_bms;
+    int best_rms = s_rms;
+    int best_bms = s_bms;
     Edge *best_prefix = nullptr;
     Edge *best_suffix = s_edge;
 
-    while(p_index < optimal_prefix_costs.size())
+    while (p_index < optimal_prefix_costs.size())
     {
         // Now need to find the highest s_index such that
         while (s_index < optimal_suffix_costs.size() - 1)
         {
             int next_site = std::get<0>(optimal_suffix_costs[s_index + 1]);
-            if(next_site <= p_site)
+            if (next_site <= p_site)
             {
                 s_index += 1;
                 std::tie(s_site, s_edge, s_rms, s_bms) = optimal_suffix_costs[s_index];
@@ -919,6 +1096,8 @@ void find_recomb_locations(ARG &arg, const Gene &g)
         {
             best_pos = p_site;
             best_cost = current_cost;
+            best_rms = p_rms + s_rms;
+            best_bms = p_bms + s_bms;
             best_prefix = p_edge;
             best_suffix = s_edge;
         }
@@ -928,13 +1107,98 @@ void find_recomb_locations(ARG &arg, const Gene &g)
     }
 
     if (best_prefix == nullptr)
+    {
         fprintf(print_progress, "Best recomb (cost: %d) all from %s\n", best_cost, best_suffix->to->label.c_str());
+        return std::make_tuple(0, nullptr, best_suffix, best_rms, best_bms);
+    }
     else
+    {
         fprintf(print_progress, "Best recomb is at pos: %d, cost: %d, prefix: %s, suffix: %s\n", best_pos, best_cost, best_prefix->to->label.c_str(), best_suffix->to->label.c_str());
+        return std::make_tuple(best_pos, best_prefix, best_suffix, best_rms, best_bms);
+    }
 }
 
+void insert_seq_at_recomb_location(ARG &arg, const Gene &g, const int pos, Edge *prefix, Edge *suffix, const std::vector<int> &existing_mutations)
+{
+    auto p_existing_mutations = vector_values_below(existing_mutations, pos);
+    auto s_existing_mutations = vector_values_above(existing_mutations, pos);
 
+    // Check if we should split prefix
+    std::vector<int> prefix_rms = vector_difference(p_existing_mutations, prefix->to->mutations);
+    std::vector<int> prefix_bms = vector_difference(vector_values_below(prefix->to->mutations, pos),
+                                                    p_existing_mutations);
 
+    auto [prefix_removable_rms, prefix_required_rms] = vector_split(prefix_rms, prefix->back_mutations);
+    auto [prefix_removable_bms, prefix_required_bms] = vector_split(prefix_bms, prefix->mutations);
+
+    Node *prefix_node; // This will either be the target of the prefix edge, or a split node
+    if (prefix_removable_rms.size() > 0 || prefix_removable_bms.size() > 0)
+    {
+        prefix_node = split_edge(arg, prefix, prefix_removable_rms, prefix_removable_bms);
+    }
+    else
+    {
+        prefix_node = prefix->to;
+    }
+
+    // Now the same for suffix
+    std::vector<int> suffix_rms = vector_difference(s_existing_mutations, suffix->to->mutations);
+    std::vector<int> suffix_bms = vector_difference(vector_values_above(suffix->to->mutations, pos),
+                                                    s_existing_mutations);
+
+    auto [suffix_removable_rms, suffix_required_rms] = vector_split(suffix_rms, suffix->back_mutations);
+    auto [suffix_removable_bms, suffix_required_bms] = vector_split(suffix_bms, suffix->mutations);
+
+    Node *suffix_node; // This will either be the target of the suffix edge, or a split node
+    if (suffix_removable_rms.size() > 0 || suffix_removable_bms.size() > 0)
+    {
+        suffix_node = split_edge(arg, suffix, suffix_removable_rms, suffix_removable_bms);
+    }
+    else
+    {
+        suffix_node = suffix->to;
+    }
+
+    Node *recomb_node = recombine_nodes(arg, pos, prefix_node, suffix_node);
+    insert_seq_as_direct_child(arg, g, recomb_node, existing_mutations);
+}
+
+void add_seq_to_arg(ARG &arg, const Gene &g)
+{
+    // Build up set of edges referenced by g's mutations. This is used by the other functions
+    std::set<Edge *> related_edges;
+
+    std::vector<int> existing_mutations;
+    for (int mut : g.mutations)
+    {
+        auto range = arg.mutations_to_edges.equal_range(mut);
+        bool contained = false;
+        for (auto i = range.first; i != range.second; ++i)
+        {
+            related_edges.insert(i->second);
+            contained = true;
+        }
+
+        if (contained)
+            existing_mutations.push_back(mut); // These should be accounted for or else RM
+    }
+
+    auto [edge, rms, bms] = find_best_single_parent_location(arg, g, related_edges, existing_mutations);
+    auto [crossover_pos, prefix_edge, suffix_edge, r_rms, r_bms] = find_best_recomb_location(arg, g, related_edges, existing_mutations);
+    // crossover_pos = -1 means failure, 0 means all one sequence
+
+    float sp_cost = get_cost(rms, bms);
+    float r_cost = get_cost(r_rms, r_bms, 1);
+
+    if (sp_cost <= r_cost || crossover_pos <= 0)
+    {
+        insert_seq_at_edge(arg, g, edge, existing_mutations);
+    }
+    else
+    {
+        insert_seq_at_recomb_location(arg, g, crossover_pos, prefix_edge, suffix_edge, existing_mutations);
+    }
+}
 
 ARG build_arg(Genes genes, FILE *in_print_progress, int how_verbose)
 {
@@ -944,8 +1208,8 @@ ARG build_arg(Genes genes, FILE *in_print_progress, int how_verbose)
     int step = 0;
     for (Gene &g : genes.genes)
     {
-        find_recomb_locations(arg, g);
-        add_seq_to_arg_rm_only(arg, g);
+        add_seq_to_arg(arg, g);
+
         step += 1;
         if (how_verbose >= 3)
         {
@@ -960,11 +1224,14 @@ ARG build_arg(Genes genes, FILE *in_print_progress, int how_verbose)
     if (how_verbose >= 2)
         print_arg(arg);
 
-    fprintf(print_progress, "ARG built\n");
-    std::vector<int> rare_mutations;
-    rare_mutations.assign(arg.back_and_recurrent_mutations.begin(), arg.back_and_recurrent_mutations.end());
-    fprintf(print_progress, "rare mutations were: %s\n", vector_to_string(rare_mutations).c_str());
-    fprintf(print_progress, "ARG made using %d recurrent mutations and %d back mutations\n", arg.number_of_recurrent_mutations, arg.number_of_back_mutations);
+    if (how_verbose >= 1)
+    {
+        fprintf(print_progress, "ARG built\n");
+        std::vector<int> rare_mutations;
+        rare_mutations.assign(arg.back_and_recurrent_mutations.begin(), arg.back_and_recurrent_mutations.end());
+        fprintf(print_progress, "rare mutations were: %s\n", vector_to_string(rare_mutations).c_str());
+        fprintf(print_progress, "ARG made using %d recurrent mutations and %d back mutations\n", arg.number_of_recurrent_mutations, arg.number_of_back_mutations);
+    }
 
     return arg;
 }

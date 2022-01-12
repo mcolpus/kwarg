@@ -13,5 +13,7 @@ int vector_intersect_count(const std::vector<int> &u, const std::vector<int> &v)
 std::vector<int> vector_difference(const std::vector<int> &u, const std::vector<int> &v);
 std::pair<std::vector<int>, std::vector<int>> vector_split(const std::vector<int> &u, const std::vector<int> &v);
 std::vector<int> vector_union(const std::vector<int> &u, const std::vector<int> &v);
+std::vector<int> vector_values_below(const std::vector<int> &v, const int threshold);
+std::vector<int> vector_values_above(const std::vector<int> &v, const int threshold);
 
 #endif
