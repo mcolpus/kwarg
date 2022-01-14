@@ -97,12 +97,17 @@ typedef struct _ARG
     // Unique pointers are used to manage memory
     std::vector<std::unique_ptr<Node>> nodes;
     std::vector<std::unique_ptr<Edge>> edges;
-    std::multimap<int, Edge *> mutations_to_edges;
+    std::multimap<int, Edge *> mutation_to_edges;  // map to all edges which have the mutation
+    std::multimap<int, Edge *> back_mutation_to_edges; // map to all edges which have the back mutation
+    std::multimap<int, Edge *> mutation_to_recombinations; // map to all recombination node out-edges containing the mutation
     Node root;
     int number_of_ancestral_nodes = 0;
     int number_of_back_mutations = 0;
     int number_of_recurrent_mutations = 0;
-    std::set<int> back_and_recurrent_mutations;
+    int number_of_recombinations = 0;
+    std::set<int> recurrent_sites;
+    std::set<int> back_mutation_sites;
+    std::set<Node *> recombination_nodes;
 
     _ARG()
     {
@@ -125,8 +130,10 @@ typedef struct _GENEs
     std::vector<Gene> genes;
 } Genes;
 
+float get_cost(const int rms, const int bms, const int rcs);
+float get_cost(const int rms, const int bms);
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 ARGOutputFormat format, bool annotate_edges, ARGOutputLabels node_labels);
-ARG build_arg(Genes genes, FILE *print_progress, int how_verbose);
+ARG build_arg(Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb);
 
 #endif

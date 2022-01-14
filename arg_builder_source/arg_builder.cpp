@@ -13,6 +13,7 @@
 #include <map>
 #include <array>
 #include <string>
+#include <random>
 
 #include "arg_builder_logic.h"
 
@@ -183,11 +184,9 @@ static void _print_usage(FILE *f, char *name)
     fprintf(f, "Usage: %s [options] < [input]\n", name);
     pretty_print(f, "The program reads data from the input file specified and constructs history by threading a sequence at a time.", 70, 0);
     fprintf(f, "Legal options are:\n");
-    print_option(f, "-L[x]", "Provide an optional label x (should be an integer) to print at the start of each line.", 70, -1);
-    print_option(f, "-S[x]", "Specify cost of a sequencing error (default: x = 0.5).", 70, -1);
     print_option(f, "-M[x]", "Specify cost of a recurrent mutation (default: x = 0.9).", 70, -1);
-    print_option(f, "-R[x]", "Specify cost of a single recombination (default: x = 1.0).", 70, -1);
-    print_option(f, "-C[x]", "Specify cost of two recombinations immediately following each other (default: x = 2.0).", 70, -1);
+    print_option(f, "-B[x]", "Specify cost of a back mutation (default: x = 1.0).", 70, -1);
+    print_option(f, "-R[x]", "Specify cost of a single recombination (default: x = 1.1).", 70, -1);
     print_option(f, "-V[x]", "level of verbosity", 70, -1);
     print_option(f, "-d[name]", "Output ancestral recombination graph of minimum recombination history in dot format to file name.", 70, -1);
     print_option(f, "-g[name]", "Output ancestral recombination graph of minimum recombination history in GDL format to file name.", 70, -1);
@@ -273,7 +272,6 @@ Genes read_input(std::istream &in, bool use_labels)
 
 int main(int argc, char **argv)
 {
-    FILE *print_progress = stdout;
     FILE *fp;
 
     Gene_Format format = GENE_ANY;
@@ -290,15 +288,19 @@ int main(int argc, char **argv)
     int num_runs = 0;
     int how_verbose = 0;
     bool label_sequences = false;
+
+    float cost_rm = 0.9;
+    float cost_bm = 1.0;
+    float cost_recomb = 1.1;
     
 
-    int rec_max = 0, rm_max = 0;
+    int recomb_max = 0, rm_max = 0, bm_max = 0;
 
     std::vector<std::string> dot_files = {};
     std::vector<std::string> gml_files = {};
     std::vector<std::string> gdl_files = {};
 
-#define KWARG_OPTIONS "L:S:M:R:C:V:d::g::j::iesofanlQ:Z:X:Y:hH?"
+#define KWARG_OPTIONS "L:S:M:B:R:V:d::g::j::iesofanlQ:Z:X:Y:hH?"
 
     /* Parse command line options */
     while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0)
@@ -309,39 +311,57 @@ int main(int argc, char **argv)
             run_reference = std::stoi(optarg);
             if (errno != 0 || run_reference < 0)
             {
-                fprintf(stderr, "Reference should be a positive integer.\n");
+                std::cerr << "Reference should be a positive integer.\n";
                 exit(1);
             }
             break;
         case 'S':
             if (optarg != 0)
             {
-                fprintf(stderr, "Not yet implemented.\n");
+                std::cerr << "Not yet implemented.\n";
             }
             break;
         case 'M':
-            if (optarg != 0)
+            cost_rm = std::stof(optarg);
+            if (errno != 0)
             {
-                fprintf(stderr, "Not yet implemented.\n");
+                std::cerr << "Some error occured with cost_rm input.\n";
+                exit(1);
+            }
+            if (cost_rm < 0 && cost_rm != 0)
+            {
+                std::cerr << "negative value (normally -1) means recurrent mutations not allowed.\n";
+            }
+            break;
+        case 'B':
+            cost_bm = std::stof(optarg);
+            if (errno != 0)
+            {
+                std::cerr << "Some error occured with cost_bm input.\n";
+                exit(1);
+            }
+            if (cost_bm < 0 && cost_bm != 0)
+            {
+                std::cerr << "negative value (normally -1) means back mutations not allowed.\n";
             }
             break;
         case 'R':
-            if (optarg != 0)
+            cost_recomb = std::stof(optarg);
+            if (errno != 0)
             {
-                fprintf(stderr, "Not yet implemented.\n");
+                std::cerr << "Some error occured with cost_recomb input.\n";
+                exit(1);
             }
-            break;
-        case 'C':
-            if (optarg != 0)
+            if (cost_recomb < 0 && cost_recomb != 0)
             {
-                fprintf(stderr, "Not yet implemented.\n");
+                std::cerr << "negative value (normally -1) means recombinations not allowed.\n";
             }
             break;
         case 'V':
             how_verbose = std::stoi(optarg);
             if (errno != 0 || (how_verbose > 3 && how_verbose < 0))
             {
-                fprintf(stderr, "Verbosity input should be between 0 and 3 inclusive.\n");
+                std::cerr << "Verbosity input should be between 0 and 3 inclusive.\n";
                 exit(1);
             }
             break;
@@ -354,20 +374,20 @@ int main(int argc, char **argv)
             {
                 if (optarg[0] == '-')
                 {
-                    fprintf(stderr, "Option -d requires an output file.\n");
+                    std::cerr << "Option -d requires an output file.\n";
                     exit(1);
                 }
                 /* Check whether file can be written before initiating computation */
                 if ((fp = fopen(optarg, "w")) == NULL)
                 {
-                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    std::cerr << "Could not open file " << optarg << "for output.\n";
                     exit(1);
                 }
                 fclose(fp);
                 dot_files.push_back(optarg);
             }
             else
-                fprintf(stderr, "Please specify file\n"); // TODO: print to stdout
+                std::cerr << "Please specify file\n";
             break;
         case 'g':
             /* Output ancestral recombination graph of history leading to
@@ -378,20 +398,20 @@ int main(int argc, char **argv)
             {
                 if (optarg[0] == '-')
                 {
-                    fprintf(stderr, "Option -g requires an output file.\n");
+                    std::cerr << "Option -g requires an output file.\n";
                     exit(1);
                 }
                 /* Check whether file can be written before initiating computation */
                 if ((fp = fopen(optarg, "w")) == NULL)
                 {
-                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    std::cerr << "Could not open file " << optarg << "for output.\n";
                     exit(1);
                 }
                 fclose(fp);
                 gdl_files.push_back(optarg);
             }
             else
-                fprintf(stderr, "Please specify file\n"); // TODO: print to stdout
+                std::cerr << "Please specify file\n";
             break;
         case 'j':
             /* Output ancestral recombination graph of history leading to
@@ -402,20 +422,20 @@ int main(int argc, char **argv)
             {
                 if (optarg[0] == '-')
                 {
-                    fprintf(stderr, "Option -j requires an output file.\n");
+                    std::cerr << "Option -j requires an output file.\n";
                     exit(1);
                 }
                 /* Check whether file can be written before initiating computation */
                 if ((fp = fopen(optarg, "w")) == NULL)
                 {
-                    fprintf(stderr, "Could not open file %s for output\n", optarg);
+                    std::cerr << "Could not open file " << optarg << "for output.\n";
                     exit(1);
                 }
                 fclose(fp);
                 gml_files.push_back(optarg);
             }
             else
-                fprintf(stderr, "Please specify file\n"); // TODO: print to stdout
+                std::cerr << "Please specify file\n";
             break;
         case 'i':
             do_generate_ids = true;
@@ -445,7 +465,7 @@ int main(int argc, char **argv)
             num_runs = std::stoi(optarg);
             if (errno != 0 || num_runs < 0)
             {
-                fprintf(stderr, "Number of iterations should be a positive integer.\n");
+                std::cerr << "Number of iterations should be a positive integer.\n";
                 exit(1);
             }
             break;
@@ -453,15 +473,15 @@ int main(int argc, char **argv)
             run_seed = std::stoi(optarg);
             if (errno != 0 || run_seed <= 0)
             {
-                fprintf(stderr, "Seed input should be a positive integer.\n");
+                std::cerr << "Seed input should be a positive integer.\n";
                 exit(1);
             }
             break;
         case 'X':
-            rec_max = std::stoi(optarg);
-            if (errno != 0 || rec_max < 0)
+            recomb_max = std::stoi(optarg);
+            if (errno != 0 || recomb_max < 0)
             {
-                fprintf(stderr, "Upper bound on number of recombinations should be a positive integer.\n");
+                std::cerr << "Upper bound on number of recombinations should be a positive integer.\n";
                 exit(1);
             }
             break;
@@ -469,7 +489,7 @@ int main(int argc, char **argv)
             rm_max = std::stoi(optarg);
             if (errno != 0 || rm_max < 0)
             {
-                fprintf(stderr, "Upper bound on number of recurrent mutations should be a positive integer.\n");
+                std::cerr << "Upper bound on number of recurrent mutations should be a positive integer.\n";
                 exit(1);
             }
             break;
@@ -484,16 +504,48 @@ int main(int argc, char **argv)
         }
     }
 
-    fprintf(print_progress, "parsed inputs\n");
+    if (how_verbose >= 1)
+        std::cout << "parsed inputs\n";
 
     // TODO: Read input from file or stdin
     Genes genes = read_input(std::cin, label_sequences);
 
-    fprintf(print_progress, "read input\n");
+    if (how_verbose >= 1)
+        std::cout << "read input\n";
 
+    ARG arg;
+    if (num_runs == 0)
+    {
+        arg = build_arg(genes, how_verbose, cost_rm, cost_bm, cost_recomb);
+    }
+    else
+    {
+        auto rng = std::default_random_engine(run_seed);
+        std::vector<Gene> g_copy = genes.genes;
+        float best_cost = -1.0;
+        for (int run_count = 0; run_count < num_runs; run_count++)
+        {
+            std::shuffle(g_copy.begin(), g_copy.end(), rng);
+            Genes shuffled_genes;
+            shuffled_genes.genes = g_copy;
+            ARG run_arg = build_arg(shuffled_genes, how_verbose, cost_rm, cost_bm, cost_recomb);
+            std::cout << "ARG made using " << run_arg.number_of_recurrent_mutations << " recurrent mutations, " << run_arg.number_of_back_mutations; 
+            std::cout << " back mutations, and " << run_arg.number_of_recombinations << " recombinations\n";
+            float arg_cost = get_cost(run_arg.number_of_recurrent_mutations, run_arg.number_of_back_mutations, run_arg.number_of_recombinations);
+            std::cout << "Made at cost: " << arg_cost << ".\n";
 
+            if (arg_cost < best_cost || best_cost < 0)
+            {
+                arg = std::move(run_arg);
+                best_cost = arg_cost;
+            }
 
-    auto arg = build_arg(genes, print_progress, how_verbose);
+        }
+
+        std::cout << "Final ARG made using " << arg.number_of_recurrent_mutations << " recurrent mutations, " << arg.number_of_back_mutations; 
+        std::cout << " back mutations, and " << arg.number_of_recombinations << " recombinations\n";
+        std::cout << "Made at cost: " << get_cost(arg.number_of_recurrent_mutations, arg.number_of_back_mutations, arg.number_of_recombinations) << ".\n";
+    }
 
     /* Output ARG in dot format */
     for (auto dot_file : dot_files)

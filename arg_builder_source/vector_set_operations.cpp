@@ -200,20 +200,13 @@ std::vector<int> vector_values_above(const std::vector<int> &v, const int thresh
     return std::move(u);
 }
 
-std::string vector_to_string(const std::vector<int> &v, bool make_negative = false)
+std::vector<int> set_to_vector(const std::set<int> &set)
 {
-    std::string s = "";
-    bool first = true;
-    for (const int i : v)
+    std::vector<int> v;
+    for (auto i : set)
     {
-        if (!first)
-            s += ", ";
-        if (make_negative)
-            s += std::to_string(-i);
-        else
-            s += std::to_string(i);
-        first = false;
+        v.push_back(i);
     }
 
-    return s;
+    return std::move(v);
 }
