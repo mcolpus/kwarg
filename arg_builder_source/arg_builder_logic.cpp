@@ -14,6 +14,7 @@
 #include <memory>
 #include <algorithm>
 #include <iostream>
+#include <random>
 
 #include "arg_builder_logic.h"
 #include "vector_set_operations.h"
@@ -22,6 +23,9 @@ int _how_verbose = 0;
 float _cost_recurrent_mutation = 1.0;
 float _cost_back_mutation = 1.0;
 float _cost_recombination = 1.0;
+int _recomb_max = INT32_MAX;
+int _rm_max = INT32_MAX;
+int _bm_max = INT32_MAX;
 
 std::string vector_to_string(const std::vector<int> &v, bool make_negative = false)
 {
@@ -112,23 +116,37 @@ void print_arg(const ARG &arg)
     }
 }
 
-float get_cost(const int rms, const int bms, const int rcs)
+float get_cost(const int rms, const int bms, const int recombs)
 {
-    if (_cost_recurrent_mutation < 0 && rms > 0)
-        return -1.0;
-    else if (_cost_back_mutation < 0 && bms > 0)
-        return -1.0;
-    else if (_cost_recombination < 0 && rcs > 0)
+    if ((_cost_recurrent_mutation < 0 && rms > 0) || (_cost_back_mutation < 0 && bms > 0) || (_cost_recombination < 0 && recombs > 0))
         return -1.0;
 
     return static_cast<float>(rms) * _cost_recurrent_mutation +
            static_cast<float>(bms) * _cost_back_mutation +
-           static_cast<float>(rcs) * _cost_recombination;
+           static_cast<float>(recombs) * _cost_recombination;
 }
 
 float get_cost(const int rms, const int bms)
 {
     return get_cost(rms, bms, 0);
+}
+
+float get_cost(const ARG &arg)
+{
+    return get_cost(arg.number_of_recurrent_mutations, arg.number_of_back_mutations, arg.number_of_recombinations);
+}
+
+float get_cost_of_addition(const ARG &arg, const int rms, const int bms, const int recombs)
+{
+    if ((arg.number_of_recombinations + recombs > _recomb_max) || (arg.number_of_recurrent_mutations + rms > _rm_max) || (arg.number_of_back_mutations + bms > _bm_max))
+        return -1.0;
+
+    return get_cost(rms, bms, recombs);
+}
+
+float get_cost_of_addition(const ARG &arg, const int rms, const int bms)
+{
+    return get_cost_of_addition(arg, rms, bms, 0);
 }
 
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
@@ -622,7 +640,7 @@ std::tuple<Edge *, int, int> find_best_single_parent_location(ARG &arg, const Ge
     // set best score initially to correspond to attaching to root
     int best_rms = static_cast<float>(existing_mutations.size());
     int best_bms = 0;
-    float best_score = get_cost(best_rms, best_bms); // Could be negative if recurrent mutations aren't allowed
+    float best_score = get_cost_of_addition(arg, best_rms, best_bms); // Could be negative if recurrent mutations aren't allowed
     Edge *best_edge = nullptr;
 
     for (Edge *edge : related_edges)
@@ -635,7 +653,7 @@ std::tuple<Edge *, int, int> find_best_single_parent_location(ARG &arg, const Ge
         recurrent_mutations = vector_difference(recurrent_mutations, edge->back_mutations);
         back_mutations = vector_difference(back_mutations, edge->mutations);
 
-        float score = get_cost(recurrent_mutations.size(), back_mutations.size());
+        float score = get_cost_of_addition(arg, recurrent_mutations.size(), back_mutations.size());
 
         if (score >= 0 && (score < best_score || best_score < 0))
         {
@@ -689,15 +707,20 @@ void insert_seq_at_edge(ARG &arg, const Gene &g, Edge *best_edge, const std::vec
     }
 }
 
-void replace_cost_if_better(std::map<int, std::tuple<Edge *, int, int>> &costs, int pos, Edge *edge, int rms, int bms)
+void replace_cost_if_better(const ARG &arg, std::map<int, std::tuple<Edge *, int, int>> &costs, int pos, Edge *edge, int rms, int bms)
 {
+    // Note that we assume that any values current in costs must have non-negative cost
     // add entry to prefix_costs
     auto search = costs.find(pos);
+    float new_cost = get_cost_of_addition(arg, rms, bms);
+
+    if (new_cost < 0)
+        return;
+
     if (search != costs.end())
     {
-        auto [edge, current_rms, current_bms] = search->second;
-        float new_cost = get_cost(rms, bms);
-        if (new_cost >= 0 && new_cost < get_cost(current_rms, current_bms))
+        auto [current_edge, current_rms, current_bms] = search->second;
+        if (new_cost < get_cost(current_rms, current_bms))
             costs.insert_or_assign(pos, std::make_tuple(edge, rms, bms));
     }
     else
@@ -742,7 +765,7 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
         int bms = req_back_mutations.size();
 
         // set 0 suffix cost and prefix cost
-        replace_cost_if_better(suffix_costs, 0, edge, rms, bms);
+        replace_cost_if_better(arg, suffix_costs, 0, edge, rms, bms);
 
         while (i < rms && j < bms)
         {
@@ -759,8 +782,8 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
             }
 
             // update prefix and suffix costs
-            replace_cost_if_better(prefix_costs, pos, edge, i, j);
-            replace_cost_if_better(suffix_costs, pos, edge, rms - i, bms - j);
+            replace_cost_if_better(arg, prefix_costs, pos, edge, i, j);
+            replace_cost_if_better(arg, suffix_costs, pos, edge, rms - i, bms - j);
 
             if (inc_i)
                 i += 1;
@@ -774,8 +797,8 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
             pos = req_recurrent_mutations[i];
 
             // update prefix and suffix costs
-            replace_cost_if_better(prefix_costs, pos, edge, i, bms);
-            replace_cost_if_better(suffix_costs, pos, edge, rms - i, 0);
+            replace_cost_if_better(arg, prefix_costs, pos, edge, i, bms);
+            replace_cost_if_better(arg, suffix_costs, pos, edge, rms - i, 0);
 
             i += 1;
         }
@@ -785,13 +808,13 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
             pos = req_back_mutations[j];
 
             // update prefix and suffix costs
-            replace_cost_if_better(prefix_costs, pos, edge, rms, j);
-            replace_cost_if_better(suffix_costs, pos, edge, 0, bms - j);
+            replace_cost_if_better(arg, prefix_costs, pos, edge, rms, j);
+            replace_cost_if_better(arg, suffix_costs, pos, edge, 0, bms - j);
 
             j += 1;
         }
 
-        replace_cost_if_better(suffix_costs, pos + 1, edge, 0, 0);
+        replace_cost_if_better(arg, suffix_costs, pos + 1, edge, 0, 0);
     }
 
     // Now we can go through the costs (which should be sorted by key)
@@ -816,7 +839,7 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
     for (int i = prefix_costs_vec.size() - 1; i >= 0; i--)
     {
         auto [site, edge, rms, bms] = prefix_costs_vec[i];
-        float cost = get_cost(rms, bms);
+        float cost = get_cost_of_addition(arg, rms, bms);
         if (cost > 0 && (cost < best_cost || best_cost < 0))
         {
             optimal_prefix_costs.push_back(prefix_costs_vec[i]);
@@ -828,7 +851,7 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
     for (int i = 0; i < suffix_costs_vec.size(); i++)
     {
         auto [site, edge, rms, bms] = suffix_costs_vec[i];
-        float cost = get_cost(rms, bms);
+        float cost = get_cost_of_addition(arg, rms, bms);
         if (cost > 0 && (cost < best_cost || best_cost < 0))
         {
             optimal_suffix_costs.push_back(suffix_costs_vec[i]);
@@ -869,7 +892,7 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
             }
         }
 
-        float current_cost = get_cost(p_rms, p_bms) + get_cost(s_rms, s_bms);
+        float current_cost = get_cost_of_addition(arg, p_rms, p_bms) + get_cost_of_addition(arg, s_rms, s_bms);
         if (current_cost >= 0 && (current_cost < best_cost || best_cost < 0))
         {
             best_pos = p_site;
@@ -954,14 +977,14 @@ void add_seq_to_arg(ARG &arg, const Gene &g)
     auto [relevant_edges, existing_mutations] = find_relevant_edges(arg, g);
 
     auto [edge, rms, bms] = find_best_single_parent_location(arg, g, relevant_edges, existing_mutations);
-    float sp_cost = get_cost(rms, bms);
+    float sp_cost = get_cost_of_addition(arg, rms, bms);
 
     if (_cost_recombination >= 0)
     {
         auto [crossover_pos, prefix_edge, suffix_edge, r_rms, r_bms] = find_best_recomb_location(arg, g, relevant_edges, existing_mutations);
         // crossover_pos = -1 means failure, 0 means all one sequence
 
-        float r_cost = get_cost(r_rms, r_bms, 1);
+        float r_cost = get_cost_of_addition(arg, r_rms, r_bms, 1);
 
         if (crossover_pos > 0 && r_cost >= 0 && (sp_cost < 0 || r_cost < sp_cost))
         {
@@ -977,23 +1000,15 @@ void add_seq_to_arg(ARG &arg, const Gene &g)
     }
     else
     {
-        std::cerr << "The gene: " << g.label << " could not be added to the ARG so will be ignored";
+        std::cerr << "The gene: " << g.label << " could not be added to the ARG so will be ignored.\n";
     }
 }
 
-ARG build_arg(Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb)
+ARG _build_arg(const Genes genes)
 {
-    _how_verbose = how_verbose;
-    _cost_recurrent_mutation = cost_rm;
-    _cost_back_mutation = cost_bm;
-    _cost_recombination = cost_recomb;
-
-    if (_how_verbose >= 1)
-        std::cout << "starting build\n";
-
     ARG arg;
     int step = 0;
-    for (Gene &g : genes.genes)
+    for (const Gene &g : genes.genes)
     {
         add_seq_to_arg(arg, g);
 
@@ -1008,6 +1023,24 @@ ARG build_arg(Genes genes, int how_verbose, float cost_rm, float cost_bm, float 
         }
     }
 
+    return std::move(arg);
+}
+
+ARG build_arg(const Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
+{
+    _how_verbose = how_verbose;
+    _cost_recurrent_mutation = cost_rm;
+    _cost_back_mutation = cost_bm;
+    _cost_recombination = cost_recomb;
+    _recomb_max = recomb_max < 0 ? INT32_MAX : recomb_max;
+    _rm_max = rm_max < 0 ? INT32_MAX : rm_max;
+    _bm_max = bm_max < 0 ? INT32_MAX : bm_max;
+
+    if (_how_verbose >= 1)
+        std::cout << "starting build\n";
+
+    ARG arg = _build_arg(genes);
+
     if (_how_verbose >= 2)
         print_arg(arg);
 
@@ -1016,9 +1049,148 @@ ARG build_arg(Genes genes, int how_verbose, float cost_rm, float cost_bm, float 
         std::cout << "ARG built\n";
         std::cout << "recurrent mutations were: " << vector_to_string(set_to_vector(arg.recurrent_sites)) << "\n";
         std::cout << "back mutations mutations were: " << vector_to_string(set_to_vector(arg.back_mutation_sites)) << "\n";
-        std::cout << "ARG made using " << arg.number_of_recurrent_mutations << " recurrent mutations, " << arg.number_of_back_mutations; 
+        std::cout << "ARG made using " << arg.number_of_recurrent_mutations << " recurrent mutations, " << arg.number_of_back_mutations;
         std::cout << " back mutations, and " << arg.number_of_recombinations << " recombinations\n";
     }
 
     return arg;
+}
+
+ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, const Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
+{
+    _how_verbose = how_verbose;
+    _cost_recurrent_mutation = cost_rm;
+    _cost_back_mutation = cost_bm;
+    _cost_recombination = cost_recomb;
+    _recomb_max = recomb_max < 0 ? INT32_MAX : recomb_max;
+    _rm_max = rm_max < 0 ? INT32_MAX : rm_max;
+    _bm_max = bm_max < 0 ? INT32_MAX : bm_max;
+
+    if (_how_verbose >= 1)
+        std::cout << "starting build\n";
+
+    auto rng = std::default_random_engine(run_seed);
+    std::vector<Gene> g_copy = genes.genes;
+    float best_cost = -1.0;
+    ARG best_arg;
+    for (int run_count = 0; run_count < number_of_runs; run_count++)
+    {
+        std::shuffle(g_copy.begin(), g_copy.end(), rng);
+        Genes shuffled_genes;
+        shuffled_genes.genes = g_copy;
+
+        ARG run_arg = _build_arg(shuffled_genes);
+        float run_cost = get_cost(run_arg);
+        if (_how_verbose >= 1)
+        {
+            std::cout << "ARG " << run_count << " made using " << run_arg.number_of_recurrent_mutations << " recurrent mutations, " << run_arg.number_of_back_mutations;
+            std::cout << " back mutations, and " << run_arg.number_of_recombinations << " recombinations\n";
+            std::cout << "Made at cost: " << run_cost << ".\n";
+        }
+
+        if (run_cost < best_cost || best_cost < 0)
+        {
+            best_arg = std::move(run_arg);
+            best_cost = run_cost;
+        }
+    }
+
+    if (_how_verbose >= 1)
+    {
+        std::cout << "Final ARG made using " << best_arg.number_of_recurrent_mutations << " recurrent mutations, " << best_arg.number_of_back_mutations;
+        std::cout << " back mutations, and " << best_arg.number_of_recombinations << " recombinations\n";
+        std::cout << "Made at cost: " << get_cost(best_arg) << ".\n";
+    }
+
+    return std::move(best_arg);
+}
+
+ARG build_arg_multi_smart_runs(int number_of_runs, int run_seed, bool tricky_first, const Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
+{
+    // Idea: sites used in rms or bms are tricky. Hence sequences with these should go first.
+    _how_verbose = how_verbose;
+    _cost_recurrent_mutation = cost_rm;
+    _cost_back_mutation = cost_bm;
+    _cost_recombination = cost_recomb;
+    _recomb_max = recomb_max < 0 ? INT32_MAX : recomb_max;
+    _rm_max = rm_max < 0 ? INT32_MAX : rm_max;
+    _bm_max = bm_max < 0 ? INT32_MAX : bm_max;
+
+    if (number_of_runs == 1)
+    {
+        std::cout << "smart runs uses previous runs to change order for later runs. Please use more than 1 run";
+        return _build_arg(genes);
+    }
+
+    if (_how_verbose >= 1)
+        std::cout << "starting build\n";
+
+    auto rng = std::default_random_engine(run_seed);
+    std::vector<Gene> g_copy = genes.genes;
+    float best_cost = -1.0;
+    ARG best_arg;
+
+    std::set<int> prev_tricky_sites = {};
+
+    for (int run_count = 0; run_count < number_of_runs; run_count++)
+    {
+        std::vector<Gene> tricky_genes;
+        std::vector<Gene> easy_genes;
+
+        for (Gene g : g_copy)
+        {
+            std::set<int> intersection;
+            std::set_intersection(g.mutations.begin(), g.mutations.end(),
+                                  prev_tricky_sites.begin(), prev_tricky_sites.end(),
+                                  std::inserter(intersection, intersection.begin()));
+            if (intersection.size() > 0)
+                tricky_genes.push_back(g);
+            else
+                easy_genes.push_back(g);
+        }
+
+        std::shuffle(tricky_genes.begin(), tricky_genes.end(), rng);
+        std::shuffle(easy_genes.begin(), easy_genes.end(), rng);
+
+        Genes combined_genes;
+        if (tricky_first)
+        {
+            combined_genes.genes = std::move(tricky_genes);
+            combined_genes.genes.insert(combined_genes.genes.end(), easy_genes.begin(), easy_genes.end());
+        }
+        else
+        {
+            combined_genes.genes = std::move(easy_genes);
+            combined_genes.genes.insert(combined_genes.genes.end(), tricky_genes.begin(), tricky_genes.end());
+        }
+
+        ARG run_arg = _build_arg(combined_genes);
+
+        float run_cost = get_cost(run_arg);
+        if (_how_verbose >= 1)
+        {
+            std::cout << "ARG " << run_count << " made using " << run_arg.number_of_recurrent_mutations << " recurrent mutations, " << run_arg.number_of_back_mutations;
+            std::cout << " back mutations, and " << run_arg.number_of_recombinations << " recombinations\n";
+            std::cout << "Made at cost: " << run_cost << ".\n";
+        }
+
+        prev_tricky_sites = run_arg.recurrent_sites;
+        for (int m : run_arg.back_mutation_sites)
+            prev_tricky_sites.insert(m);
+
+        if (run_cost < best_cost || best_cost < 0)
+        {
+            best_arg = std::move(run_arg);
+            best_cost = run_cost;
+        }
+    }
+
+    if (_how_verbose >= 1)
+    {
+        std::cout << "Final ARG made using " << best_arg.number_of_recurrent_mutations << " recurrent mutations, " << best_arg.number_of_back_mutations;
+        std::cout << " back mutations, and " << best_arg.number_of_recombinations << " recombinations\n";
+        std::cout << "Made at cost: " << get_cost(best_arg) << ".\n";
+    }
+
+    return std::move(best_arg);
 }

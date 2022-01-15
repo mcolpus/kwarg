@@ -69,7 +69,7 @@ typedef struct _Node
 {
     int id; // This is used to identify the node, particularly useful for printing graph
     NodeType type;
-    std::string label; // This is a description of the node. Has no effect on logic
+    std::string label;          // This is a description of the node. Has no effect on logic
     std::vector<int> mutations; // Most sequences have very few mutations, so easier to store as a vector
     union U
     {
@@ -97,8 +97,8 @@ typedef struct _ARG
     // Unique pointers are used to manage memory
     std::vector<std::unique_ptr<Node>> nodes;
     std::vector<std::unique_ptr<Edge>> edges;
-    std::multimap<int, Edge *> mutation_to_edges;  // map to all edges which have the mutation
-    std::multimap<int, Edge *> back_mutation_to_edges; // map to all edges which have the back mutation
+    std::multimap<int, Edge *> mutation_to_edges;          // map to all edges which have the mutation
+    std::multimap<int, Edge *> back_mutation_to_edges;     // map to all edges which have the back mutation
     std::multimap<int, Edge *> mutation_to_recombinations; // map to all recombination node out-edges containing the mutation
     Node root;
     int number_of_ancestral_nodes = 0;
@@ -134,6 +134,10 @@ float get_cost(const int rms, const int bms, const int rcs);
 float get_cost(const int rms, const int bms);
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 ARGOutputFormat format, bool annotate_edges, ARGOutputLabels node_labels);
-ARG build_arg(Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb);
+ARG build_arg(Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
+ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, Genes genes, int how_verbose, float cost_rm, float cost_bm,
+                                float cost_recomb, int recomb_max, int rm_max, int bm_max);
+ARG build_arg_multi_smart_runs(int number_of_runs, int run_seed, bool tricky_first, const Genes genes, int how_verbose, float cost_rm,
+                               float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
 
 #endif

@@ -200,9 +200,11 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-n", "Assume input consists of nucleic sequences; anything but a/c/g/t/u is considered an unresolved site (default is to assume binary, i.e. 0/1, format where anything but a 0 or a 1 is considered an unresolved site). If the most recent common ancestor is assumed known (see option -k), the first sequence in the input data is considered to specify the wild type of each site and is not included as part of the sample set.", 70, -1);
     print_option(f, "-l", "Input data has labels for the samples.", 70, -1);
     print_option(f, "-Q[x]", "Sets the number of runs.", 70, -1);
-    print_option(f, "-Z[x]", "Sets the random seed z (only one run is made in this case).", 70, -1);
-    print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset (solutions with more than x recombinations will be abandoned).", 70, -1);
-    print_option(f, "-Y[x]", "Provide an upper bound x on the number of recurrent needed for the input dataset (solutions with more than x recurrent mutations will be abandoned).", 70, -1);
+    print_option(f, "-S[x]", "Sets the random seed.", 70, -1);
+    print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset.", 70, -1);
+    print_option(f, "-Y[x]", "Provide an upper bound x on the number of recurrent mutations needed for the input dataset.", 70, -1);
+    print_option(f, "-Z[x]", "Provide an upper bound x on the number of back mutations needed for the input dataset.", 70, -1);
+    print_option(f, "-T[x]", "Run type (used on multiruns). 0: simple random, 1: deal with problem sites first, 2: deal with problem sites last", 70, -1);
     print_option(f, "-h, -H -?", "Print this information and stop.", 70, -1);
 }
 
@@ -293,14 +295,16 @@ int main(int argc, char **argv)
     float cost_bm = 1.0;
     float cost_recomb = 1.1;
     
+    // Negative values mean unlimited
+    int recomb_max = -1, rm_max = -1, bm_max = -1;
 
-    int recomb_max = 0, rm_max = 0, bm_max = 0;
+    int run_type = 0;
 
     std::vector<std::string> dot_files = {};
     std::vector<std::string> gml_files = {};
     std::vector<std::string> gdl_files = {};
 
-#define KWARG_OPTIONS "L:S:M:B:R:V:d::g::j::iesofanlQ:Z:X:Y:hH?"
+#define KWARG_OPTIONS "L:M:B:R:V:d::g::j::iesofanlQ:S:X:Y:Z:T:hH?"
 
     /* Parse command line options */
     while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0)
@@ -313,12 +317,6 @@ int main(int argc, char **argv)
             {
                 std::cerr << "Reference should be a positive integer.\n";
                 exit(1);
-            }
-            break;
-        case 'S':
-            if (optarg != 0)
-            {
-                std::cerr << "Not yet implemented.\n";
             }
             break;
         case 'M':
@@ -469,9 +467,9 @@ int main(int argc, char **argv)
                 exit(1);
             }
             break;
-        case 'Z':
+        case 'S':
             run_seed = std::stoi(optarg);
-            if (errno != 0 || run_seed <= 0)
+            if (errno != 0 || run_seed < 0)
             {
                 std::cerr << "Seed input should be a positive integer.\n";
                 exit(1);
@@ -490,6 +488,22 @@ int main(int argc, char **argv)
             if (errno != 0 || rm_max < 0)
             {
                 std::cerr << "Upper bound on number of recurrent mutations should be a positive integer.\n";
+                exit(1);
+            }
+            break;
+        case 'Z':
+            bm_max = std::stoi(optarg);
+            if (errno != 0 || bm_max < 0)
+            {
+                std::cerr << "Upper bound on number of recurrent mutations should be a positive integer.\n";
+                exit(1);
+            }
+            break;
+        case 'T':
+            run_type = std::stoi(optarg);
+            if (errno != 0 || run_type < 0)
+            {
+                std::cerr << "Run type should be a non-negative integer.\n";
                 exit(1);
             }
             break;
@@ -516,35 +530,22 @@ int main(int argc, char **argv)
     ARG arg;
     if (num_runs == 0)
     {
-        arg = build_arg(genes, how_verbose, cost_rm, cost_bm, cost_recomb);
+        arg = build_arg(genes, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
     }
     else
     {
-        auto rng = std::default_random_engine(run_seed);
-        std::vector<Gene> g_copy = genes.genes;
-        float best_cost = -1.0;
-        for (int run_count = 0; run_count < num_runs; run_count++)
+        switch (run_type)
         {
-            std::shuffle(g_copy.begin(), g_copy.end(), rng);
-            Genes shuffled_genes;
-            shuffled_genes.genes = g_copy;
-            ARG run_arg = build_arg(shuffled_genes, how_verbose, cost_rm, cost_bm, cost_recomb);
-            std::cout << "ARG made using " << run_arg.number_of_recurrent_mutations << " recurrent mutations, " << run_arg.number_of_back_mutations; 
-            std::cout << " back mutations, and " << run_arg.number_of_recombinations << " recombinations\n";
-            float arg_cost = get_cost(run_arg.number_of_recurrent_mutations, run_arg.number_of_back_mutations, run_arg.number_of_recombinations);
-            std::cout << "Made at cost: " << arg_cost << ".\n";
-
-            if (arg_cost < best_cost || best_cost < 0)
-            {
-                arg = std::move(run_arg);
-                best_cost = arg_cost;
-            }
-
+        case 0:
+            arg = build_arg_multi_random_runs(num_runs, run_seed, genes, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+            break;
+        case 1:
+            arg = build_arg_multi_smart_runs(num_runs, run_seed, true, genes, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+            break;
+        case 2:
+            arg = build_arg_multi_smart_runs(num_runs, run_seed, false, genes, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+            break;
         }
-
-        std::cout << "Final ARG made using " << arg.number_of_recurrent_mutations << " recurrent mutations, " << arg.number_of_back_mutations; 
-        std::cout << " back mutations, and " << arg.number_of_recombinations << " recombinations\n";
-        std::cout << "Made at cost: " << get_cost(arg.number_of_recurrent_mutations, arg.number_of_back_mutations, arg.number_of_recombinations) << ".\n";
     }
 
     /* Output ARG in dot format */
