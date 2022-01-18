@@ -542,6 +542,16 @@ Node *split_edge(ARG &arg, Edge *edge, std::vector<int> removable_muts, std::vec
         remove_edge_from_multimap(arg.back_mutation_to_edges, m, edge);
     }
 
+    // Need to check if we have split the out-edge of a recombination node (which gets referenced by mutation_to_recombinations)
+    if (split_edge->from->type == RECOMBINATION)
+    {
+        for (int m : split_edge->from->mutations)
+        {
+            arg.mutation_to_recombinations.insert({m, split_edge.get()});
+            remove_edge_from_multimap(arg.mutation_to_recombinations, m, edge);
+        }
+    }
+
     Node *new_node = split_node.get();
 
     arg.edges.push_back(std::move(split_edge));
