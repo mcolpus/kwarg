@@ -82,6 +82,7 @@ void print_arg(const ARG &arg)
     std::cout << "-----------printing edges:\n";
     for (auto &edge_ptr : arg.edges)
     {
+        std::cout << "Hello";
         std::cout << edge_ptr->from->label << " -> " << edge_ptr->to->label << " muts: ";
         for (int i : edge_ptr->mutations)
         {
@@ -168,35 +169,6 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
         break;
     case ARGGML:
         fprintf(fp, "graph [\n  directed 1\n");
-        break;
-    }
-
-    // Output the root node
-    switch (format)
-    {
-    case ARGDOT:
-        fprintf(fp, "  -1 [label=\"-1 root");
-        break;
-    case ARGGDL:
-        fprintf(fp, "  node: { title: \"-1\" label: \"-1 root");
-        break;
-    case ARGGML:
-        fprintf(fp, "  node [\n    id -1\n    label \"-1 root");
-        break;
-    }
-    fprintf(fp, "\"");
-
-    switch (format)
-    {
-    case ARGDOT:
-        fprintf(fp, ",color=black];\n");
-        break;
-    case ARGGDL:
-        fprintf(fp, " shape: circle bordercolor: black }\n");
-        break;
-    case ARGGML:
-        fprintf(fp, "\n    graphics [\n      outline \"black");
-        fprintf(fp, "\"\n    ]\n    vgj [\n      type \"Oval\"\n      labelPosition \"in\"\n    ]\n  ]\n");
         break;
     }
 
@@ -584,7 +556,7 @@ Node *insert_seq_as_direct_child(ARG &arg, const Gene &g, Node *parent, const st
     for (int m : new_edge->back_mutations)
         arg.back_mutation_to_edges.insert({m, new_edge.get()});
 
-    // All the existing mutations are now count towards recurrent mutations
+    // Update arg counts
     arg.number_of_recurrent_mutations += recurrent_muts.size();
     arg.number_of_back_mutations += new_edge->back_mutations.size();
     for (auto m : recurrent_muts)
@@ -682,7 +654,7 @@ void insert_seq_at_edge(ARG &arg, const Gene &g, Edge *best_edge, const std::vec
     if (best_edge == nullptr)
     {
         // Insert at root
-        insert_seq_as_direct_child(arg, g, &arg.root, existing_mutations);
+        insert_seq_as_direct_child(arg, g, arg.root_ptr, existing_mutations);
         return;
     }
 
@@ -850,7 +822,7 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
     {
         auto [site, edge, rms, bms] = prefix_costs_vec[i];
         float cost = get_cost_of_addition(arg, rms, bms);
-        if (cost > 0 && (cost < best_cost || best_cost < 0))
+        if (cost >= 0 && (cost < best_cost || best_cost < 0))
         {
             optimal_prefix_costs.push_back(prefix_costs_vec[i]);
             best_cost = cost;
@@ -862,7 +834,7 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
     {
         auto [site, edge, rms, bms] = suffix_costs_vec[i];
         float cost = get_cost_of_addition(arg, rms, bms);
-        if (cost > 0 && (cost < best_cost || best_cost < 0))
+        if (cost >= 0 && (cost < best_cost || best_cost < 0))
         {
             optimal_suffix_costs.push_back(suffix_costs_vec[i]);
             best_cost = cost;

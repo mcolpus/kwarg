@@ -100,7 +100,8 @@ typedef struct _ARG
     std::multimap<int, Edge *> mutation_to_edges;          // map to all edges which have the mutation
     std::multimap<int, Edge *> back_mutation_to_edges;     // map to all edges which have the back mutation
     std::multimap<int, Edge *> mutation_to_recombinations; // map to all recombination node out-edges containing the mutation
-    Node root;
+    // Node root;
+    Node *root_ptr;
     int number_of_ancestral_nodes = 0;
     int number_of_back_mutations = 0;
     int number_of_recurrent_mutations = 0;
@@ -111,11 +112,17 @@ typedef struct _ARG
 
     _ARG()
     {
-        root.type = ROOT;
-        root.id = -1;
-        root.mutations.clear();
-        root.label = "Root";
-        root.predecessor.none = true;
+        auto root = std::make_unique<Node>();
+
+        root->type = ROOT;
+        root->id = -1;
+        root->mutations.clear();
+        root->label = "Root";
+        root->predecessor.none = true;
+
+        root_ptr = root.get();
+
+        nodes.push_back(std::move(root));
     }
 } ARG;
 
