@@ -1,190 +1,160 @@
-from typing import Sequence
 import numpy as np
+import sys
+import getopt
 
 
-do_clean = True
-num_states = 2
+remove_multiallelic = True
 keep_seq_labels = True
-use_ref = True  # Reference should be first sequence
-
-
-sequences = []
-sequence_labels = []
-
-filename = "eng_alignment_cleaned.fasta"
-file = open(filename, "r")
-seq = ""
-for line in file.readlines():
-    if line[0] == '>':
-        sequence_labels.append(line[1:].replace('\n', ''))
-        if(seq != ""):
-            sequences.append(seq.upper())
-            seq = ""
-    else:
-        seq += line.replace('\n', '')
-sequences.append(seq)
-file.close()
-
-num_sequences = len(sequences)
-num_cols = len(sequences[0])
-
-print("seqs: ", num_sequences)
-print("cols: ", num_cols)
+# Reference should be first sequence
 
 bases = ['A', 'G', 'C', 'T']
-opposite = {
-    'A': 'T',
-    'T': 'A',
-    'G': 'C',
-    'C': 'G'
-}
-not_opposite = {  # This is just used when turning into 4 states with a reference
-    'A': 'G',
-    'G': 'A',
-    'T': 'C',
-    'C': 'T'
-}
-bin_sequences = []
 
-if use_ref:
-    ref_seq = sequences[0]
-    ref_label = sequence_labels[0]
-    # sequences.remove(ref_seq)
-    # sequence_labels.remove(ref_label)
 
-    if num_states == 2:
-        for seq in sequences:
-            bin_seq = [0] * num_cols
-            for i in range(num_cols):
-                if(seq[i] == ref_seq[i]):
-                    bin_seq[i] = 0
-                elif(seq[i] in bases):
-                    bin_seq[i] = 1
-                else:
-                    bin_seq[i] = 9  # Means error
-            bin_sequences.append(bin_seq)
-    elif num_states == 3:
-        for seq in sequences:
-            bin_seq = [0] * num_cols
-            for i in range(num_cols):
-                if seq[i] == ref_seq[i]:
-                    bin_seq[i] = 0
-                elif seq[i] == opposite[ref_seq[i]]:
-                    bin_seq[i] = 1
-                elif seq[i] in bases:
-                    bin_seq[i] = 2
-                else:
-                    bin_seq[i] = 9  # Means error
-            bin_sequences.append(bin_seq)
-    elif num_states == 4:
-        for seq in sequences:
-            bin_seq = [0] * num_cols
-            for i in range(num_cols):
-                if seq[i] == ref_seq[i]:
-                    bin_seq[i] = 0
-                elif seq[i] == opposite[ref_seq[i]]:
-                    bin_seq[i] = 1
-                elif seq[i] == not_opposite[ref_seq[i]]:
-                    bin_seq[i] = 2
-                elif seq[i] in bases:
-                    bin_seq[i] = 3
-                else:
-                    bin_seq[i] = 9  # Means error
-            bin_sequences.append(bin_seq)
+def read_problematic_sites(maskfile):
+    sites_to_mask = []
 
-    bin_sequences = np.array(bin_sequences, dtype=int)
-
-else:
-    # Convert to binary sequences. 0 will be most common, 1 for everything else, 9 if - or unknown
-    # Will have each site as a row then transpose
-    bin_cols = []
-
-    for col in range(num_cols):
-        counts = {}
-        counts['A'] = 0
-        counts['T'] = 0
-        counts['C'] = 0
-        counts['G'] = 0
-        for j in range(num_sequences):
-            c = sequences[j][col]
-            if(c in bases):
-                counts[c] += 1
-
-        max_key = max(counts, key=counts.get)
-
-        site = [0] * num_sequences
-        for j in range(num_sequences):
-            c = sequences[j][col]
-
-            if num_states == 2:
-                if(c == max_key):
-                    site[j] = 0
-                elif(c in bases):
-                    site[j] = 1
-                else:
-                    site[j] = 9
-            elif num_states == 3:
-                if(c == max_key):
-                    site[j] = 0
-                elif(c == opposite[max_key]):
-                    site[j] = 1
-                elif(c in bases):
-                    site[j] = 2
-                else:
-                    site[j] = 9
-            elif num_states == 4:
-                if(c == max_key):
-                    site[j] = 0
-                elif(c == opposite[max_key]):
-                    site[j] = 1
-                elif(c == not_opposite[max_key]):
-                    site[j] = 2
-                elif(c in bases):
-                    site[j] = 3
-                else:
-                    site[j] = 9
-        bin_cols.append(site)
-
-    bin_cols = np.array(bin_cols, dtype=int)
-    bin_sequences = bin_cols.transpose()
-
-print(bin_sequences)
-
-print(bin_sequences.shape)
-
-# clean:
-print("Finished reading in data, now cleaning")
-if do_clean:
-    bin_cols = bin_sequences.transpose()
-    empty_cols = []
-    for i in range(len(bin_cols)):
-        others_seen = 0
-        for c in bin_cols[i]:
-            if c != 0 and c != 9:
-                others_seen += 1
-                if others_seen >= 2:
-                    break
-        if others_seen < 2:
-            empty_cols.append(i)
+    file = open(maskfile, "r")
+    for line in file.readlines():
+        if line[0] != '#':
+            sites_to_mask.append(int(line.split('\t')[1]))
     
-    # Now delete all these columns
-    bin_cols = np.delete(bin_cols, empty_cols, axis=0)
-    bin_sequences = bin_cols.transpose()
+    return sites_to_mask
 
-# output to txt
-print("Finished cleaning, now outputting")
-output = "binary_sequences"
+def read_sequences(inputfile):
+    sequences = []
+    sequence_labels = []
 
-file = open(output, 'w')
-for j in range(bin_sequences.shape[0]):
-    if keep_seq_labels:
-        file.write(">" + sequence_labels[j] + "\n")
-    line = ""
-    for i in range(bin_sequences.shape[1]):
-        if(bin_sequences[j][i] == 9):
-            line += '-'
+    file = open(inputfile, "r")
+    seq = ""
+    for line in file.readlines():
+        if line[0] == '>':
+            sequence_labels.append(line[1:].replace('\n', ''))
+            if(seq != ""):
+                sequences.append(list(seq.upper()))
+                seq = ""
         else:
-            line += str(bin_sequences[j][i])
-    file.write(line + "\n")
+            seq += line.replace('\n', '')
+    sequences.append(list(seq.upper()))
+    file.close()
 
-file.close()
+    num_sequences = len(sequences)
+    num_cols = len(sequences[0])
+
+    print("seqs: ", num_sequences)
+    print("cols: ", num_cols)
+
+    return (sequence_labels, sequences)
+
+def mask_sites(sequences, sites_to_mask):
+    ref_seq = sequences[0]
+    seq_length = len(ref_seq)
+
+    multiallelic_sites = []
+    
+    for site in range(seq_length):
+        bases_seen = []
+
+        for seq in sequences:
+            if seq[site] not in bases_seen:
+                bases_seen.append(seq[site])
+        
+        if 'N' in bases_seen:
+            bases_seen.remove('N')
+
+        mask_site = False
+        if len(bases_seen) > 2:
+            print(site, " is multiallelic")
+            mask_site = True
+            multiallelic_sites.append(site)
+        elif site in sites_to_mask:
+            mask_site = True
+        
+        if mask_site:
+            for seq in sequences:
+                seq[site] = 'N'
+    
+    return (sequences, multiallelic_sites)
+
+def make_binary(sequences):
+    ref_seq = sequences[0]
+    seq_length = len(ref_seq)
+    num_sequences = len(sequences)
+    binary_sequences = [[0] * seq_length for seq in sequences]
+
+    for site in range(seq_length):
+        ref_base = ref_seq[site]
+        
+        if ref_base != 'N':
+            for i in range(num_sequences):
+                if sequences[i][site] in ['N', ref_base]:
+                    binary_sequences[i][site] = 0
+                else:
+                    binary_sequences[i][site] = 1
+    
+    return binary_sequences
+
+
+def remove_zero_columns(binary_sequences):
+    seq_length = len(binary_sequences[0])
+    num_sequences = len(binary_sequences)
+
+    keep_cols = []
+
+    for site in range(seq_length):
+        for seq in binary_sequences:
+            if seq[site] == 1:
+                keep_cols.append(site)
+                break
+    
+    new_sequences = [[seq[site] for site in keep_cols] for seq in binary_sequences]
+    return new_sequences
+
+def output(binary_sequences, sequence_labels, outfile):
+    file = open(outfile, 'w')
+    for j in range(len(binary_sequences)):
+        if keep_seq_labels:
+            file.write(">" + sequence_labels[j] + "\n")
+        line = ""
+        for v in binary_sequences[j]:
+            line += str(v)
+        file.write(line + "\n")
+
+    file.close()
+
+
+def main(argv):
+    inputfile = ''
+    outputfile = ''
+    problematicsitesfile = ''
+
+    try:
+        opts, args = getopt.getopt(argv, "hm:i:o:", ["mfile=", "ifile=", "ofile="])
+    except getopt.GetoptError:
+        print('process_fasta_to_binary.py -m <problematic sites file (a vcf)> -i <input fasta file> -o <outputfile>')
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == '-h':
+            print('process_fasta_to_binary.py -m <problematic sites file (a vcf)> -i <input fasta file> -o <outputfile>')
+            sys.exit()
+        elif opt in ("-i", "--ifile"):
+            inputfile = arg
+        elif opt in ("-o", "--ofile"):
+            outputfile = arg
+        elif opt in ("-m", "--mfile"):
+            problematicsitesfile = arg
+
+    print('Input file is: ', inputfile)
+    print('Output file is: ', outputfile)
+    print('mask file is: ', problematicsitesfile)
+
+    sites_to_mask = read_problematic_sites(problematicsitesfile)
+    (sequence_labels, sequences) = read_sequences(inputfile)
+    mask_sites(sequences, sites_to_mask)
+    bin_seqs = make_binary(sequences)
+    bin_seqs = remove_zero_columns(bin_seqs)
+    output(bin_seqs, sequence_labels, outputfile)
+
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
