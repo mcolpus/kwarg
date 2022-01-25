@@ -151,7 +151,7 @@ def main(argv):
     (sequence_labels, sequences) = read_sequences(inputfile)
     mask_sites(sequences, sites_to_mask)
     bin_seqs = make_binary(sequences)
-    bin_seqs = remove_zero_columns(bin_seqs)
+    # bin_seqs = remove_zero_columns(bin_seqs)
     output(bin_seqs, sequence_labels, outputfile)
 
 
