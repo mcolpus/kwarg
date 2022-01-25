@@ -1,7 +1,8 @@
 
-import enum
 import sys
 import getopt
+
+verbose = False
 
 def read_sequences(inputfile):
     sequences = []
@@ -26,9 +27,11 @@ def read_sequences(inputfile):
     print("seqs: ", num_sequences)
     print("cols: ", num_cols)
 
-    return (sequence_labels, sequences)
+    col_indexes = range(num_cols)
 
-def remove_uninformative_cols(sequences):
+    return (sequence_labels, sequences, col_indexes)
+
+def remove_uninformative_cols(sequences, col_indexes):
     seq_length = len(sequences[0])
     keep_columns = []
 
@@ -41,17 +44,19 @@ def remove_uninformative_cols(sequences):
                     keep_columns.append(site)
                     break
     
-    print("remove uniformative keeps", keep_columns)
+    keep_indexes = [col_indexes[i] for i in keep_columns]
+    if verbose:
+        print("remove uniformative keeps indexes", keep_indexes)
     
     if len(keep_columns) == seq_length:
-        return (False, sequences)
+        return (False, sequences, col_indexes)
     else:
-        return (True, [[seq[site] for site in keep_columns] for seq in sequences])
+        return (True, [[seq[site] for site in keep_columns] for seq in sequences], keep_indexes)
 
-def merge_adj_identical_cols(sequences):
+def merge_adj_identical_cols(sequences, col_indexes):
     seq_length = len(sequences[0])
     if seq_length == 0:
-        return (False, sequences)
+        return (False, sequences, col_indexes)
 
     keep_columns = [0] # Keep columns which are not identical to the previous
 
@@ -62,13 +67,14 @@ def merge_adj_identical_cols(sequences):
                 break
     
 
-        
-    print("merge_adj_identical_cols keeps", keep_columns)
+    keep_indexes = [col_indexes[i] for i in keep_columns]
+    if verbose:
+        print("merge_adj_identical_cols keeps indexes", keep_indexes)
     
     if len(keep_columns) == seq_length:
-        return (False, sequences)
+        return (False, sequences, col_indexes)
     else:
-        return (True, [[seq[site] for site in keep_columns] for seq in sequences])
+        return (True, [[seq[site] for site in keep_columns] for seq in sequences], keep_indexes)
 
 def remove_identical_rows(sequences, sequence_labels):
     rows_to_be_kept = []
@@ -85,7 +91,8 @@ def remove_identical_rows(sequences, sequence_labels):
             row_descriptions[description] = 1
             rows_to_be_kept.append(i)
     
-    print("remove_identical_rows keeping", rows_to_be_kept)
+    if verbose:
+        print("remove_identical_rows keeping", rows_to_be_kept)
 
     if len(rows_to_be_kept) == len(sequences):
         return (False, sequences, sequence_labels)
@@ -95,7 +102,7 @@ def remove_identical_rows(sequences, sequence_labels):
 
         return (True, new_seqs, new_labels)
 
-def output(binary_sequences, sequence_labels, outfile):
+def output(binary_sequences, sequence_labels, col_indexes, outfile):
     file = open(outfile, 'w')
     for j in range(len(binary_sequences)):
         file.write(">" + sequence_labels[j] + "\n")
@@ -104,6 +111,12 @@ def output(binary_sequences, sequence_labels, outfile):
             line += str(v)
         file.write(line + "\n")
 
+    file.close()
+
+    filename, filetype = outfile.split(".")
+    file = open(filename + "_col_indexes." + filetype, 'w')
+    for j in col_indexes:
+        file.write(str(j) + ", ")
     file.close()
 
 def main(argv):
@@ -127,18 +140,25 @@ def main(argv):
     print('Input file is: ', inputfile)
     print('Output file is: ', outputfile)
 
-    (sequence_labels, sequences) = read_sequences(inputfile)
+    (sequence_labels, sequences, col_indexes) = read_sequences(inputfile)
 
     somethings_changed = True
     while(somethings_changed):
         print("run iteration")
-        (change1, sequences) = remove_uninformative_cols(sequences)
-        (change2, sequences) = merge_adj_identical_cols(sequences)
+        (change1, sequences, col_indexes) = remove_uninformative_cols(sequences, col_indexes)
+        if verbose:
+            print("1 ", change1, col_indexes)
+        (change2, sequences, col_indexes) = merge_adj_identical_cols(sequences, col_indexes)
+        if verbose:
+            print("2", change2, col_indexes)
         (change3, sequences, sequence_labels) = remove_identical_rows(sequences, sequence_labels)
+        if verbose:
+            print("3", change3)
         somethings_changed = change1 or change2 or change3
     
+    output(sequences, sequence_labels, col_indexes, outputfile)
     print("done")
-    output(sequences, sequence_labels, outputfile)
+    print("ended with: ", len(sequences), " sequences and ", len(col_indexes), " sites.")
 
 
 
