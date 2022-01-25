@@ -157,8 +157,8 @@ def main(argv):
         somethings_changed = change1 or change2 or change3
     
     output(sequences, sequence_labels, col_indexes, outputfile)
-    print("done")
     print("ended with: ", len(sequences), " sequences and ", len(col_indexes), " sites.")
+    print()
 
 
 

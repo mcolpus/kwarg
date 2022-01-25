@@ -7,6 +7,8 @@ remove_multiallelic = True
 keep_seq_labels = True
 # Reference should be first sequence
 
+verbose = False
+
 bases = ['A', 'G', 'C', 'T']
 
 
@@ -63,7 +65,8 @@ def mask_sites(sequences, sites_to_mask):
 
         mask_site = False
         if len(bases_seen) > 2:
-            print(site, " is multiallelic")
+            if verbose:
+                print(site, " is multiallelic")
             mask_site = True
             multiallelic_sites.append(site)
         elif site in sites_to_mask:
