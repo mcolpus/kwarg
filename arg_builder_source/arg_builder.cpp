@@ -199,6 +199,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-a", "Assume input consists of amino acid (protein) sequences using the one letter amino acid alphabet; anything not in the amino acid one letter alphabet is treated as an unresolved site (default is to assume sequences in binary, i.e. 0/1, format where anything but a 0 or a 1 is considered an unresolved site). If the most recent common ancestor is assumed known (see option -k), the first sequence in the input data is considered to specify the wild type of each site and is not included as part of the sample set.", 70, -1);
     print_option(f, "-n", "Assume input consists of nucleic sequences; anything but a/c/g/t/u is considered an unresolved site (default is to assume binary, i.e. 0/1, format where anything but a 0 or a 1 is considered an unresolved site). If the most recent common ancestor is assumed known (see option -k), the first sequence in the input data is considered to specify the wild type of each site and is not included as part of the sample set.", 70, -1);
     print_option(f, "-l", "Input data has labels for the samples.", 70, -1);
+    print_option(f, "-r", "Input data has root as first sample. If not than root is assumed to be all zero", 70, -1);
     print_option(f, "-Q[x]", "Sets the number of runs.", 70, -1);
     print_option(f, "-S[x]", "Sets the random seed.", 70, -1);
     print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset.", 70, -1);
@@ -212,10 +213,22 @@ Genes read_input(std::istream &in, bool use_labels)
 {
     Genes genes;
 
+    // std::string root_line;
+    // // If root given than it is first line
+    // if (root_given)
+    // {
+    //     if (use_labels)
+    //     {
+    //         std::getline(in, root_line);
+    //         if (root_line[0] != '>')
+    //             std::cerr << "root doesn't have label";
+    //     }
+    // }
+
+    std::string line;
     Gene g;
     int seq_index = 0;
 
-    std::string line;
 
     if (!use_labels)
     {
@@ -285,6 +298,7 @@ int main(int argc, char **argv)
     bool do_label_edges = false;
     bool do_label_node_mutations = false;
     bool do_generate_ids = false;
+    bool root_given = false;
 
     int run_seed = 0;
     int num_runs = 0;
@@ -304,7 +318,7 @@ int main(int argc, char **argv)
     std::vector<std::string> gml_files = {};
     std::vector<std::string> gdl_files = {};
 
-#define KWARG_OPTIONS "L:M:B:R:V:d::g::j::iesofanlQ:S:X:Y:Z:T:hH?"
+#define KWARG_OPTIONS "L:M:B:R:V:d::g::j::iesofanlrQ:S:X:Y:Z:T:hH?"
 
     /* Parse command line options */
     while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0)
@@ -459,6 +473,9 @@ int main(int argc, char **argv)
         case 'l':
             label_sequences = true;
             break;
+        case 'r':
+            root_given = true;
+            break;
         case 'Q':
             num_runs = std::stoi(optarg);
             if (errno != 0 || num_runs < 0)
@@ -530,20 +547,20 @@ int main(int argc, char **argv)
     ARG arg;
     if (num_runs == 0)
     {
-        arg = build_arg(genes, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+        arg = build_arg(genes, root_given, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
     }
     else
     {
         switch (run_type)
         {
         case 0:
-            arg = build_arg_multi_random_runs(num_runs, run_seed, genes, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+            arg = build_arg_multi_random_runs(num_runs, run_seed, genes, root_given, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
             break;
         case 1:
-            arg = build_arg_multi_smart_runs(num_runs, run_seed, true, genes, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+            arg = build_arg_multi_smart_runs(num_runs, run_seed, true, genes, root_given, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
             break;
         case 2:
-            arg = build_arg_multi_smart_runs(num_runs, run_seed, false, genes, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+            arg = build_arg_multi_smart_runs(num_runs, run_seed, false, genes, root_given, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
             break;
         }
     }

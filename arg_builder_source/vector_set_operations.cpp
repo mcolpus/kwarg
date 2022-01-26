@@ -210,3 +210,15 @@ std::vector<int> set_to_vector(const std::set<int> &set)
 
     return std::move(v);
 }
+
+bool vector_contains(const std::vector<int> &v, const int e)
+{
+    for (auto i : v)
+    {
+        if (i == e)
+            return true;
+        else if (i > e)
+            return false;
+    }
+    return false;
+}

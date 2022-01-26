@@ -19,6 +19,7 @@
 #include "arg_builder_logic.h"
 #include "vector_set_operations.h"
 
+bool _root_given = false;
 int _how_verbose = 0;
 float _cost_recurrent_mutation = 1.0;
 float _cost_back_mutation = 1.0;
@@ -447,9 +448,13 @@ std::tuple<std::set<Edge *>, std::vector<int>> find_relevant_edges(ARG &arg, con
     std::vector<int> existing_mutations;
     for (int mut : g.mutations)
     {
+        bool contained = false;
+
+        if (_root_given && vector_contains(arg.root_mutations, mut))
+            contained = true;
+
         // Any edge containing a mutation which is in g may be relevant
         auto range = arg.mutation_to_edges.equal_range(mut);
-        bool contained = false;
         for (auto i = range.first; i != range.second; ++i)
         {
             relevant_edges.insert(i->second);
@@ -480,12 +485,27 @@ std::tuple<std::set<Edge *>, std::vector<int>> find_relevant_edges(ARG &arg, con
         }
     }
 
+    // Add all self loops for roots
+    for (const auto &self_edge : arg.self_edges)
+    {
+        if (self_edge->from->type == ROOT)
+        {
+            relevant_edges.insert(self_edge.get());
+        }
+    }
+
     return std::make_tuple(relevant_edges, existing_mutations);
 }
 
 /* Splits the edge into two and returns the new node. removable mutations are put below, rest are above */
 Node *split_edge(ARG &arg, Edge *edge, std::vector<int> removable_muts, std::vector<int> removable_back_muts)
 {
+    if (edge->from == edge->to)
+    {
+        std::cerr << "Trying to split a self loop on " << edge->from->label << "\n";
+        return edge->from;
+    }
+
     auto split_node = std::make_unique<Node>(); // Between the top and bottom of best_edge
     auto split_edge = std::make_unique<Edge>(); // From top to split_node
 
@@ -568,15 +588,6 @@ Node *insert_seq_as_direct_child(ARG &arg, const Gene &g, Node *parent, const st
         arg.back_mutation_sites.insert(m);
     }
 
-    // If the parent node is a recombination node then we want to update arg.mutation_to_recombinations;
-    if (parent->type == RECOMBINATION)
-    {
-        for (int m : parent->mutations)
-        {
-            arg.mutation_to_recombinations.insert({m, new_edge.get()});
-        }
-    }
-
     Node *return_value = new_node.get();
 
     arg.edges.push_back(std::move(new_edge));
@@ -605,6 +616,12 @@ Node *recombine_nodes(ARG &arg, const int pos, Node *prefix, Node *suffix)
     recomb_node->predecessor.two.prefix = prefix_edge.get();
     recomb_node->predecessor.two.suffix = suffix_edge.get();
 
+    auto self_loop = arg.create_self_loop(recomb_node.get());
+    for (int m : recomb_node->mutations)
+    {
+        arg.mutation_to_recombinations.insert({m, self_loop});
+    }
+
     Node *return_value = recomb_node.get();
     arg.recombination_nodes.insert(return_value);
 
@@ -619,10 +636,9 @@ Node *recombine_nodes(ARG &arg, const int pos, Node *prefix, Node *suffix)
 
 std::tuple<Edge *, int, int> find_best_single_parent_location(ARG &arg, const Gene &g, const std::set<Edge *> &related_edges, const std::vector<int> &existing_mutations)
 {
-    // set best score initially to correspond to attaching to root
-    int best_rms = static_cast<float>(existing_mutations.size());
+    int best_rms = 0;
     int best_bms = 0;
-    float best_score = get_cost_of_addition(arg, best_rms, best_bms); // Could be negative if recurrent mutations aren't allowed
+    float best_score = -1.0;
     Edge *best_edge = nullptr;
 
     for (Edge *edge : related_edges)
@@ -959,6 +975,7 @@ void add_seq_to_arg(ARG &arg, const Gene &g)
     auto [relevant_edges, existing_mutations] = find_relevant_edges(arg, g);
 
     auto [edge, rms, bms] = find_best_single_parent_location(arg, g, relevant_edges, existing_mutations);
+    // nullptr for edge means that no single parent works. A self loop would be returned for a root option.
     float sp_cost = get_cost_of_addition(arg, rms, bms);
 
     if (_cost_recombination >= 0)
@@ -976,7 +993,7 @@ void add_seq_to_arg(ARG &arg, const Gene &g)
         }
     }
 
-    if (sp_cost >= 0)
+    if (edge != nullptr && sp_cost >= 0)
     {
         insert_seq_at_edge(arg, g, edge, existing_mutations);
     }
@@ -986,13 +1003,20 @@ void add_seq_to_arg(ARG &arg, const Gene &g)
     }
 }
 
-ARG _build_arg(const Genes genes)
+ARG _build_arg(const Genes genes, bool root_given)
 {
     ARG arg;
+    if (root_given)
+        arg = ARG(genes.genes[0].label, genes.genes[0].mutations);
+    
+
     int step = 0;
     for (const Gene &g : genes.genes)
     {
-        add_seq_to_arg(arg, g);
+        if (step != 0 || !root_given)
+        {
+            add_seq_to_arg(arg, g);
+        }
 
         step += 1;
         if (_how_verbose >= 3)
@@ -1008,8 +1032,9 @@ ARG _build_arg(const Genes genes)
     return std::move(arg);
 }
 
-ARG build_arg(const Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
+ARG build_arg(const Genes genes, bool root_given, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
 {
+    _root_given = root_given;
     _how_verbose = how_verbose;
     _cost_recurrent_mutation = cost_rm;
     _cost_back_mutation = cost_bm;
@@ -1021,7 +1046,7 @@ ARG build_arg(const Genes genes, int how_verbose, float cost_rm, float cost_bm, 
     if (_how_verbose >= 1)
         std::cout << "starting build\n";
 
-    ARG arg = _build_arg(genes);
+    ARG arg = _build_arg(genes, root_given);
 
     if (_how_verbose >= 2)
         print_arg(arg);
@@ -1038,8 +1063,9 @@ ARG build_arg(const Genes genes, int how_verbose, float cost_rm, float cost_bm, 
     return arg;
 }
 
-ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, const Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
+ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, const Genes genes, bool root_given, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
 {
+    _root_given = root_given;
     _how_verbose = how_verbose;
     _cost_recurrent_mutation = cost_rm;
     _cost_back_mutation = cost_bm;
@@ -1052,16 +1078,25 @@ ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, const Genes ge
         std::cout << "starting build\n";
 
     auto rng = std::default_random_engine(run_seed);
+    
     std::vector<Gene> g_copy = genes.genes;
+    Gene root;
+    if (root_given)
+    {
+        root = g_copy[0];
+        g_copy.erase(g_copy.begin());
+    }
     float best_cost = -1.0;
     ARG best_arg;
     for (int run_count = 0; run_count < number_of_runs; run_count++)
     {
         std::shuffle(g_copy.begin(), g_copy.end(), rng);
         Genes shuffled_genes;
-        shuffled_genes.genes = g_copy;
+        if (root_given)
+            shuffled_genes.genes.push_back(root);
+        shuffled_genes.genes.insert(shuffled_genes.genes.end(), g_copy.begin(), g_copy.end());
 
-        ARG run_arg = _build_arg(shuffled_genes);
+        ARG run_arg = _build_arg(shuffled_genes, root_given);
         float run_cost = get_cost(run_arg);
         if (_how_verbose >= 1)
         {
@@ -1087,9 +1122,10 @@ ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, const Genes ge
     return std::move(best_arg);
 }
 
-ARG build_arg_multi_smart_runs(int number_of_runs, int run_seed, bool tricky_first, const Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
+ARG build_arg_multi_smart_runs(int number_of_runs, int run_seed, bool tricky_first, const Genes genes, bool root_given, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
 {
     // Idea: sites used in rms or bms are tricky. Hence sequences with these should go first.
+    _root_given = root_given;
     _how_verbose = how_verbose;
     _cost_recurrent_mutation = cost_rm;
     _cost_back_mutation = cost_bm;
@@ -1101,14 +1137,21 @@ ARG build_arg_multi_smart_runs(int number_of_runs, int run_seed, bool tricky_fir
     if (number_of_runs == 1)
     {
         std::cout << "smart runs uses previous runs to change order for later runs. Please use more than 1 run";
-        return _build_arg(genes);
+        return _build_arg(genes, root_given);
     }
 
     if (_how_verbose >= 1)
         std::cout << "starting build\n";
 
     auto rng = std::default_random_engine(run_seed);
+
     std::vector<Gene> g_copy = genes.genes;
+    Gene root;
+    if (root_given)
+    {
+        root = g_copy[0];
+        g_copy.erase(g_copy.begin());
+    }
     float best_cost = -1.0;
     ARG best_arg;
 
@@ -1135,18 +1178,20 @@ ARG build_arg_multi_smart_runs(int number_of_runs, int run_seed, bool tricky_fir
         std::shuffle(easy_genes.begin(), easy_genes.end(), rng);
 
         Genes combined_genes;
+        if(root_given)
+            combined_genes.genes.push_back(root);
         if (tricky_first)
         {
-            combined_genes.genes = std::move(tricky_genes);
+            combined_genes.genes.insert(combined_genes.genes.end(), tricky_genes.begin(), tricky_genes.end());
             combined_genes.genes.insert(combined_genes.genes.end(), easy_genes.begin(), easy_genes.end());
         }
         else
         {
-            combined_genes.genes = std::move(easy_genes);
+            combined_genes.genes.insert(combined_genes.genes.end(), easy_genes.begin(), easy_genes.end());
             combined_genes.genes.insert(combined_genes.genes.end(), tricky_genes.begin(), tricky_genes.end());
         }
 
-        ARG run_arg = _build_arg(combined_genes);
+        ARG run_arg = _build_arg(combined_genes, root_given);
 
         float run_cost = get_cost(run_arg);
         if (_how_verbose >= 1)

@@ -102,6 +102,8 @@ typedef struct _ARG
     std::multimap<int, Edge *> mutation_to_recombinations; // map to all recombination node out-edges containing the mutation
     // Node root;
     Node *root_ptr;
+    std::vector<int> root_mutations;
+
     int number_of_ancestral_nodes = 0;
     int number_of_back_mutations = 0;
     int number_of_recurrent_mutations = 0;
@@ -109,6 +111,21 @@ typedef struct _ARG
     std::set<int> recurrent_sites;
     std::set<int> back_mutation_sites;
     std::set<Node *> recombination_nodes;
+
+    std::vector<std::unique_ptr<Edge>> self_edges;      // These are used for certain nodes (roots and recombinations) which are always relevant
+
+    Edge * create_self_loop(Node *node_ptr)
+    {
+        auto self_edge = std::make_unique<Edge>();
+        self_edge->from = node_ptr;
+        self_edge->to = node_ptr;
+
+        Edge *edge_ptr = self_edge.get();
+
+        self_edges.push_back(std::move(self_edge));
+
+        return edge_ptr;
+    }
 
     _ARG()
     {
@@ -120,6 +137,25 @@ typedef struct _ARG
         root->label = "Root";
         root->predecessor.none = true;
 
+        create_self_loop(root.get());
+
+        root_ptr = root.get();
+        nodes.push_back(std::move(root));
+    }
+
+    _ARG(std::string root_label, std::vector<int> _root_mutations)
+    {
+        auto root = std::make_unique<Node>();
+
+        root->type = ROOT;
+        root->id = -1;
+        root->mutations = _root_mutations;
+        root->label = root_label;
+        root->predecessor.none = true;
+
+        create_self_loop(root.get());
+
+        root_mutations = _root_mutations;
         root_ptr = root.get();
 
         nodes.push_back(std::move(root));
@@ -141,10 +177,10 @@ float get_cost(const int rms, const int bms, const int rcs);
 float get_cost(const int rms, const int bms);
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 ARGOutputFormat format, bool annotate_edges, ARGOutputLabels node_labels);
-ARG build_arg(Genes genes, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
-ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, Genes genes, int how_verbose, float cost_rm, float cost_bm,
+ARG build_arg(Genes genes, bool root_given, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
+ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, Genes genes, bool root_given, int how_verbose, float cost_rm, float cost_bm,
                                 float cost_recomb, int recomb_max, int rm_max, int bm_max);
-ARG build_arg_multi_smart_runs(int number_of_runs, int run_seed, bool tricky_first, const Genes genes, int how_verbose, float cost_rm,
+ARG build_arg_multi_smart_runs(int number_of_runs, int run_seed, bool tricky_first, const Genes genes, bool root_given, int how_verbose, float cost_rm,
                                float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
 
 #endif

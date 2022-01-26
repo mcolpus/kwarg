@@ -16,5 +16,6 @@ std::vector<int> vector_union(const std::vector<int> &u, const std::vector<int> 
 std::vector<int> vector_values_below(const std::vector<int> &v, const int threshold);
 std::vector<int> vector_values_above(const std::vector<int> &v, const int threshold);
 std::vector<int> set_to_vector(const std::set<int> &set);
+bool vector_contains(const std::vector<int> &v, const int e);
 
 #endif
