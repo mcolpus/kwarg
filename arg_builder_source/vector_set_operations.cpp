@@ -200,6 +200,21 @@ std::vector<int> vector_values_above(const std::vector<int> &v, const int thresh
     return std::move(u);
 }
 
+/* Will return vector containing all elements x, such that min <= x < max */
+std::vector<int> vector_values_between(const std::vector<int> &v, const int min, const int max)
+{
+    std::vector<int> u;
+    for (int a : v)
+    {
+        if (a < min)
+            continue;
+        else if (a >= max)
+            break;
+        u.push_back(a);
+    }
+    return std::move(u);
+}
+
 std::vector<int> set_to_vector(const std::set<int> &set)
 {
     std::vector<int> v;

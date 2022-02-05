@@ -15,6 +15,7 @@ std::pair<std::vector<int>, std::vector<int>> vector_split(const std::vector<int
 std::vector<int> vector_union(const std::vector<int> &u, const std::vector<int> &v);
 std::vector<int> vector_values_below(const std::vector<int> &v, const int threshold);
 std::vector<int> vector_values_above(const std::vector<int> &v, const int threshold);
+std::vector<int> vector_values_between(const std::vector<int> &v, const int min, const int max);
 std::vector<int> set_to_vector(const std::set<int> &set);
 bool vector_contains(const std::vector<int> &v, const int e);
 std::vector<int> vector_symmetric_difference(const std::vector<int> &u, const std::vector<int> &v);
