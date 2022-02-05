@@ -222,3 +222,43 @@ bool vector_contains(const std::vector<int> &v, const int e)
     }
     return false;
 }
+
+/* All elements which are in u or v but not both */
+std::vector<int> vector_symmetric_difference(const std::vector<int> &u, const std::vector<int> &v)
+{
+    int N = u.size();
+    int M = v.size();
+    int i = 0, j = 0;
+    std::vector<int> sym_diff = {};
+
+    while (i < N && j < M)
+    {
+        if (u[i] == v[j])
+        {
+            i++;
+            j++;
+        }
+        else if (u[i] > v[j])
+        {
+            sym_diff.push_back(v[j]);
+            j++;
+        }
+        else
+        {
+            sym_diff.push_back(u[i]);
+            i++;
+        }
+    }
+    while (i < N)
+    {
+        sym_diff.push_back(u[i]);
+        i++;
+    }
+    while (j < M)
+    {
+        sym_diff.push_back(v[j]);
+        j++;
+    }
+
+    return std::move(sym_diff);
+}
