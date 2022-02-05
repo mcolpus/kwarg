@@ -46,6 +46,33 @@ std::string vector_to_string(const std::vector<int> &v, bool make_negative = fal
     return s;
 }
 
+std::string vector_to_string_with_highlights(const std::vector<int> &v, bool make_negative, const std::set<int> &highlights, const std::string highlight_symbol, bool only_show_highlighted)
+{
+    std::string s = "";
+    bool first = true;
+    for (const int i : v)
+    {
+        bool highlight = highlights.find(i) != highlights.end();
+
+        if(highlight || !only_show_highlighted)
+        {
+            if (!first)
+                s += ", ";
+            if (make_negative)
+                s += std::to_string(-i);
+            else
+                s += std::to_string(i);
+            
+            first = false;
+
+            if(highlight)
+                s += highlight_symbol;
+        }
+    }
+
+    return s;
+}
+
 void print_gene(const Gene &g)
 {
     if (g.label != "")
@@ -152,7 +179,7 @@ float get_cost_of_addition(const ARG &arg, const int rms, const int bms)
 }
 
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
-                ARGOutputFormat format, bool annotate_edges, ARGOutputLabels node_labels)
+                ARGOutputFormat format, int how_to_label_edges, ARGOutputLabels node_labels)
 {
     int intervals;
 
@@ -305,7 +332,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 break;
             }
             /* Output edge label */
-            if (annotate_edges)
+            if (how_to_label_edges > 0)
             {
                 switch (format)
                 {
@@ -319,9 +346,10 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                     fprintf(fp, "\n    label \"");
                     break;
                 }
-                auto muts = vector_to_string(arg.nodes[i]->predecessor.one->mutations);
+                auto muts = vector_to_string_with_highlights(arg.nodes[i]->predecessor.one->mutations, false, arg.recurrent_sites, "*", how_to_label_edges==1);
                 auto back_muts = vector_to_string(arg.nodes[i]->predecessor.one->back_mutations, true);
-                fprintf(fp, "%s|%s", muts.c_str(), back_muts.c_str());
+                if (muts.length() + back_muts.length() > 0)
+                    fprintf(fp, "%s|%s", muts.c_str(), back_muts.c_str());
                 fprintf(fp, "\"");
                 if (format == ARGDOT)
                     fprintf(fp, "]");
@@ -1008,7 +1036,6 @@ ARG _build_arg(const Genes genes, bool root_given)
     ARG arg;
     if (root_given)
         arg = ARG(genes.genes[0].label, genes.genes[0].mutations);
-    
 
     int step = 0;
     for (const Gene &g : genes.genes)
@@ -1078,7 +1105,7 @@ ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, const Genes ge
         std::cout << "starting build\n";
 
     auto rng = std::default_random_engine(run_seed);
-    
+
     std::vector<Gene> g_copy = genes.genes;
     Gene root;
     if (root_given)
@@ -1178,7 +1205,7 @@ ARG build_arg_multi_smart_runs(int number_of_runs, int run_seed, bool tricky_fir
         std::shuffle(easy_genes.begin(), easy_genes.end(), rng);
 
         Genes combined_genes;
-        if(root_given)
+        if (root_given)
             combined_genes.genes.push_back(root);
         if (tricky_first)
         {

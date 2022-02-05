@@ -176,7 +176,7 @@ typedef struct _GENEs
 float get_cost(const int rms, const int bms, const int rcs);
 float get_cost(const int rms, const int bms);
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
-                ARGOutputFormat format, bool annotate_edges, ARGOutputLabels node_labels);
+                ARGOutputFormat format, int how_to_label_edges, ARGOutputLabels node_labels);
 ARG build_arg(Genes genes, bool root_given, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
 ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, Genes genes, bool root_given, int how_verbose, float cost_rm, float cost_bm,
                                 float cost_recomb, int recomb_max, int rm_max, int bm_max);
