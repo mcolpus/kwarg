@@ -18,6 +18,7 @@
 
 #include "arg_builder_logic.h"
 #include "vector_set_operations.h"
+#include "step_function.h"
 
 bool _root_given = false;
 int _how_verbose = 0;
@@ -54,7 +55,7 @@ std::string vector_to_string_with_highlights(const std::vector<int> &v, bool mak
     {
         bool highlight = highlights.find(i) != highlights.end();
 
-        if(highlight || !only_show_highlighted)
+        if (highlight || !only_show_highlighted)
         {
             if (!first)
                 s += ", ";
@@ -62,10 +63,10 @@ std::string vector_to_string_with_highlights(const std::vector<int> &v, bool mak
                 s += std::to_string(-i);
             else
                 s += std::to_string(i);
-            
+
             first = false;
 
-            if(highlight)
+            if (highlight)
                 s += highlight_symbol;
         }
     }
@@ -110,7 +111,6 @@ void print_arg(const ARG &arg)
     std::cout << "-----------printing edges:\n";
     for (auto &edge_ptr : arg.edges)
     {
-        std::cout << "Hello";
         std::cout << edge_ptr->from->label << " -> " << edge_ptr->to->label << " muts: ";
         for (int i : edge_ptr->mutations)
         {
@@ -346,7 +346,7 @@ void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                     fprintf(fp, "\n    label \"");
                     break;
                 }
-                auto muts = vector_to_string_with_highlights(arg.nodes[i]->predecessor.one->mutations, false, arg.recurrent_sites, "*", how_to_label_edges==1);
+                auto muts = vector_to_string_with_highlights(arg.nodes[i]->predecessor.one->mutations, false, arg.recurrent_sites, "*", how_to_label_edges == 1);
                 auto back_muts = vector_to_string(arg.nodes[i]->predecessor.one->back_mutations, true);
                 if (muts.length() + back_muts.length() > 0)
                     fprintf(fp, "%s|%s", muts.c_str(), back_muts.c_str());
@@ -796,10 +796,14 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
         while (i < rms && j < bms)
         {
             bool inc_i;
-            if (req_recurrent_mutations[i] <= req_back_mutations[j])
+            if (req_recurrent_mutations[i] < req_back_mutations[j])
             {
                 pos = req_recurrent_mutations[i];
                 inc_i = true;
+            }
+            else if (req_recurrent_mutations[i] == req_back_mutations[j])
+            {
+                std::cerr << "Should not be possible to have a recurrent mutation and back mutation at same location";
             }
             else
             {
@@ -953,6 +957,386 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
     }
 }
 
+std::tuple<int, std::vector<int>, std::vector<Edge *>, int, int> find_best_multi_recomb_location(ARG &arg, const Gene &g, const std::set<Edge *> &related_edges, const std::vector<int> &existing_mutations, int max_parents)
+{
+    /**
+     * This function will return a tuple: (number of parents, list of cross-over points, list of edges which are parent to each segment, total rms, total bms)
+     */
+
+    /**
+     * For each edge we want to calculate the cost of using it as a prefix or suffix.
+     * position 0 refers to just before site 0, 1 just before 1 etc.
+     * We don't bother considering the position after the end.
+     *
+     * prefix_costs is a map from cross-over position to a (edge, rms, bms) pair.
+     * suffix_costs will be similar and even have the same keys.
+     */
+    std::map<int, std::tuple<Edge *, int, int>> prefix_costs;
+    std::map<int, std::tuple<Edge *, int, int>> suffix_costs;
+
+    std::map<Edge *, std::unique_ptr<StepFunction>> edge_cost_functions;
+
+    for (Edge *edge : related_edges)
+    {
+        // First find needed mutations relative to target node of edge
+        std::vector<int> recurrent_mutations = vector_difference(existing_mutations, edge->to->mutations); // TODO: a symmetric difference is going on
+        std::vector<int> back_mutations = vector_difference(edge->to->mutations, existing_mutations);
+
+        // Now consider if some can be removed by splitting edge
+        auto req_recurrent_mutations = vector_difference(recurrent_mutations, edge->back_mutations);
+        auto req_back_mutations = vector_difference(back_mutations, edge->mutations);
+
+        int i = 0;
+        int j = 0;
+        int pos = 0;
+        int rms = req_recurrent_mutations.size();
+        int bms = req_back_mutations.size();
+
+        auto step_function = std::make_unique<StepFunction>(rms, bms);
+
+        // set 0 suffix cost and prefix cost
+        // replace_cost_if_better(arg, suffix_costs, 0, edge, rms, bms);
+
+        while (i < rms && j < bms)
+        {
+            bool inc_i;
+            if (req_recurrent_mutations[i] < req_back_mutations[j])
+            {
+                pos = req_recurrent_mutations[i];
+                inc_i = true;
+            }
+            else if (req_recurrent_mutations[i] == req_back_mutations[j])
+            {
+                std::cerr << "Should not be possible to have a recurrent mutation and back mutation at same location";
+            }
+            else
+            {
+                pos = req_back_mutations[j];
+                inc_i = false;
+            }
+
+            // update prefix and suffix costs
+            replace_cost_if_better(arg, prefix_costs, pos, edge, i, j);
+            replace_cost_if_better(arg, suffix_costs, pos, edge, rms - i, bms - j);
+
+            float cost = get_cost_of_addition(arg, i, j);
+            if (cost >= 0)
+                step_function->add_point(pos, i, j, cost);
+
+            if (inc_i)
+                i += 1;
+            else
+                j += 1;
+        }
+
+        while (i < rms)
+        {
+            // So j must equal bms
+            pos = req_recurrent_mutations[i];
+
+            // update prefix and suffix costs
+            replace_cost_if_better(arg, prefix_costs, pos, edge, i, bms);
+            replace_cost_if_better(arg, suffix_costs, pos, edge, rms - i, 0);
+
+            float cost = get_cost_of_addition(arg, i, bms);
+            if (cost >= 0)
+                step_function->add_point(pos, i, bms, cost);
+
+            i += 1;
+        }
+        while (j < bms)
+        {
+            // So j must equal bms
+            pos = req_back_mutations[j];
+
+            // update prefix and suffix costs
+            replace_cost_if_better(arg, prefix_costs, pos, edge, rms, j);
+            replace_cost_if_better(arg, suffix_costs, pos, edge, 0, bms - j);
+
+            float cost = get_cost_of_addition(arg, rms, j);
+            if (cost >= 0)
+                step_function->add_point(pos, rms, j, cost);
+
+            j += 1;
+        }
+
+        replace_cost_if_better(arg, suffix_costs, pos + 1, edge, 0, 0);
+        // replace_cost_if_better(arg, prefix_costs, pos + 1, edge, rms, bms);
+
+        edge_cost_functions.insert({edge, std::move(step_function)});
+    }
+
+    // Now we can go through the costs (which should be sorted by key)
+    // First turn maps into vectors so that we can iterate through both nicely
+    std::vector<std::tuple<int, Edge *, int, int>> prefix_costs_vec;
+    std::vector<std::tuple<int, Edge *, int, int>> suffix_costs_vec;
+    for (const auto &[site, value] : prefix_costs)
+    {
+        auto [edge, rms, bms] = value;
+        prefix_costs_vec.push_back(std::make_tuple(site, edge, rms, bms));
+    }
+    for (const auto &[site, value] : suffix_costs)
+    {
+        auto [edge, rms, bms] = value;
+        suffix_costs_vec.push_back(std::make_tuple(site, edge, rms, bms));
+    }
+
+    // Now go through backwards to create optimal prefix costs, and forwards for optimal suffix costs
+    std::vector<std::tuple<int, Edge *, int, int>> optimal_prefix_costs;
+    std::vector<std::tuple<int, Edge *, int, int>> optimal_suffix_costs;
+    float best_cost = -1.0;
+    for (int i = prefix_costs_vec.size() - 1; i >= 0; i--)
+    {
+        auto [site, edge, rms, bms] = prefix_costs_vec[i];
+        float cost = get_cost_of_addition(arg, rms, bms);
+        if (cost >= 0 && (cost < best_cost || best_cost < 0))
+        {
+            optimal_prefix_costs.push_back(prefix_costs_vec[i]);
+            best_cost = cost;
+        }
+    }
+    std::reverse(optimal_prefix_costs.begin(), optimal_prefix_costs.end());
+    best_cost = -1.0;
+    for (int i = 0; i < suffix_costs_vec.size(); i++)
+    {
+        auto [site, edge, rms, bms] = suffix_costs_vec[i];
+        float cost = get_cost_of_addition(arg, rms, bms);
+        if (cost >= 0 && (cost < best_cost || best_cost < 0))
+        {
+            optimal_suffix_costs.push_back(suffix_costs_vec[i]);
+            best_cost = cost;
+        }
+    }
+
+    if (optimal_prefix_costs.size() == 0 or optimal_suffix_costs.size() == 0)
+    {
+        return std::make_tuple(0, std::vector<int>(), std::vector<Edge *>(), 0, 0);
+    }
+
+    std::vector<int> change_points; // This only needs to be calculated if we have three of more crossover positions
+    if (max_parents >= 4)
+    {
+        int p_index = 0, s_index = 0;
+        while (p_index < optimal_prefix_costs.size() && s_index < optimal_suffix_costs.size())
+        {
+            auto [p_site, x, y, z] = optimal_prefix_costs[p_index];
+            auto [s_site, a, b, c] = optimal_suffix_costs[s_index];
+            if (p_site < s_site)
+            {
+                p_index += 1;
+                change_points.push_back(p_site);
+            }
+            else if (p_site == s_site)
+            {
+                p_index += 1;
+                s_index += 1;
+                change_points.push_back(p_site);
+            }
+            else
+            {
+                s_index += 1;
+                change_points.push_back(s_site);
+            }
+        }
+
+        while (p_index < optimal_prefix_costs.size())
+        {
+            auto [p_site, x, y, z] = optimal_prefix_costs[p_index];
+            change_points.push_back(p_site);
+            p_index += 1;
+        }
+        while (s_index < optimal_suffix_costs.size())
+        {
+            auto [s_site, x, y, z] = optimal_suffix_costs[s_index];
+            change_points.push_back(s_site);
+            s_index += 1;
+        }
+    }
+
+    int best_number_parents = 0;
+    std::vector<int> best_positions;
+    std::vector<Edge *> best_parents;
+    best_cost = -1.0;
+    int best_rms = -1;
+    int best_bms = -1;
+
+    if (max_parents >= 2)
+    {
+        int p_index = 0, s_index = 0;
+        auto [p_site, p_edge, p_rms, p_bms] = optimal_prefix_costs[p_index];
+        auto [s_site, s_edge, s_rms, s_bms] = optimal_suffix_costs[s_index];
+
+        while (p_index < optimal_prefix_costs.size())
+        {
+            // Now need to find the highest s_index such that s_site <= p_site
+            while (s_index < optimal_suffix_costs.size() - 1)
+            {
+                int next_site = std::get<0>(optimal_suffix_costs[s_index + 1]);
+                if (next_site <= p_site)
+                {
+                    s_index += 1;
+                    std::tie(s_site, s_edge, s_rms, s_bms) = optimal_suffix_costs[s_index];
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            float current_cost = get_cost_of_addition(arg, p_rms + s_rms, p_bms + s_bms, 1);
+            if (current_cost >= 0 && (current_cost < best_cost || best_cost < 0))
+            {
+                best_number_parents = 2;
+                best_positions = {p_site};
+                best_parents = {p_edge, s_edge};
+                best_cost = current_cost;
+                best_rms = p_rms + s_rms;
+                best_bms = p_bms + s_bms;
+            }
+
+            p_index++;
+            std::tie(p_site, p_edge, p_rms, p_bms) = optimal_prefix_costs[p_index];
+        }
+    }
+
+    if (max_parents >= 3 && get_cost_of_addition(arg, 0, 0, 2) >= 0 && (best_cost < 0 || get_cost_of_addition(arg, 0, 0, 2) < best_cost))
+    {
+        int p_index = 0, s_index = 0;
+        auto [p_site, p_edge, p_rms, p_bms] = optimal_prefix_costs[p_index];
+        auto [s_site, s_edge, s_rms, s_bms] = optimal_suffix_costs[s_index];
+
+        while (p_index < optimal_prefix_costs.size())
+        {
+            std::tie(p_site, p_edge, p_rms, p_bms) = optimal_prefix_costs[p_index];
+
+            s_index = optimal_suffix_costs.size() - 1;
+            while (s_index >= 0)
+            {
+                std::tie(s_site, s_edge, s_rms, s_bms) = optimal_suffix_costs[s_index];
+
+                if (s_site <= p_site)
+                {
+                    break; // This would just be a 2 parent recombination
+                }
+                else
+                {
+                    for (Edge *m_edge : related_edges)
+                    {
+                        auto [m_rms, m_bms] = edge_cost_functions[m_edge]->get_range(p_site, s_site);
+                        float current_cost = get_cost_of_addition(arg, p_rms + m_rms + s_rms, p_bms + m_bms + s_bms, 2);
+                        if (current_cost >= 0 && (current_cost < best_cost || best_cost < 0))
+                        {
+                            best_number_parents = 3;
+                            best_positions = {p_site, s_site};
+                            best_parents = {p_edge, m_edge, s_edge};
+                            best_cost = current_cost;
+                            best_rms = p_rms + m_rms + s_rms;
+                            best_bms = p_bms + m_bms + s_bms;
+                        }
+                    }
+                }
+
+                s_index--;
+            }
+
+            p_index++;
+        }
+    }
+
+    if (max_parents >= 4 && get_cost_of_addition(arg, 0, 0, 3) >= 0 && (best_cost < 0 || get_cost_of_addition(arg, 0, 0, 3) < best_cost))
+    {
+        int p_index = 0, s_index = 0;
+        auto [p_site, p_edge, p_rms, p_bms] = optimal_prefix_costs[p_index];
+        auto [s_site, s_edge, s_rms, s_bms] = optimal_suffix_costs[s_index];
+
+        while (p_index < optimal_prefix_costs.size())
+        {
+            std::tie(p_site, p_edge, p_rms, p_bms) = optimal_prefix_costs[p_index];
+
+            s_index = optimal_suffix_costs.size() - 1;
+            while (s_index >= 0)
+            {
+                std::tie(s_site, s_edge, s_rms, s_bms) = optimal_suffix_costs[s_index];
+
+                if (s_site <= p_site)
+                {
+                    break; // This would just be a 2 parent recombination
+                }
+                else
+                {
+                    for (int midpoint : change_points)
+                    {
+                        if (midpoint <= p_site)
+                            continue;
+                        else if (midpoint >= s_site)
+                            break;
+
+                        Edge *best_middle1;
+                        float best_cost1 = -1.0;
+                        Edge *best_middle2;
+                        float best_cost2 = -1.0;
+
+                        for (Edge *m_edge : related_edges)
+                        {
+                            auto [m1_rms, m1_bms] = edge_cost_functions[m_edge]->get_range(p_site, midpoint);
+                            float cost1 = get_cost_of_addition(arg, m1_rms, m1_bms);
+                            if (cost1 >= 0 && (cost1 < best_cost1 || best_cost1 < 0))
+                            {
+                                best_cost1 = cost1;
+                                best_middle1 = m_edge;
+                            }
+
+                            auto [m2_rms, m2_bms] = edge_cost_functions[m_edge]->get_range(midpoint, s_site);
+                            float cost2 = get_cost_of_addition(arg, m2_rms, m2_bms);
+                            if (cost2 >= 0 && (cost2 < best_cost2 || best_cost2 < 0))
+                            {
+                                best_cost2 = cost2;
+                                best_middle2 = m_edge;
+                            }
+                        }
+
+                        auto [m1_rms, m1_bms] = edge_cost_functions[best_middle1]->get_range(p_site, midpoint);
+                        auto [m2_rms, m2_bms] = edge_cost_functions[best_middle2]->get_range(midpoint, s_site);
+                        float current_cost = get_cost_of_addition(arg, p_rms + m1_rms + m2_rms + s_rms, p_bms + m1_bms + m2_bms + s_bms, 3);
+                        if (current_cost >= 0 && (current_cost < best_cost || best_cost < 0))
+                        {
+                            best_number_parents = 4;
+                            best_positions = {p_site, midpoint, s_site};
+                            best_parents = {p_edge, best_middle1, best_middle2, s_edge};
+                            best_cost = current_cost;
+                            best_rms = p_rms + m1_rms + m2_rms + s_rms;
+                            best_bms = p_bms + m1_bms + m2_bms + s_bms;
+                        }
+                    }
+                }
+
+                s_index--;
+            }
+
+            p_index++;
+        }
+    }
+
+    if (best_cost < 0)
+    {
+        if (_how_verbose >= 2)
+            std::cout << "Could not find recombination location for g: " << g.label << "\n";
+        return std::make_tuple(0, std::vector<int>(), std::vector<Edge *>(), 0, 0);
+    }
+    else
+    {
+        if (_how_verbose >= 2)
+        {
+            std::cout << "Best recomb has " << best_number_parents << " parents: ";
+            for (auto p : best_parents)
+                std::cout << p->to->label << ", ";
+            std::cout << ". Cross-over positions: " << vector_to_string(best_positions) << ".";
+            std::cout << " Cost was rms: " << best_rms << " bms: " << best_bms;
+        }
+        return std::make_tuple(best_number_parents, best_positions, best_parents, best_rms, best_bms);
+    }
+}
+
 void insert_seq_at_recomb_location(ARG &arg, const Gene &g, const int pos, Edge *prefix, Edge *suffix, const std::vector<int> &existing_mutations)
 {
     auto p_existing_mutations = vector_values_below(existing_mutations, pos);
@@ -998,6 +1382,60 @@ void insert_seq_at_recomb_location(ARG &arg, const Gene &g, const int pos, Edge 
     insert_seq_as_direct_child(arg, g, recomb_node, existing_mutations);
 }
 
+void insert_seq_at_multi_recomb_location(ARG &arg, const Gene &g, const int number_parents, std::vector<int> crossovers, std::vector<Edge *> parents, const std::vector<int> &existing_mutations)
+{
+    std::vector<Node *> parent_nodes;
+    for (int i = 0; i < number_parents; i++)
+    {
+        Edge *parent = parents[i];
+        // For each parent decide whether to split
+        std::vector<int> existing_mutations_in_range = {};
+        std::vector<int> parent_mutations_in_range = {};
+
+        if (i == 0)
+        {
+            existing_mutations_in_range = vector_values_below(existing_mutations, crossovers[0]);
+            parent_mutations_in_range = vector_values_below(parent->to->mutations, crossovers[0]);
+        }
+        else if (i == number_parents - 1)
+        {
+            existing_mutations_in_range = vector_values_above(existing_mutations, crossovers.back());
+            parent_mutations_in_range = vector_values_above(parent->to->mutations, crossovers.back());
+        }
+        else
+        {
+            existing_mutations_in_range = vector_values_between(existing_mutations, crossovers[i - 1], crossovers[i]);
+            parent_mutations_in_range = vector_values_between(parent->to->mutations, crossovers[i - 1], crossovers[i]);
+        }
+
+        std::vector<int> rms = vector_difference(existing_mutations_in_range, parent->to->mutations);
+        std::vector<int> bms = vector_difference(parent_mutations_in_range, existing_mutations_in_range);
+
+        auto [removable_rms, required_rms] = vector_split(rms, parent->back_mutations);
+        auto [removable_bms, required_bms] = vector_split(bms, parent->mutations);
+
+        Node *parent_node; // This will either be the target of the prefix edge, or a split node
+        if (removable_rms.size() > 0 || removable_bms.size() > 0)
+        {
+            parent_node = split_edge(arg, parent, removable_rms, removable_bms);
+        }
+        else
+        {
+            parent_node = parent->to;
+        }
+
+        parent_nodes.push_back(std::move(parent_node));
+    }
+
+    Node *recomb_node = parent_nodes[0];
+    for (int i = 0; i < number_parents - 1; i++)
+    {
+        recomb_node = recombine_nodes(arg, crossovers[i], recomb_node, parent_nodes[i + 1]);
+    }
+
+    insert_seq_as_direct_child(arg, g, recomb_node, existing_mutations);
+}
+
 void add_seq_to_arg(ARG &arg, const Gene &g)
 {
     auto [relevant_edges, existing_mutations] = find_relevant_edges(arg, g);
@@ -1031,6 +1469,39 @@ void add_seq_to_arg(ARG &arg, const Gene &g)
     }
 }
 
+void add_seq_to_arg_with_multi_recombs(ARG &arg, const Gene &g, int max_parents)
+{
+    auto [relevant_edges, existing_mutations] = find_relevant_edges(arg, g);
+
+    auto [edge, rms, bms] = find_best_single_parent_location(arg, g, relevant_edges, existing_mutations);
+    // nullptr for edge means that no single parent works. A self loop would be returned for a root option.
+    float sp_cost = get_cost_of_addition(arg, rms, bms);
+
+    if (_cost_recombination >= 0)
+    {
+        auto [best_number_parents, crossovers, parents, r_rms, r_bms] = find_best_multi_recomb_location(arg, g, relevant_edges, existing_mutations, max_parents);
+        // best_number_parents = 0 means failure
+
+        float r_cost = get_cost_of_addition(arg, r_rms, r_bms, best_number_parents - 1);
+
+        if (best_number_parents >= 2 && r_cost >= 0 && (sp_cost < 0 || r_cost < sp_cost))
+        {
+            // recombination is valid and better than having single parent
+            insert_seq_at_multi_recomb_location(arg, g, best_number_parents, crossovers, parents, existing_mutations);
+            return;
+        }
+    }
+
+    if (edge != nullptr && sp_cost >= 0)
+    {
+        insert_seq_at_edge(arg, g, edge, existing_mutations);
+    }
+    else
+    {
+        std::cerr << "The gene: " << g.label << " could not be added to the ARG so will be ignored.\n";
+    }
+}
+
 ARG _build_arg(const Genes genes, bool root_given)
 {
     ARG arg;
@@ -1042,7 +1513,7 @@ ARG _build_arg(const Genes genes, bool root_given)
     {
         if (step != 0 || !root_given)
         {
-            add_seq_to_arg(arg, g);
+            add_seq_to_arg_with_multi_recombs(arg, g, 4);
         }
 
         step += 1;
