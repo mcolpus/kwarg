@@ -31,7 +31,7 @@ endif
 endif
 
 SRCFILES =  arg_builder.cpp arg_builder_logic.cpp vector_set_operations.cpp
-HDRFILES =  arg_builder_logic.h vector_set_operations.h
+HDRFILES =  arg_builder_logic.h vector_set_operations.h step_function.h
 EXECUTABLES = arg_builder
 DATA = kreitman_snp.txt
 SCRIPTS =
@@ -41,13 +41,15 @@ AUTOHDRFILES =
 
 all: arg_builder
 
-arg_builder: arg_builder.o arg_builder_logic.o vector_set_operations.o
+arg_builder: arg_builder.o arg_builder_logic.o vector_set_operations.o step_function.o
 
-arg_builder.o: arg_builder.cpp arg_builder_logic.h vector_set_operations.h Makefile
+arg_builder.o: arg_builder.cpp arg_builder_logic.h vector_set_operations.h step_function.h Makefile
 
-arg_builder_logic.o: arg_builder_logic.cpp arg_builder_logic.h vector_set_operations.h
+arg_builder_logic.o: arg_builder_logic.cpp arg_builder_logic.h vector_set_operations.h step_function.h
 
 vector_set_operations.o: vector_set_operations.h
+
+step_function.o: step_function.h
 
 archive: ${SRCFILES} ${HDRFILES} ${DATA} ${SCRIPTS} ${INSTRUCTIONS} Makefile
 	tar cvf kwarg.`date +%d%m%y`.tar ${SRCFILES} ${HDRFILES} ${DATA} ${SCRIPTS} ${INSTRUCTIONS} Makefile
