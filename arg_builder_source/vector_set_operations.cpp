@@ -277,3 +277,23 @@ std::vector<int> vector_symmetric_difference(const std::vector<int> &u, const st
 
     return std::move(sym_diff);
 }
+
+std::set<int> vector_set_intersection(const std::vector<int> &u, const std::set<int> &v)
+{
+    std::set<int> intersection;
+    std::set_intersection(u.begin(), u.end(),
+                          v.begin(), v.end(),
+                          std::inserter(intersection, intersection.begin()));
+
+    return std::move(intersection);
+}
+
+std::set<int> set_intersection(const std::set<int> &u, const std::set<int> &v)
+{
+    std::set<int> intersection;
+    std::set_intersection(u.begin(), u.end(),
+                          v.begin(), v.end(),
+                          std::inserter(intersection, intersection.begin()));
+
+    return std::move(intersection);
+}
