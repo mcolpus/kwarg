@@ -579,7 +579,7 @@ int main(int argc, char **argv)
         std::cout << "read input\n";
 
     ARG arg = build_arg_main(genes, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, find_root_strategy, find_root_iterations,
-                             cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+                             max_recombination_parents, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
 
     /* Output ARG in dot format */
     for (auto dot_file : dot_files)

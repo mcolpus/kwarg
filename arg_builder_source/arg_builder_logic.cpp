@@ -22,6 +22,7 @@
 
 bool _multi_roots_given = false;
 int _how_verbose = 0;
+int _max_number_parents = 2;
 float _cost_recurrent_mutation = 1.0;
 float _cost_back_mutation = 1.0;
 float _cost_recombination = 1.0;
@@ -562,16 +563,6 @@ Node *split_edge(ARG &arg, Edge *edge, std::vector<int> removable_muts, std::vec
         remove_edge_from_multimap(arg.back_mutation_to_edges, m, edge);
     }
 
-    // Need to check if we have split the out-edge of a recombination node (which gets referenced by mutation_to_recombinations)
-    if (split_edge->from->type == RECOMBINATION)
-    {
-        for (int m : split_edge->from->mutations)
-        {
-            arg.mutation_to_recombinations.insert({m, split_edge.get()});
-            remove_edge_from_multimap(arg.mutation_to_recombinations, m, edge);
-        }
-    }
-
     Node *new_node = split_node.get();
 
     arg.edges.push_back(std::move(split_edge));
@@ -624,8 +615,40 @@ Node *insert_seq_as_direct_child(ARG &arg, const Gene &g, Node *parent, const st
     return return_value;
 }
 
+void pass_sample_to_leaf(ARG &arg, Node *parent)
+{
+    // Want all samples to be leaves of the graph
+    auto new_node = std::make_unique<Node>();
+    auto new_edge = std::make_unique<Edge>();
+
+    new_node->id = arg.nodes.size();
+    new_node->label = parent->label;
+    new_node->mutations = parent->mutations;
+    new_node->type = SAMPLE;
+    new_node->predecessor.one = new_edge.get();
+
+    new_edge->from = parent;
+    new_edge->to = new_node.get();
+
+    new_edge->mutations.clear();
+    new_edge->back_mutations.clear();
+
+    arg.edges.push_back(std::move(new_edge));
+    arg.nodes.push_back(std::move(new_node));
+
+    parent->label = "ancestral" + std::to_string(arg.number_of_ancestral_nodes);
+    parent->type = COALESCENCE;
+
+    arg.number_of_ancestral_nodes += 1;
+}
+
 Node *recombine_nodes(ARG &arg, const int pos, Node *prefix, Node *suffix)
 {
+    if (prefix->type == SAMPLE)
+        pass_sample_to_leaf(arg, prefix);
+    if (suffix->type == SAMPLE)
+        pass_sample_to_leaf(arg, suffix);
+
     auto recomb_node = std::make_unique<Node>();
     auto prefix_edge = std::make_unique<Edge>();
     auto suffix_edge = std::make_unique<Edge>();
@@ -716,21 +739,32 @@ void insert_seq_at_edge(ARG &arg, const Gene &g, Edge *best_edge, const std::vec
         Node *split_node = split_edge(arg, best_edge, removable_rms, removable_back_muts);
 
         // Now check if the split node is the node we wish to insert
-        if (split_node->mutations == g.mutations)
-        {
-            // Then relabel split
-            split_node->label = g.label;
-            split_node->type = SAMPLE;
-            arg.number_of_ancestral_nodes -= 1;
-        }
-        else
-        {
-            insert_seq_as_direct_child(arg, g, split_node, existing_mutations);
-        }
+        // if (split_node->mutations == g.mutations)
+        // {
+        //     // Then relabel split
+        //     split_node->label = g.label;
+        //     split_node->type = SAMPLE;
+        //     arg.number_of_ancestral_nodes -= 1;
+        // }
+        // else
+        // {
+        //     insert_seq_as_direct_child(arg, g, split_node, existing_mutations);
+        // }
+
+        insert_seq_as_direct_child(arg, g, split_node, existing_mutations);
     }
     else
     {
-        insert_seq_as_direct_child(arg, g, best_edge->to, existing_mutations);
+        if (best_edge->to->type == SAMPLE)
+        {
+            pass_sample_to_leaf(arg, best_edge->to);
+
+            insert_seq_as_direct_child(arg, g, best_edge->to, existing_mutations);
+        }
+        else
+        {
+            insert_seq_as_direct_child(arg, g, best_edge->to, existing_mutations);
+        }
     }
 }
 
@@ -958,7 +992,7 @@ std::tuple<int, Edge *, Edge *, int, int> find_best_recomb_location(ARG &arg, co
     }
 }
 
-std::tuple<int, std::vector<int>, std::vector<Edge *>, int, int> find_best_multi_recomb_location(ARG &arg, const Gene &g, const std::set<Edge *> &related_edges, const std::vector<int> &existing_mutations, int max_parents)
+std::tuple<int, std::vector<int>, std::vector<Edge *>, int, int> find_best_multi_recomb_location(ARG &arg, const Gene &g, const std::set<Edge *> &related_edges, const std::vector<int> &existing_mutations)
 {
     /**
      * This function will return a tuple: (number of parents, list of cross-over points, list of edges which are parent to each segment, total rms, total bms)
@@ -1115,7 +1149,7 @@ std::tuple<int, std::vector<int>, std::vector<Edge *>, int, int> find_best_multi
     }
 
     std::vector<int> change_points; // This only needs to be calculated if we have three of more crossover positions
-    if (max_parents >= 4)
+    if (_max_number_parents >= 4)
     {
         int p_index = 0, s_index = 0;
         while (p_index < optimal_prefix_costs.size() && s_index < optimal_suffix_costs.size())
@@ -1161,7 +1195,7 @@ std::tuple<int, std::vector<int>, std::vector<Edge *>, int, int> find_best_multi
     int best_rms = -1;
     int best_bms = -1;
 
-    if (max_parents >= 2)
+    if (_max_number_parents >= 2)
     {
         int p_index = 0, s_index = 0;
         auto [p_site, p_edge, p_rms, p_bms] = optimal_prefix_costs[p_index];
@@ -1200,7 +1234,7 @@ std::tuple<int, std::vector<int>, std::vector<Edge *>, int, int> find_best_multi
         }
     }
 
-    if (max_parents >= 3 && get_cost_of_addition(arg, 0, 0, 2) >= 0 && (best_cost < 0 || get_cost_of_addition(arg, 0, 0, 2) < best_cost))
+    if (_max_number_parents >= 3 && get_cost_of_addition(arg, 0, 0, 2) >= 0 && (best_cost < 0 || get_cost_of_addition(arg, 0, 0, 2) < best_cost))
     {
         int p_index = 0, s_index = 0;
         auto [p_site, p_edge, p_rms, p_bms] = optimal_prefix_costs[p_index];
@@ -1244,7 +1278,7 @@ std::tuple<int, std::vector<int>, std::vector<Edge *>, int, int> find_best_multi
         }
     }
 
-    if (max_parents >= 4 && get_cost_of_addition(arg, 0, 0, 3) >= 0 && (best_cost < 0 || get_cost_of_addition(arg, 0, 0, 3) < best_cost))
+    if (_max_number_parents >= 4 && get_cost_of_addition(arg, 0, 0, 3) >= 0 && (best_cost < 0 || get_cost_of_addition(arg, 0, 0, 3) < best_cost))
     {
         int p_index = 0, s_index = 0;
         auto [p_site, p_edge, p_rms, p_bms] = optimal_prefix_costs[p_index];
@@ -1470,7 +1504,7 @@ void add_seq_to_arg(ARG &arg, const Gene &g)
     }
 }
 
-void add_seq_to_arg_with_multi_recombs(ARG &arg, const Gene &g, int max_parents)
+void add_seq_to_arg_with_multi_recombs(ARG &arg, const Gene &g)
 {
     auto [relevant_edges, existing_mutations] = find_relevant_edges(arg, g);
 
@@ -1480,7 +1514,7 @@ void add_seq_to_arg_with_multi_recombs(ARG &arg, const Gene &g, int max_parents)
 
     if (_cost_recombination >= 0)
     {
-        auto [best_number_parents, crossovers, parents, r_rms, r_bms] = find_best_multi_recomb_location(arg, g, relevant_edges, existing_mutations, max_parents);
+        auto [best_number_parents, crossovers, parents, r_rms, r_bms] = find_best_multi_recomb_location(arg, g, relevant_edges, existing_mutations);
         // best_number_parents = 0 means failure
 
         float r_cost = get_cost_of_addition(arg, r_rms, r_bms, best_number_parents - 1);
@@ -1552,7 +1586,7 @@ ARG _build_arg_from_order(const Genes genes, int roots_given, const std::vector<
     int step = 0;
     for (int index : order)
     {
-        add_seq_to_arg_with_multi_recombs(arg, genes.genes[index], 4);
+        add_seq_to_arg_with_multi_recombs(arg, genes.genes[index]);
 
         step += 1;
         if (_how_verbose >= 3)
@@ -1658,10 +1692,11 @@ ARG _build_arg_multi_runs(const Genes genes, int number_of_runs, int run_seed, i
 }
 
 ARG build_arg_main(const Genes genes, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int find_root_strategy, int find_root_iterations,
-                   float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
+                   int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
 {
     _multi_roots_given = roots_given > 1;
     _how_verbose = how_verbose;
+    _max_number_parents = max_number_parents;
     _cost_recurrent_mutation = cost_rm;
     _cost_back_mutation = cost_bm;
     _cost_recombination = cost_recomb;
