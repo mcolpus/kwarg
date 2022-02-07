@@ -197,14 +197,16 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-s", "Label nodes in ancestral recombination graphs with mutations of that node.", 70, -1);
     print_option(f, "-l", "Input data has labels for the samples.", 70, -1);
     print_option(f, "-i", "Label sequences by index, e.g. the first sequence in the data file would be assigned '1' as id.", 70, -1);
+    print_option(f, "-c[x]", "maximum number of parents via combination (default = max = 4).", 70, -1);
     print_option(f, "-r[x]", "Input data has x root(s) given. Otherwise root is all zero. More than one root has odd behaviour TODO:", 70, -1);
-    print_option(f, "-f[x]", "Find root for given sequences, using strategy x", 70, -1);
+    print_option(f, "-F[x]", "Find root for given sequences, using strategy x.", 70, -1);
+    print_option(f, "-f[x]", "number of iterations to use when finding a root.", 70, -1);
     print_option(f, "-Q[x]", "Sets the number of runs.", 70, -1);
     print_option(f, "-S[x]", "Sets the random seed.", 70, -1);
     print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset.", 70, -1);
     print_option(f, "-Y[x]", "Provide an upper bound x on the number of recurrent mutations needed for the input dataset.", 70, -1);
     print_option(f, "-Z[x]", "Provide an upper bound x on the number of back mutations needed for the input dataset.", 70, -1);
-    print_option(f, "-T[x]", "Run type (used on multiruns). 0: simple random, 1: deal with problem sites first, 2: deal with problem sites last", 70, -1);
+    print_option(f, "-T[x]", "Run type (used on multiruns). 0: simple random, 1: deal with problem sites last, 2: deal with problem sites first", 70, -1);
     print_option(f, "-h, -H -?", "Print this information and stop.", 70, -1);
 }
 
@@ -237,6 +239,7 @@ Genes read_input(std::istream &in, bool use_labels, bool generate_ids)
             genes.genes.push_back(g); // Makes copy
             i += 1;
         }
+        genes.sequence_length = seq_index;
     }
     else
     {
@@ -269,26 +272,10 @@ Genes read_input(std::istream &in, bool use_labels, bool generate_ids)
             is_first_line = false;
         }
         genes.genes.push_back(g); // Make sure final sequence added
+        genes.sequence_length = seq_index;
     }
 
     return std::move(genes);
-}
-
-/* flips all sites which are mutated in root */
-void set_genes_relative_to_root(Genes &genes, const Gene &root)
-{
-    for (Gene &g : genes.genes)
-    {
-        g.mutations = vector_symmetric_difference(g.mutations, root.mutations);
-    }
-}
-
-void set_arg_relative_to_root(ARG &arg, const Gene &root)
-{
-    for (auto &node : arg.nodes)
-    {
-        node->mutations = vector_symmetric_difference(node->mutations, root.mutations);
-    }
 }
 
 int main(int argc, char **argv)
@@ -302,6 +289,7 @@ int main(int argc, char **argv)
     bool root_given = false;
     int number_roots_given = 0;
     int find_root_strategy = -1; // -1 means root is given/assumed to be all zero
+    int find_root_iterations = 10;
 
     int run_seed = 0;
     int num_runs = 0;
@@ -313,16 +301,18 @@ int main(int argc, char **argv)
     float cost_recomb = 1.1;
     float cost_multirecomb = 1.1;
 
+    int max_recombination_parents = 4;
+
     // Negative values mean unlimited
     int recomb_max = -1, rm_max = -1, bm_max = -1;
 
-    int run_type = 0;
+    int multi_run_strategy = 0;
 
     std::vector<std::string> dot_files = {};
     std::vector<std::string> gml_files = {};
     std::vector<std::string> gdl_files = {};
 
-#define KWARG_OPTIONS "M:B:R:C:V:d::g::j::e:slir:f:Q:S:X:Y:Z:T:hH?"
+#define KWARG_OPTIONS "M:B:R:C:V:d::g::j::e:slic:r:F:f:Q:S:X:Y:Z:T:hH?"
 
     /* Parse command line options */
     int i;
@@ -475,6 +465,14 @@ int main(int argc, char **argv)
         case 'i':
             do_generate_ids = true;
             break;
+        case 'c':
+            max_recombination_parents = std::stoi(optarg);
+            if (errno != 0 || max_recombination_parents < 2)
+            {
+                std::cerr << "Number of recombination parents should be between 2 and 4.\n";
+                exit(1);
+            }
+            break;
         case 'r':
             number_roots_given = std::stoi(optarg);
             if (errno != 0 || number_roots_given < 0)
@@ -485,11 +483,19 @@ int main(int argc, char **argv)
             if (number_roots_given > 0)
                 root_given = true;
             break;
-        case 'f':
+        case 'F':
             find_root_strategy = std::stoi(optarg);
             if (errno != 0 || find_root_strategy < 0)
             {
                 std::cerr << "Number of root strategy should be a non-negative integer.\n";
+                exit(1);
+            }
+            break;
+        case 'f':
+            find_root_iterations = std::stoi(optarg);
+            if (errno != 0 || find_root_iterations < 0)
+            {
+                std::cerr << "Number of root finding iterations should be a non-negative integer.\n";
                 exit(1);
             }
             break;
@@ -534,8 +540,8 @@ int main(int argc, char **argv)
             }
             break;
         case 'T':
-            run_type = std::stoi(optarg);
-            if (errno != 0 || run_type < 0)
+            multi_run_strategy = std::stoi(optarg);
+            if (errno != 0 || multi_run_strategy < 0)
             {
                 std::cerr << "Run type should be a non-negative integer.\n";
                 exit(1);
@@ -572,41 +578,8 @@ int main(int argc, char **argv)
     if (how_verbose >= 1)
         std::cout << "read input\n";
 
-    Gene root;
-    if (root_given && number_roots_given == 1)
-    {
-        root = genes.genes[0];
-        set_genes_relative_to_root(genes, root);
-    }
-    else
-        root.label = "root";
-
-    ARG arg;
-    if (num_runs == 0)
-    {
-        arg = build_arg(genes, root_given, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
-    }
-    else
-    {
-        switch (run_type)
-        {
-        case 0:
-            arg = build_arg_multi_random_runs(num_runs, run_seed, genes, root_given, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
-            break;
-        case 1:
-            arg = build_arg_multi_smart_runs(num_runs, run_seed, true, genes, root_given, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
-            break;
-        case 2:
-            arg = build_arg_multi_smart_runs(num_runs, run_seed, false, genes, root_given, how_verbose, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
-            break;
-        }
-    }
-
-
-    if (root_given && number_roots_given == 1)
-    {
-        set_arg_relative_to_root(arg, root);
-    }
+    ARG arg = build_arg_main(genes, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, find_root_strategy, find_root_iterations,
+                             cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
 
     /* Output ARG in dot format */
     for (auto dot_file : dot_files)

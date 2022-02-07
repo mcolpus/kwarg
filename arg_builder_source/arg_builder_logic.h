@@ -100,9 +100,10 @@ typedef struct _ARG
     std::multimap<int, Edge *> mutation_to_edges;          // map to all edges which have the mutation
     std::multimap<int, Edge *> back_mutation_to_edges;     // map to all edges which have the back mutation
     std::multimap<int, Edge *> mutation_to_recombinations; // map to all recombination node out-edges containing the mutation
-    // Node root;
-    Node *root_ptr;
+
     std::vector<int> root_mutations;
+
+    int number_of_roots = 1;
 
     int number_of_ancestral_nodes = 0;
     int number_of_back_mutations = 0;
@@ -112,9 +113,9 @@ typedef struct _ARG
     std::set<int> back_mutation_sites;
     std::set<Node *> recombination_nodes;
 
-    std::vector<std::unique_ptr<Edge>> self_edges;      // These are used for certain nodes (roots and recombinations) which are always relevant
+    std::vector<std::unique_ptr<Edge>> self_edges; // These are used for certain nodes (roots and recombinations) which are always relevant
 
-    Edge * create_self_loop(Node *node_ptr)
+    Edge *create_self_loop(Node *node_ptr)
     {
         auto self_edge = std::make_unique<Edge>();
         self_edge->from = node_ptr;
@@ -125,6 +126,24 @@ typedef struct _ARG
         self_edges.push_back(std::move(self_edge));
 
         return edge_ptr;
+    }
+
+    Edge *add_root(std::string root_label, std::vector<int> _root_mutations)
+    {
+        auto new_root = std::make_unique<Node>();
+
+        new_root->type = ROOT;
+        number_of_roots += 1;
+        new_root->id = -1 * number_of_roots;
+        new_root->mutations = _root_mutations;
+        new_root->label = root_label;
+        new_root->predecessor.none = true;
+
+        create_self_loop(new_root.get());
+
+        root_mutations.insert(root_mutations.end(), _root_mutations.begin(), _root_mutations.end());
+
+        nodes.push_back(std::move(new_root));
     }
 
     _ARG()
@@ -139,8 +158,25 @@ typedef struct _ARG
 
         create_self_loop(root.get());
 
-        root_ptr = root.get();
         nodes.push_back(std::move(root));
+    }
+
+    _ARG(bool create_empty_root)
+    {
+        if (create_empty_root)
+        {
+            auto root = std::make_unique<Node>();
+
+            root->type = ROOT;
+            root->id = -1;
+            root->mutations.clear();
+            root->label = "Root";
+            root->predecessor.none = true;
+
+            create_self_loop(root.get());
+
+            nodes.push_back(std::move(root));
+        }
     }
 
     _ARG(std::string root_label, std::vector<int> _root_mutations)
@@ -156,7 +192,6 @@ typedef struct _ARG
         create_self_loop(root.get());
 
         root_mutations = _root_mutations;
-        root_ptr = root.get();
 
         nodes.push_back(std::move(root));
     }
@@ -171,16 +206,14 @@ typedef struct _GENE
 typedef struct _GENEs
 {
     std::vector<Gene> genes;
+    int sequence_length;
 } Genes;
 
 float get_cost(const int rms, const int bms, const int rcs);
 float get_cost(const int rms, const int bms);
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 ARGOutputFormat format, int how_to_label_edges, ARGOutputLabels node_labels);
-ARG build_arg(Genes genes, bool root_given, int how_verbose, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
-ARG build_arg_multi_random_runs(int number_of_runs, int run_seed, Genes genes, bool root_given, int how_verbose, float cost_rm, float cost_bm,
-                                float cost_recomb, int recomb_max, int rm_max, int bm_max);
-ARG build_arg_multi_smart_runs(int number_of_runs, int run_seed, bool tricky_first, const Genes genes, bool root_given, int how_verbose, float cost_rm,
-                               float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
+ARG build_arg_main(const Genes genes, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int find_root_strategy, int find_root_iterations,
+                   float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
 
 #endif
