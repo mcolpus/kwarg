@@ -47,8 +47,8 @@ typedef struct _HistoryStep
 
 #include "arg_builder_logic.h"
 
-std::tuple<std::vector<HistoryStep>, std::vector<int>> clean_genes(Genes &genes, int how_verbose);
+std::tuple<std::vector<HistoryStep>, std::vector<int>, std::vector<int>> clean_genes(Genes &genes, int how_verbose);
 
-void extend_arg_with_history(ARG &arg, const std::vector<HistoryStep> &_history);
+void extend_arg_with_history(ARG &arg, const std::vector<HistoryStep> &_history, const std::vector<int> &site_extent);
 
 #endif

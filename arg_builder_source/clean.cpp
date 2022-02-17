@@ -11,8 +11,8 @@
 #include "arg_builder_logic.h"
 #include "vector_set_operations.h"
 
-/* Cleans the genes and returns tuple with history and site multiplicity */
-std::tuple<std::vector<HistoryStep>, std::vector<int>> clean_genes(Genes &genes, int how_verbose)
+/* Cleans the genes and returns tuple with history, site multiplicity, and site_extent */
+std::tuple<std::vector<HistoryStep>, std::vector<int>, std::vector<int>> clean_genes(Genes &genes, int how_verbose)
 {
     std::vector<Gene> gs;
     gs.insert(gs.end(), genes.genes.begin(), genes.genes.end());
@@ -20,8 +20,12 @@ std::tuple<std::vector<HistoryStep>, std::vector<int>> clean_genes(Genes &genes,
     std::vector<HistoryStep> history;
 
     std::vector<int> remaining_columns;
+    std::vector<int> site_extent; // How far does site i cover
     for (int i = 0; i < genes.sequence_length; i++)
+    {
         remaining_columns.push_back(i);
+        site_extent.push_back(i);
+    }
     std::vector<int> column_counts(genes.sequence_length, 0);     // number of mutations per site
     std::vector<int> site_multiplicity(genes.sequence_length, 1); // when merging columns, this tracks their multiplicity
 
@@ -81,23 +85,26 @@ std::tuple<std::vector<HistoryStep>, std::vector<int>> clean_genes(Genes &genes,
         remaining_columns = std::move(still_remaining_columns);
 
         // merge identical columns
-        still_remaining_columns = {};
-        for (int i = 0; i < remaining_columns.size() - 1; i++)
+        if (remaining_columns.size() == 0)
+            break;
+        still_remaining_columns = {remaining_columns[0]};
+        int prev_site = remaining_columns[0];
+        for (int i = 1; i < remaining_columns.size(); i++)
         {
-            int site1 = remaining_columns[i];
-            int site2 = remaining_columns[i + 1];
+            int site = remaining_columns[i];
 
-            if (column_counts[site1] != column_counts[site2])
+            if (column_counts[prev_site] != column_counts[site])
             {
-                still_remaining_columns.push_back(site1);
+                still_remaining_columns.push_back(site);
+                prev_site = site;
                 continue;
             }
 
             bool identical = true;
             for (auto &g : gs)
             {
-                bool in1 = std::find(g.mutations.begin(), g.mutations.end(), site1) != g.mutations.end();
-                bool in2 = std::find(g.mutations.begin(), g.mutations.end(), site2) != g.mutations.end();
+                bool in1 = std::find(g.mutations.begin(), g.mutations.end(), prev_site) != g.mutations.end();
+                bool in2 = std::find(g.mutations.begin(), g.mutations.end(), site) != g.mutations.end();
 
                 if (in1 != in2)
                 {
@@ -109,30 +116,31 @@ std::tuple<std::vector<HistoryStep>, std::vector<int>> clean_genes(Genes &genes,
             if (identical)
             {
                 if (how_verbose >= 2)
-                    std::cout << "merging " << site1 << " into " << site2 << "\n";
+                    std::cout << "merging " << site << " into " << prev_site << "\n";
                 // merge site1 into site2
-                site_multiplicity[site2] += site_multiplicity[site1];
-                site_multiplicity[site1] = 0;
-                column_counts[site1] = 0;
+                site_multiplicity[prev_site] += site_multiplicity[site];
+                site_multiplicity[site] = 0;
+                site_extent[prev_site] = std::max(site_extent[prev_site], site);
+                column_counts[site] = 0;
 
                 for (auto &g : gs)
                 {
-                    g.mutations.erase(std::remove(g.mutations.begin(), g.mutations.end(), site1), g.mutations.end());
+                    g.mutations.erase(std::remove(g.mutations.begin(), g.mutations.end(), site), g.mutations.end());
                 }
 
                 HistoryStep step;
                 step.type = MergeIdenticalCols;
-                step.merge_cols.site_from = site1;
-                step.merge_cols.site_to = site2;
+                step.merge_cols.site_from = site;
+                step.merge_cols.site_to = prev_site;
                 history.push_back(step);
                 changed = true;
             }
             else
             {
-                still_remaining_columns.push_back(site1);
+                still_remaining_columns.push_back(site);
+                prev_site = site;
             }
         }
-        still_remaining_columns.push_back(remaining_columns.back());
         remaining_columns = std::move(still_remaining_columns);
 
         // Remove identical rows
@@ -174,11 +182,11 @@ std::tuple<std::vector<HistoryStep>, std::vector<int>> clean_genes(Genes &genes,
 
     genes.genes = std::move(gs);
 
-    return std::make_tuple(std::move(history), std::move(site_multiplicity));
+    return std::make_tuple(std::move(history), std::move(site_multiplicity), std::move(site_extent));
 }
 
 /* Adds the steps in the history into the arg. Note that the maps in the arg will no longer be reliable */
-void extend_arg_with_history(ARG &arg, const std::vector<HistoryStep> &_history)
+void extend_arg_with_history(ARG &arg, const std::vector<HistoryStep> &_history, const std::vector<int> &site_extent)
 {
     auto history = _history;
     std::reverse(history.begin(), history.end());
@@ -211,7 +219,7 @@ void extend_arg_with_history(ARG &arg, const std::vector<HistoryStep> &_history)
             int site_from = step.merge_cols.site_from;
             int site_to = step.merge_cols.site_to;
 
-            // want to add site_from to every occurence of a mutation in site_to
+            // Update all nodes
             for (auto &node : arg.nodes)
             {
                 if (std::find(node->mutations.begin(), node->mutations.end(), site_to) != node->mutations.end())
@@ -220,20 +228,32 @@ void extend_arg_with_history(ARG &arg, const std::vector<HistoryStep> &_history)
                 }
             }
 
+            // Update all edges
             auto range = arg.mutation_to_edges.equal_range(site_to);
+            std::vector<Edge *> found_edges;
             for (auto i = range.first; i != range.second; ++i)
             {
-                i->second->mutations.push_back(site_from);
-                arg.mutation_to_edges.insert({site_from, i->second});
+                found_edges.push_back(i->second);
+            }
+            for (Edge *e : found_edges)
+            {
+                e->mutations.push_back(site_from);
+                arg.mutation_to_edges.insert({site_from, e});
             }
 
             range = arg.back_mutation_to_edges.equal_range(site_to);
+            found_edges.clear();
             for (auto i = range.first; i != range.second; ++i)
             {
-                i->second->back_mutations.push_back(site_from);
-                arg.back_mutation_to_edges.insert({site_from, i->second});
+                found_edges.push_back(i->second);
+            }
+            for (Edge *e : found_edges)
+            {
+                e->back_mutations.push_back(site_from);
+                arg.back_mutation_to_edges.insert({site_from, e});
             }
 
+            // Update arg statistics
             if (arg.recurrent_sites.count(site_to) > 0)
             {
                 arg.recurrent_sites.insert(site_from);
@@ -272,6 +292,15 @@ void extend_arg_with_history(ARG &arg, const std::vector<HistoryStep> &_history)
         }
     }
 
+    for (auto *node : arg.recombination_nodes)
+    {
+        int pos = node->predecessor.two.position;
+        if (pos > 0 && site_extent[pos-1] != pos-1)
+        {
+            node->predecessor.two.position = site_extent[pos-1] + 1;
+        }
+    }
+
     for (auto &node : arg.nodes)
     {
         std::sort(node->mutations.begin(), node->mutations.end());
@@ -281,4 +310,6 @@ void extend_arg_with_history(ARG &arg, const std::vector<HistoryStep> &_history)
         std::sort(edge->mutations.begin(), edge->mutations.end());
         std::sort(edge->back_mutations.begin(), edge->back_mutations.end());
     }
+
+    std::cout << "Have added history to arg";
 }

@@ -209,11 +209,25 @@ typedef struct _GENEs
     int sequence_length;
 } Genes;
 
+typedef struct _Run
+{
+    int recombinations;
+    int recurrent_mutations;
+    int back_mutations;
+} Run;
+
+typedef struct _RunRecord
+{
+    std::vector<Run> runs;
+    std::vector<int> recombs_to_rare_mutations; // Map from # recombinations to best # bms+rms
+    std::vector<std::vector<int>> recombs_and_bms_to_rms;
+} RunRecord;
+
 float get_cost(const int rms, const int bms, const int rcs);
 float get_cost(const int rms, const int bms);
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 ARGOutputFormat format, int how_to_label_edges, ARGOutputLabels node_labels);
-ARG build_arg_main(const Genes genes, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int find_root_strategy, int find_root_iterations,
+ARG build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int find_root_strategy, int find_root_iterations,
                    int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
 
 #endif

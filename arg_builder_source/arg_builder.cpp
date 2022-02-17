@@ -17,6 +17,7 @@
 
 #include "arg_builder_logic.h"
 #include "vector_set_operations.h"
+#include "clean.h"
 
 /* Output s to fp with line length l and indentation i */
 void pretty_print(FILE *fp, char *s, int l, int i)
@@ -195,9 +196,9 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-j[name]", "Output ancestral recombination graph of minimum recombination history in GML format to file name.", 70, -1);
     print_option(f, "-e[x]", "How to label edges in output. 0: not at all, 1: recurrent and back mutations, 2: everything", 70, -1);
     print_option(f, "-s", "Label nodes in ancestral recombination graphs with mutations of that node.", 70, -1);
-    print_option(f, "-l", "Input data has labels for the samples.", 70, -1);
-    print_option(f, "-i", "Label sequences by index, e.g. the first sequence in the data file would be assigned '1' as id.", 70, -1);
-    print_option(f, "-c[x]", "maximum number of parents via combination (default = max = 4).", 70, -1);
+    print_option(f, "-l", "Input data has labels for the samples. Otherwise get labelled based on index", 70, -1);
+    print_option(f, "-c", "Perform clean algorithm first", 70, -1);
+    print_option(f, "-k[x]", "maximum number of parents via combination (default = max = 4).", 70, -1);
     print_option(f, "-r[x]", "Input data has x root(s) given. Otherwise root is all zero. More than one root has odd behaviour TODO:", 70, -1);
     print_option(f, "-F[x]", "Find root for given sequences, using strategy x.", 70, -1);
     print_option(f, "-f[x]", "number of iterations to use when finding a root.", 70, -1);
@@ -206,11 +207,11 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset.", 70, -1);
     print_option(f, "-Y[x]", "Provide an upper bound x on the number of recurrent mutations needed for the input dataset.", 70, -1);
     print_option(f, "-Z[x]", "Provide an upper bound x on the number of back mutations needed for the input dataset.", 70, -1);
-    print_option(f, "-T[x]", "Run type (used on multiruns). 0: simple random, 1: deal with problem sites last, 2: deal with problem sites first", 70, -1);
+    print_option(f, "-T[x]", "Run type (used on multiruns). 0: simple random, 1: deal with problem sites last, 2: deal with problem sites first, 3: fewest mutation sequences first.", 70, -1);
     print_option(f, "-h, -H -?", "Print this information and stop.", 70, -1);
 }
 
-Genes read_input(std::istream &in, bool use_labels, bool generate_ids)
+Genes read_input(std::istream &in, bool use_labels)
 {
     Genes genes;
     std::string line;
@@ -222,10 +223,7 @@ Genes read_input(std::istream &in, bool use_labels, bool generate_ids)
         int i = 1;
         while (std::getline(in, line))
         {
-            if (generate_ids)
-                g.label = std::to_string(i);
-            else
-                g.label = "";
+            g.label = "sample" + std::to_string(i);
             g.mutations.clear();
             seq_index = 0;
             for (auto &c : line)
@@ -284,15 +282,15 @@ int main(int argc, char **argv)
 
     int how_to_label_edges = 0; // 0 is not at all, 1 is bm and rms, 2 is everything.
     bool do_label_node_mutations = false;
-    bool do_generate_ids = false;
+    bool clean_sequences = false;
 
     bool root_given = false;
     int number_roots_given = 0;
-    int find_root_strategy = -1; // -1 means root is given/assumed to be all zero
+    int find_root_strategy = 0; // 0 means root is given/assumed to be all zero
     int find_root_iterations = 10;
 
     int run_seed = 0;
-    int num_runs = 0;
+    int num_runs = 1;
     int how_verbose = 0;
     bool label_sequences = false;
 
@@ -312,7 +310,7 @@ int main(int argc, char **argv)
     std::vector<std::string> gml_files = {};
     std::vector<std::string> gdl_files = {};
 
-#define KWARG_OPTIONS "M:B:R:C:V:d::g::j::e:slic:r:F:f:Q:S:X:Y:Z:T:hH?"
+#define KWARG_OPTIONS "M:B:R:C:V:d::g::j::e:slck:r:F:f:Q:S:X:Y:Z:T:hH?"
 
     /* Parse command line options */
     int i;
@@ -462,10 +460,10 @@ int main(int argc, char **argv)
         case 'l':
             label_sequences = true;
             break;
-        case 'i':
-            do_generate_ids = true;
-            break;
         case 'c':
+            clean_sequences = true;
+            break;
+        case 'k':
             max_recombination_parents = std::stoi(optarg);
             if (errno != 0 || max_recombination_parents < 2)
             {
@@ -501,7 +499,7 @@ int main(int argc, char **argv)
             break;
         case 'Q':
             num_runs = std::stoi(optarg);
-            if (errno != 0 || num_runs < 0)
+            if (errno != 0 || num_runs <= 0)
             {
                 std::cerr << "Number of iterations should be a positive integer.\n";
                 exit(1);
@@ -558,14 +556,9 @@ int main(int argc, char **argv)
         }
     }
 
-    if (number_roots_given > 0 && find_root_strategy >= 0)
+    if (number_roots_given > 0 && find_root_strategy > 0)
     {
         std::cerr << "Can't have roots given whilst also wanting to find roots.\n";
-        exit(1);
-    }
-    if (do_generate_ids && label_sequences)
-    {
-        std::cerr << "Can't generate labels if labels are also meant to be read.\n";
         exit(1);
     }
 
@@ -573,13 +566,15 @@ int main(int argc, char **argv)
         std::cout << "parsed inputs\n";
 
     // TODO: Read input from file or stdin
-    Genes genes = read_input(std::cin, label_sequences, do_generate_ids);
+    Genes genes = read_input(std::cin, label_sequences);
 
     if (how_verbose >= 1)
         std::cout << "read input\n";
 
-    ARG arg = build_arg_main(genes, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, find_root_strategy, find_root_iterations,
+
+    ARG arg = build_arg_main(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, find_root_strategy, find_root_iterations,
                              max_recombination_parents, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+    
 
     /* Output ARG in dot format */
     for (auto dot_file : dot_files)

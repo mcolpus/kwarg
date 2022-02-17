@@ -19,6 +19,7 @@
 #include "arg_builder_logic.h"
 #include "vector_set_operations.h"
 #include "step_function.h"
+#include "clean.h"
 
 bool _multi_roots_given = false;
 int _how_verbose = 0;
@@ -29,6 +30,8 @@ float _cost_recombination = 1.0;
 int _recomb_max = INT32_MAX;
 int _rm_max = INT32_MAX;
 int _bm_max = INT32_MAX;
+
+std::vector<int> _site_multiplicitity;
 
 std::string vector_to_string(const std::vector<int> &v, bool make_negative = false)
 {
@@ -177,6 +180,22 @@ float get_cost_of_addition(const ARG &arg, const int rms, const int bms, const i
 float get_cost_of_addition(const ARG &arg, const int rms, const int bms)
 {
     return get_cost_of_addition(arg, rms, bms, 0);
+}
+
+int get_mutations_represented(const std::vector<int> mutations)
+{
+    int total = 0;
+    for (int mut : mutations)
+    {
+        total += _site_multiplicitity[mut];
+    }
+
+    return total;
+}
+
+int get_mutations_represented(int mutation)
+{
+    return _site_multiplicitity[mutation];
 }
 
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
@@ -596,8 +615,8 @@ Node *insert_seq_as_direct_child(ARG &arg, const Gene &g, Node *parent, const st
         arg.back_mutation_to_edges.insert({m, new_edge.get()});
 
     // Update arg counts
-    arg.number_of_recurrent_mutations += recurrent_muts.size();
-    arg.number_of_back_mutations += new_edge->back_mutations.size();
+    arg.number_of_recurrent_mutations += get_mutations_represented(recurrent_muts);
+    arg.number_of_back_mutations += get_mutations_represented(new_edge->back_mutations);
     for (auto m : recurrent_muts)
     {
         arg.recurrent_sites.insert(m);
@@ -702,13 +721,16 @@ std::tuple<Edge *, int, int> find_best_single_parent_location(ARG &arg, const Ge
         recurrent_mutations = vector_difference(recurrent_mutations, edge->back_mutations);
         back_mutations = vector_difference(back_mutations, edge->mutations);
 
-        float score = get_cost_of_addition(arg, recurrent_mutations.size(), back_mutations.size());
+        int rms = get_mutations_represented(recurrent_mutations);
+        int bms = get_mutations_represented(back_mutations);
+
+        float score = get_cost_of_addition(arg, rms, bms);
 
         if (score >= 0 && (score < best_score || best_score < 0))
         {
             best_score = score;
-            best_rms = recurrent_mutations.size();
-            best_bms = back_mutations.size();
+            best_rms = rms;
+            best_bms = bms;
             best_edge = edge;
         }
     }
@@ -1024,15 +1046,18 @@ std::tuple<int, std::vector<int>, std::vector<Edge *>, int, int> find_best_multi
         int i = 0;
         int j = 0;
         int pos = 0;
-        int rms = req_recurrent_mutations.size();
-        int bms = req_back_mutations.size();
+        int total_rms = get_mutations_represented(req_recurrent_mutations);
+        int total_bms = get_mutations_represented(req_back_mutations);
 
-        auto step_function = std::make_unique<StepFunction>(rms, bms);
+        int current_rms = 0;
+        int current_bms = 0;
+
+        auto step_function = std::make_unique<StepFunction>(total_rms, total_bms);
 
         // set 0 suffix cost and prefix cost
         // replace_cost_if_better(arg, suffix_costs, 0, edge, rms, bms);
 
-        while (i < rms && j < bms)
+        while (i < req_recurrent_mutations.size() && j < req_back_mutations.size())
         {
             bool inc_i;
             if (req_recurrent_mutations[i] < req_back_mutations[j])
@@ -1051,47 +1076,55 @@ std::tuple<int, std::vector<int>, std::vector<Edge *>, int, int> find_best_multi
             }
 
             // update prefix and suffix costs
-            replace_cost_if_better(arg, prefix_costs, pos, edge, i, j);
-            replace_cost_if_better(arg, suffix_costs, pos, edge, rms - i, bms - j);
+            replace_cost_if_better(arg, prefix_costs, pos, edge, current_rms, current_bms);
+            replace_cost_if_better(arg, suffix_costs, pos, edge, total_rms - current_rms, total_bms - current_bms);
 
-            float cost = get_cost_of_addition(arg, i, j);
+            float cost = get_cost_of_addition(arg, current_rms, current_bms);
             if (cost >= 0)
-                step_function->add_point(pos, i, j, cost);
+                step_function->add_point(pos, current_rms, current_bms, cost);
 
             if (inc_i)
+            {
+                current_rms += get_mutations_represented(pos);
                 i += 1;
+            }
             else
+            {
+                current_bms += get_mutations_represented(pos);
                 j += 1;
+            }
         }
 
-        while (i < rms)
+        while (i < req_recurrent_mutations.size())
         {
             // So j must equal bms
             pos = req_recurrent_mutations[i];
 
             // update prefix and suffix costs
-            replace_cost_if_better(arg, prefix_costs, pos, edge, i, bms);
-            replace_cost_if_better(arg, suffix_costs, pos, edge, rms - i, 0);
+            replace_cost_if_better(arg, prefix_costs, pos, edge, current_rms, total_bms);
+            replace_cost_if_better(arg, suffix_costs, pos, edge, total_rms - current_rms, 0);
 
-            float cost = get_cost_of_addition(arg, i, bms);
+            float cost = get_cost_of_addition(arg, current_rms, total_bms);
             if (cost >= 0)
-                step_function->add_point(pos, i, bms, cost);
+                step_function->add_point(pos, current_rms, total_bms, cost);
 
+            current_rms += get_mutations_represented(pos);
             i += 1;
         }
-        while (j < bms)
+        while (j < req_back_mutations.size())
         {
             // So j must equal bms
             pos = req_back_mutations[j];
 
             // update prefix and suffix costs
-            replace_cost_if_better(arg, prefix_costs, pos, edge, rms, j);
-            replace_cost_if_better(arg, suffix_costs, pos, edge, 0, bms - j);
+            replace_cost_if_better(arg, prefix_costs, pos, edge, total_rms, current_bms);
+            replace_cost_if_better(arg, suffix_costs, pos, edge, 0, total_bms - current_bms);
 
-            float cost = get_cost_of_addition(arg, rms, j);
+            float cost = get_cost_of_addition(arg, total_rms, current_bms);
             if (cost >= 0)
-                step_function->add_point(pos, rms, j, cost);
+                step_function->add_point(pos, total_rms, current_bms, cost);
 
+            current_bms += get_mutations_represented(pos);
             j += 1;
         }
 
@@ -1602,8 +1635,28 @@ ARG _build_arg_from_order(const Genes genes, int roots_given, const std::vector<
     return std::move(arg);
 }
 
-ARG _build_arg_multi_runs(const Genes genes, int number_of_runs, int run_seed, int roots_given, int multi_run_strategy)
+ARG _build_arg_multi_runs(const Genes input_genes, bool clean_sequences, int number_of_runs, int run_seed, int roots_given, int multi_run_strategy)
 {
+    if (roots_given == 1)
+    {
+        std::cerr << "This should not be called with a single root. This case should be dealth with in main function.\n";
+    }
+
+    Genes genes; // copy input genes
+    genes.sequence_length = input_genes.sequence_length;
+    genes.genes.insert(genes.genes.end(), input_genes.genes.begin() + 1, input_genes.genes.end());
+
+
+    // Check if cleaning should be done first
+    std::vector<HistoryStep> history;
+    std::vector<int> site_extent;
+    if (roots_given > 1 && clean_sequences)
+        std::cerr << "Can't perform clean algorithm with multiple roots given.\n";
+    else if (clean_sequences)
+        std::tie(history, _site_multiplicitity, site_extent) = clean_genes(genes, _how_verbose);
+
+
+    // Now proceeding with performing runs
     bool first_run = true;
 
     std::vector<int> prev_order;
@@ -1617,7 +1670,35 @@ ARG _build_arg_multi_runs(const Genes genes, int number_of_runs, int run_seed, i
         auto rng = std::default_random_engine(run_seed);
 
         std::vector<int> order;
-        if (first_run || multi_run_strategy == 0)
+        if (multi_run_strategy == 3)
+        {
+            // Order from fewest mutation sequences to highest.
+            int max_muts = 0;
+            for (const auto &g : genes.genes)
+            {
+                if (g.mutations.size() > max_muts)
+                    max_muts = g.mutations.size();
+            }
+
+            std::vector<std::vector<int>> num_mutations_to_genes;
+            for (int i = 0; i <= max_muts; i++)
+            {
+                num_mutations_to_genes.push_back(std::vector<int>());
+            }
+            for (int i = roots_given; i < genes.genes.size(); i++)
+            {
+                int muts = genes.genes[i].mutations.size();
+                num_mutations_to_genes[muts].push_back(i);
+            }
+
+            for (int i = 0; i <= max_muts; i++)
+            {
+                // shuffle all sequences with same number of mutations
+                std::shuffle(num_mutations_to_genes[i].begin(), num_mutations_to_genes[i].end(), rng);
+                order.insert(order.end(), num_mutations_to_genes[i].begin(), num_mutations_to_genes[i].end());
+            }
+        }
+        else if (first_run || multi_run_strategy == 0)
         {
             for (int i = roots_given; i < genes.genes.size(); i++)
                 order.push_back(i);
@@ -1626,7 +1707,6 @@ ARG _build_arg_multi_runs(const Genes genes, int number_of_runs, int run_seed, i
         }
         else if (multi_run_strategy == 1 || multi_run_strategy == 2)
         {
-            std::cout << "Hello\n";
             // Deal with tricky sites later
             std::vector<int> tricky_order;
             std::vector<int> easy_order;
@@ -1688,10 +1768,13 @@ ARG _build_arg_multi_runs(const Genes genes, int number_of_runs, int run_seed, i
         std::cout << "Made at cost: " << get_cost(best_arg) << ".\n";
     }
 
+    if (clean_sequences && roots_given <= 1)
+        extend_arg_with_history(best_arg, history, site_extent);
+
     return std::move(best_arg);
 }
 
-ARG build_arg_main(const Genes genes, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int find_root_strategy, int find_root_iterations,
+ARG build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int find_root_strategy, int find_root_iterations,
                    int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
 {
     _multi_roots_given = roots_given > 1;
@@ -1703,6 +1786,9 @@ ARG build_arg_main(const Genes genes, int how_verbose, int roots_given, int run_
     _recomb_max = recomb_max < 0 ? INT32_MAX : recomb_max;
     _rm_max = rm_max < 0 ? INT32_MAX : rm_max;
     _bm_max = bm_max < 0 ? INT32_MAX : bm_max;
+
+    std::vector<int> default_site_multiplicity(genes.sequence_length, 1);
+    _site_multiplicitity = default_site_multiplicity;
 
     if (how_verbose >= 1)
         std::cout << "Starting to build arg\n";
@@ -1717,7 +1803,7 @@ ARG build_arg_main(const Genes genes, int how_verbose, int roots_given, int run_
 
         set_genes_relative_to_root(genes_copy, root);
 
-        ARG arg = _build_arg_multi_runs(genes_copy, number_of_runs, run_seed, 0, multi_run_strategy);
+        ARG arg = _build_arg_multi_runs(genes_copy, clean_sequences, number_of_runs, run_seed, 0, multi_run_strategy);
 
         set_arg_relative_to_root(arg, root);
 
@@ -1725,11 +1811,11 @@ ARG build_arg_main(const Genes genes, int how_verbose, int roots_given, int run_
     }
     else if (roots_given == 0 && find_root_strategy == 0)
     {
-        return _build_arg_multi_runs(genes, number_of_runs, run_seed, 0, multi_run_strategy);
+        return _build_arg_multi_runs(genes, clean_sequences, number_of_runs, run_seed, 0, multi_run_strategy);
     }
     else if (roots_given > 1)
     {
-        return _build_arg_multi_runs(genes, number_of_runs, run_seed, roots_given, multi_run_strategy);
+        return _build_arg_multi_runs(genes, clean_sequences, number_of_runs, run_seed, roots_given, multi_run_strategy);
     }
     else if (find_root_strategy == 1)
     {
@@ -1750,7 +1836,7 @@ ARG build_arg_main(const Genes genes, int how_verbose, int roots_given, int run_
 
             set_genes_relative_to_root(genes_copy, root);
 
-            ARG arg = _build_arg_multi_runs(genes_copy, number_of_runs, run_seed, 0, multi_run_strategy);
+            ARG arg = _build_arg_multi_runs(genes_copy, clean_sequences, number_of_runs, run_seed, 0, multi_run_strategy);
 
             set_arg_relative_to_root(arg, root);
 
@@ -1763,5 +1849,66 @@ ARG build_arg_main(const Genes genes, int how_verbose, int roots_given, int run_
                 best_root = root;
             }
         }
+        return std::move(best_arg);
+    }
+    else if (find_root_strategy == 2 || find_root_strategy == 3)
+    {
+        // Compare all zero root to root having a 1 at each location
+
+        Genes genes_copy;
+        genes_copy.sequence_length = genes.sequence_length;
+        genes_copy.genes.insert(genes_copy.genes.end(), genes.genes.begin(), genes.genes.end());
+        ARG empty_root_arg = _build_arg_multi_runs(genes_copy, clean_sequences, number_of_runs, run_seed, 0, multi_run_strategy);
+        float best_score = get_cost(empty_root_arg);
+
+        Gene result_root;
+
+        for (int i = 0; i < genes.sequence_length; i++)
+        {
+            Gene root;
+            if (find_root_strategy == 2)
+                root.mutations = {i};
+            else
+                root.mutations = vector_union(result_root.mutations, {i});
+
+            if (_how_verbose >= 1)
+                std::cout << "trying root: " << vector_to_string(root.mutations) << "\n";
+
+            Genes genes_copy;
+            genes_copy.sequence_length = genes.sequence_length;
+            genes_copy.genes.insert(genes_copy.genes.end(), genes.genes.begin(), genes.genes.end());
+
+            set_genes_relative_to_root(genes_copy, root);
+
+            ARG arg = _build_arg_multi_runs(genes_copy, clean_sequences, number_of_runs, run_seed, 0, multi_run_strategy);
+
+            set_arg_relative_to_root(arg, root);
+
+            float run_cost = get_cost(arg);
+
+            if (run_cost >= 0 && run_cost < best_score)
+            {
+                result_root.mutations.push_back(i);
+                if (_how_verbose >= 1)
+                    std::cout << "root mutation at " << i << " is advantagous.\n";
+
+                if (find_root_strategy == 3)
+                    best_score = run_cost;
+            }
+        }
+
+        genes_copy.genes.clear();
+        genes_copy.genes.insert(genes_copy.genes.end(), genes.genes.begin(), genes.genes.end());
+
+        set_genes_relative_to_root(genes_copy, result_root);
+
+        ARG arg = _build_arg_multi_runs(genes_copy, clean_sequences, number_of_runs, run_seed, 0, multi_run_strategy);
+
+        set_arg_relative_to_root(arg, result_root);
+
+        if (_how_verbose >= 1)
+            std::cout << "result root: " << vector_to_string(result_root.mutations) << "\n";
+
+        return std::move(arg);
     }
 }
