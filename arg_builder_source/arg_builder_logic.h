@@ -214,20 +214,76 @@ typedef struct _Run
     int recombinations;
     int recurrent_mutations;
     int back_mutations;
+
+    int seed;
+    float recomb_cost;
+    float rm_cost;
+    float bm_cost;
+
+    _Run(int recombs, int rms, int bms, int run_seed, float cost_recomb, float cost_rm, float cost_bm)
+    {
+        recombinations = recombs;
+        recurrent_mutations = rms;
+        back_mutations = bms;
+
+        seed = run_seed;
+        recomb_cost = cost_recomb;
+        rm_cost = cost_rm;
+        bm_cost = cost_bm;
+    }
 } Run;
 
 typedef struct _RunRecord
 {
     std::vector<Run> runs;
-    std::vector<int> recombs_to_rare_mutations; // Map from # recombinations to best # bms+rms
-    std::vector<std::vector<int>> recombs_and_bms_to_rms;
+    std::map<int, int> recombs_to_rare_mutations; // Map from # recombinations to best # bms+rms
+    // std::vector<std::vector<int>> recombs_and_bms_to_rms;
+
+    void clear()
+    {
+        runs.clear();
+        recombs_to_rare_mutations.clear();
+        // recombs_and_bms_to_rms.clear();
+    }
+
+    void add_record(int recombs, int rms, int bms, int run_seed, float cost_recomb, float cost_rm, float cost_bm)
+    {
+        Run run(recombs, rms, bms, run_seed, cost_recomb, cost_rm, cost_bm);
+        runs.push_back(run);
+
+        // update recombs_to_rare_mutations
+        auto lower_bound = recombs_to_rare_mutations.lower_bound(recombs);
+        if (lower_bound->first == recombs)
+        {
+            // Already have entry for recombs
+            if (rms + bms < lower_bound->second)
+            {
+                recombs_to_rare_mutations[recombs] = rms + bms;
+            }
+        }
+        else if (lower_bound == recombs_to_rare_mutations.begin())
+        {
+            // recombs is smaller than any entry in map
+            recombs_to_rare_mutations[recombs] = rms + bms;
+        }
+        else
+        {
+            // recombs is somewhere in the middle. Check it is better than the one before
+            auto prev = std::prev(lower_bound);
+            if (rms + bms < prev->second)
+            {
+                recombs_to_rare_mutations[recombs] = rms + bms;
+            }
+        }
+    }
 } RunRecord;
 
 float get_cost(const int rms, const int bms, const int rcs);
 float get_cost(const int rms, const int bms);
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 ARGOutputFormat format, int how_to_label_edges, ARGOutputLabels node_labels);
-ARG build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int find_root_strategy, int find_root_iterations,
-                   int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
-
+std::tuple<ARG, RunRecord> build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int find_root_strategy, int find_root_iterations,
+                                          int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
+std::tuple<ARG, RunRecord> build_arg_search(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy,
+                                            int max_number_parents, std::vector<float> costs_rm, std::vector<float> costs_bm, std::vector<float> costs_recomb);
 #endif

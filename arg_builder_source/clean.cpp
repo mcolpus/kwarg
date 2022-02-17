@@ -311,5 +311,5 @@ void extend_arg_with_history(ARG &arg, const std::vector<HistoryStep> &_history,
         std::sort(edge->back_mutations.begin(), edge->back_mutations.end());
     }
 
-    std::cout << "Have added history to arg";
+    std::cout << "Have added history to arg.\n";
 }

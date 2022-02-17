@@ -194,6 +194,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-d[name]", "Output ancestral recombination graph of minimum recombination history in dot format to file name.", 70, -1);
     print_option(f, "-g[name]", "Output ancestral recombination graph of minimum recombination history in GDL format to file name.", 70, -1);
     print_option(f, "-j[name]", "Output ancestral recombination graph of minimum recombination history in GML format to file name.", 70, -1);
+    print_option(f, "-o[name]", "Output csv of runs to file name.", 70, -1);
     print_option(f, "-e[x]", "How to label edges in output. 0: not at all, 1: recurrent and back mutations, 2: everything", 70, -1);
     print_option(f, "-s", "Label nodes in ancestral recombination graphs with mutations of that node.", 70, -1);
     print_option(f, "-l", "Input data has labels for the samples. Otherwise get labelled based on index", 70, -1);
@@ -205,7 +206,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-Q[x]", "Sets the number of runs.", 70, -1);
     print_option(f, "-S[x]", "Sets the random seed.", 70, -1);
     print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset.", 70, -1);
-    print_option(f, "-Y[x]", "Provide an upper bound x on the number of recurrent mutations needed for the input dataset.", 70, -1);
+    print_option(f, "-Y[x]", "Provide an upper bound x on the number of recurrent mutations needed for the input dataset.", 70, -1); // TODO: remove this
     print_option(f, "-Z[x]", "Provide an upper bound x on the number of back mutations needed for the input dataset.", 70, -1);
     print_option(f, "-T[x]", "Run type (used on multiruns). 0: simple random, 1: deal with problem sites last, 2: deal with problem sites first, 3: fewest mutation sequences first.", 70, -1);
     print_option(f, "-h, -H -?", "Print this information and stop.", 70, -1);
@@ -299,6 +300,10 @@ int main(int argc, char **argv)
     float cost_recomb = 1.1;
     float cost_multirecomb = 1.1;
 
+    std::vector<float> costs_recomb = {};
+    std::vector<float> costs_rms = {};
+    std::vector<float> costs_bms = {};
+
     int max_recombination_parents = 4;
 
     // Negative values mean unlimited
@@ -309,8 +314,9 @@ int main(int argc, char **argv)
     std::vector<std::string> dot_files = {};
     std::vector<std::string> gml_files = {};
     std::vector<std::string> gdl_files = {};
+    std::string run_record_file;
 
-#define KWARG_OPTIONS "M:B:R:C:V:d::g::j::e:slck:r:F:f:Q:S:X:Y:Z:T:hH?"
+#define KWARG_OPTIONS "M:B:R:C:V:d::g::j::o::e:slck:r:F:f:Q:S:X:Y:Z:T:hH?"
 
     /* Parse command line options */
     int i;
@@ -319,41 +325,56 @@ int main(int argc, char **argv)
         switch (i)
         {
         case 'M':
-            cost_rm = std::stof(optarg);
-            if (errno != 0)
+            if (optarg != 0)
             {
-                std::cerr << "Some error occured with cost_rm input.\n";
-                exit(1);
+                auto token = strtok(optarg, ",");
+                while (token != NULL)
+                {
+                    float cost = std::stof(token);
+                    if (cost < 0 && cost != 0)
+                    {
+                        std::cerr << "negative value (normally -1) means recurrent mutations not allowed.\n";
+                    }
+                    costs_rms.push_back(cost);
+                    cost_rm = cost;
+
+                    token = strtok(NULL, ",");
+                }
             }
-            if (cost_rm < 0 && cost_rm != 0)
-            {
-                std::cerr << "negative value (normally -1) means recurrent mutations not allowed.\n";
-            }
-            break;
         case 'B':
-            cost_bm = std::stof(optarg);
-            if (errno != 0)
+            if (optarg != 0)
             {
-                std::cerr << "Some error occured with cost_bm input.\n";
-                exit(1);
+                auto token = strtok(optarg, ",");
+                while (token != NULL)
+                {
+                    float cost = std::stof(token);
+                    if (cost < 0 && cost != 0)
+                    {
+                        std::cerr << "negative value (normally -1) means back mutations not allowed.\n";
+                    }
+                    costs_bms.push_back(cost);
+                    cost_bm = cost;
+
+                    token = strtok(NULL, ",");
+                }
             }
-            if (cost_bm < 0 && cost_bm != 0)
-            {
-                std::cerr << "negative value (normally -1) means back mutations not allowed.\n";
-            }
-            break;
         case 'R':
-            cost_recomb = std::stof(optarg);
-            if (errno != 0)
+            if (optarg != 0)
             {
-                std::cerr << "Some error occured with cost_recomb input.\n";
-                exit(1);
+                auto token = strtok(optarg, ",");
+                while (token != NULL)
+                {
+                    float cost = std::stof(token);
+                    if (cost < 0 && cost != 0)
+                    {
+                        std::cerr << "negative value (normally -1) means recombinations not allowed.\n";
+                    }
+                    costs_recomb.push_back(cost);
+                    cost_recomb = cost;
+
+                    token = strtok(NULL, ",");
+                }
             }
-            if (cost_recomb < 0 && cost_recomb != 0)
-            {
-                std::cerr << "negative value (normally -1) means recombinations not allowed.\n";
-            }
-            break;
         case 'C':
             cost_multirecomb = std::stof(optarg);
             if (errno != 0)
@@ -442,6 +463,30 @@ int main(int argc, char **argv)
                 }
                 fclose(fp);
                 gml_files.push_back(optarg);
+            }
+            else
+                std::cerr << "Please specify file\n";
+            break;
+        case 'o':
+            /* Output run record as csv.
+             */
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    std::cerr << "Option -o requires an output file.\n";
+                    exit(1);
+                }
+
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "a")) == NULL)
+                {
+                    std::cerr << "Could not open file " << optarg << " for output.\n";
+                    exit(1);
+                }
+                fclose(fp);
+                run_record_file = optarg;
             }
             else
                 std::cerr << "Please specify file\n";
@@ -571,10 +616,35 @@ int main(int argc, char **argv)
     if (how_verbose >= 1)
         std::cout << "read input\n";
 
+    ARG arg;
+    RunRecord record;
 
-    ARG arg = build_arg_main(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, find_root_strategy, find_root_iterations,
-                             max_recombination_parents, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
-    
+    if (costs_recomb.size() <= 1 && costs_rms.size() <= 1 && costs_bms.size() <= 1)
+    {
+        std::tie(arg, record) = build_arg_main(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, find_root_strategy, find_root_iterations,
+                                               max_recombination_parents, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+    }
+    else
+    {
+        // In this case we assume we must be running a search
+        if (number_roots_given > 1 || find_root_strategy > 0)
+        {
+            std::cerr << "Searching with multiple costs only possible when root is given (or all zero)\n";
+            exit(1);
+        }
+        if (how_verbose >= 1)
+            std::cout << "Calling search algorithm\n";
+        
+        if (costs_recomb.size() == 0)
+            costs_recomb.push_back(cost_recomb);
+        if (costs_rms.size() == 0)
+            costs_rms.push_back(cost_rm);
+        if (costs_bms.size() == 0)
+            costs_bms.push_back(cost_bm);
+
+        std::tie(arg, record) = build_arg_search(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy,
+                                                 max_recombination_parents, costs_rms, costs_bms, costs_recomb);
+    }
 
     /* Output ARG in dot format */
     for (auto dot_file : dot_files)
@@ -607,6 +677,31 @@ int main(int argc, char **argv)
             label_format = LABEL_BOTH;
         arg_output(arg, genes, fp, ARGGDL, how_to_label_edges, label_format);
         fclose(fp);
+    }
+
+    /* Output run record */
+    bool file_empty = false;
+    std::ifstream fin;
+    fin.open(run_record_file, std::ios::in);
+    if (fin.peek() == std::ifstream::traits_type::eof())
+    {
+        std::cout << "no records file found. Creating new one.\n";
+        file_empty = true;
+    }
+
+    std::fstream fout;
+    fout.open(run_record_file, std::ios::out | std::ios::app);
+
+    if (file_empty)
+    {
+        fout << "recombinations,back mutations,recurrent mutations,run seed,recombination cost,recurrent mutation cost,back mutation cost\n";
+    }
+
+    for (Run &run : record.runs)
+    {
+        std::cout << "adding record\n";
+        fout << run.recombinations << "," << run.back_mutations << "," << run.recurrent_mutations << ","
+             << run.seed << "," << run.recomb_cost << "," << run.recurrent_mutations << "," << run.back_mutations << "\n";
     }
 
     return 0;

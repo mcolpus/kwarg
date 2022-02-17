@@ -32,6 +32,8 @@ int _rm_max = INT32_MAX;
 int _bm_max = INT32_MAX;
 
 std::vector<int> _site_multiplicitity;
+RunRecord _run_record;
+int _run_seed = 0;
 
 std::string vector_to_string(const std::vector<int> &v, bool make_negative = false)
 {
@@ -1632,30 +1634,15 @@ ARG _build_arg_from_order(const Genes genes, int roots_given, const std::vector<
         }
     }
 
+    // Add arg to record
+    _run_record.add_record(arg.number_of_recombinations, arg.number_of_recurrent_mutations, arg.number_of_back_mutations,
+                           _run_seed, _cost_recombination, _cost_recurrent_mutation, _cost_back_mutation);
+
     return std::move(arg);
 }
 
-ARG _build_arg_multi_runs(const Genes input_genes, bool clean_sequences, int number_of_runs, int run_seed, int roots_given, int multi_run_strategy)
+ARG _run_multi_runs(const Genes genes, int number_of_runs, int run_seed, int multi_run_strategy, int roots_given)
 {
-    if (roots_given == 1)
-    {
-        std::cerr << "This should not be called with a single root. This case should be dealth with in main function.\n";
-    }
-
-    Genes genes; // copy input genes
-    genes.sequence_length = input_genes.sequence_length;
-    genes.genes.insert(genes.genes.end(), input_genes.genes.begin() + 1, input_genes.genes.end());
-
-
-    // Check if cleaning should be done first
-    std::vector<HistoryStep> history;
-    std::vector<int> site_extent;
-    if (roots_given > 1 && clean_sequences)
-        std::cerr << "Can't perform clean algorithm with multiple roots given.\n";
-    else if (clean_sequences)
-        std::tie(history, _site_multiplicitity, site_extent) = clean_genes(genes, _how_verbose);
-
-
     // Now proceeding with performing runs
     bool first_run = true;
 
@@ -1668,6 +1655,7 @@ ARG _build_arg_multi_runs(const Genes input_genes, bool clean_sequences, int num
     for (int run_count = 0; run_count < number_of_runs; run_count++)
     {
         auto rng = std::default_random_engine(run_seed);
+        _run_seed = run_seed; // Used for record keeping
 
         std::vector<int> order;
         if (multi_run_strategy == 3)
@@ -1761,6 +1749,30 @@ ARG _build_arg_multi_runs(const Genes input_genes, bool clean_sequences, int num
             prev_tricky_sites.insert(m);
     }
 
+    return std::move(best_arg);
+}
+
+ARG _build_arg_multi_runs(const Genes input_genes, bool clean_sequences, int number_of_runs, int run_seed, int roots_given, int multi_run_strategy)
+{
+    if (roots_given == 1)
+    {
+        std::cerr << "This should not be called with a single root. This case should be dealth with in main function.\n";
+    }
+
+    Genes genes; // copy input genes
+    genes.sequence_length = input_genes.sequence_length;
+    genes.genes.insert(genes.genes.end(), input_genes.genes.begin() + 1, input_genes.genes.end());
+
+    // Check if cleaning should be done first
+    std::vector<HistoryStep> history;
+    std::vector<int> site_extent;
+    if (roots_given > 1 && clean_sequences)
+        std::cerr << "Can't perform clean algorithm with multiple roots given.\n";
+    else if (clean_sequences)
+        std::tie(history, _site_multiplicitity, site_extent) = clean_genes(genes, _how_verbose);
+
+    ARG best_arg = _run_multi_runs(genes, number_of_runs, run_seed, multi_run_strategy, roots_given);
+
     if (_how_verbose >= 1)
     {
         std::cout << "Final ARG made using " << best_arg.number_of_recurrent_mutations << " recurrent mutations, " << best_arg.number_of_back_mutations;
@@ -1774,8 +1786,8 @@ ARG _build_arg_multi_runs(const Genes input_genes, bool clean_sequences, int num
     return std::move(best_arg);
 }
 
-ARG build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int find_root_strategy, int find_root_iterations,
-                   int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
+std::tuple<ARG, RunRecord> build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int find_root_strategy, int find_root_iterations,
+                                          int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
 {
     _multi_roots_given = roots_given > 1;
     _how_verbose = how_verbose;
@@ -1789,6 +1801,8 @@ ARG build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int
 
     std::vector<int> default_site_multiplicity(genes.sequence_length, 1);
     _site_multiplicitity = default_site_multiplicity;
+
+    _run_record.clear();
 
     if (how_verbose >= 1)
         std::cout << "Starting to build arg\n";
@@ -1807,15 +1821,17 @@ ARG build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int
 
         set_arg_relative_to_root(arg, root);
 
-        return std::move(arg);
+        return std::make_tuple(std::move(arg), std::move(_run_record));
     }
     else if (roots_given == 0 && find_root_strategy == 0)
     {
-        return _build_arg_multi_runs(genes, clean_sequences, number_of_runs, run_seed, 0, multi_run_strategy);
+        ARG arg = _build_arg_multi_runs(genes, clean_sequences, number_of_runs, run_seed, 0, multi_run_strategy);
+        return std::make_tuple(std::move(arg), std::move(_run_record));
     }
     else if (roots_given > 1)
     {
-        return _build_arg_multi_runs(genes, clean_sequences, number_of_runs, run_seed, roots_given, multi_run_strategy);
+        ARG arg = _build_arg_multi_runs(genes, clean_sequences, number_of_runs, run_seed, roots_given, multi_run_strategy);
+        return std::make_tuple(std::move(arg), std::move(_run_record));
     }
     else if (find_root_strategy == 1)
     {
@@ -1849,7 +1865,7 @@ ARG build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int
                 best_root = root;
             }
         }
-        return std::move(best_arg);
+        return std::make_tuple(std::move(best_arg), std::move(_run_record));
     }
     else if (find_root_strategy == 2 || find_root_strategy == 3)
     {
@@ -1909,6 +1925,76 @@ ARG build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int
         if (_how_verbose >= 1)
             std::cout << "result root: " << vector_to_string(result_root.mutations) << "\n";
 
-        return std::move(arg);
+        return std::make_tuple(std::move(arg), std::move(_run_record));
     }
+}
+
+std::tuple<ARG, RunRecord> build_arg_search(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy,
+                                            int max_number_parents, std::vector<float> costs_rm, std::vector<float> costs_bm, std::vector<float> costs_recomb)
+{
+    // This is used for trialling with many different costs. Works only for no root or 1 root.
+    // Not really search for best arg, but for run record
+    _multi_roots_given = roots_given > 1;
+    _how_verbose = how_verbose;
+    _max_number_parents = max_number_parents;
+
+    _recomb_max = INT32_MAX;
+    _rm_max = INT32_MAX;
+    _bm_max = INT32_MAX;
+
+    std::vector<int> default_site_multiplicity(genes.sequence_length, 1);
+    _site_multiplicitity = default_site_multiplicity;
+
+    _run_record.clear();
+
+    if (how_verbose >= 1)
+        std::cout << "Starting arg search\n";
+
+    if (roots_given > 1)
+        std::cout << "Can't run a search with more than 1 root";
+
+    Gene root;
+    Genes genes_copy;
+    genes_copy.sequence_length = genes.sequence_length;
+
+    if (roots_given == 1)
+    {
+        Gene root = genes.genes[0];
+        genes_copy.genes.insert(genes_copy.genes.end(), genes.genes.begin() + 1, genes.genes.end());
+
+        set_genes_relative_to_root(genes_copy, root);
+    }
+    else
+    {
+        genes_copy.genes.insert(genes_copy.genes.end(), genes.genes.begin(), genes.genes.end());
+    }
+
+    std::vector<HistoryStep> history;
+    std::vector<int> site_extent;
+    if (clean_sequences)
+        std::tie(history, _site_multiplicitity, site_extent) = clean_genes(genes_copy, _how_verbose);
+
+    ARG arg;
+    for (float rm_cost : costs_rm)
+    {
+        _cost_recurrent_mutation = rm_cost;
+        for (float bm_cost : costs_bm)
+        {
+            _cost_back_mutation = bm_cost;
+            for (float recomb_cost : costs_recomb)
+            {
+                _cost_recombination = recomb_cost;
+
+                arg = _run_multi_runs(genes_copy, number_of_runs, run_seed, multi_run_strategy, 0);
+                run_seed = _run_seed;
+            }
+        }
+    }
+
+    if (roots_given == 1)
+    {
+        set_arg_relative_to_root(arg, root);
+    }
+
+    return std::make_tuple(std::move(arg), std::move(_run_record));
 }
