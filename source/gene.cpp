@@ -18,6 +18,7 @@
 #include <math.h>
 #include <stdbool.h>
 
+#include <iostream>
 #include <vector>
 #include <functional>
 #include <memory>
@@ -4319,8 +4320,6 @@ Index *maximumsubsumedpostfix(Genes *g, int s)
     return postfixs;
 }
 
-
-
 /* Data structure for storing pair of a node and a _class */
 typedef struct _NodeClass
 {
@@ -4332,21 +4331,20 @@ typedef struct _NodeClass
  * _coalesce_compatibleandentangled. The nodes stored on stack still
  * needs to be considered, the nodes stored in component are in current
  * component, E is array of edge lists for each node in the entangled
- * graph (so length is g->n), C is array of edge lists for each node in the compatible
+ * graph (so length is g->n), compatibility_matrix is array of edge lists for each node in the compatible
  * graph, components is an array containing current assignment, and
  * states is the list new ancestral states are stored in.
  */
-static void coalesce_cande_recursion(LList *stack, std::vector<int> &component, Genes *g,
-                                      std::vector<int> E[], int **C, int *components,
-                                      const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f)
+static void coalesce_cande_recursion(std::vector<NodeClass *> &stack, std::vector<int> &component, Genes *g,
+                                     std::vector<int> E[], std::vector<std::vector<int>> &compatibility_matrix, std::vector<int> &components,
+                                     const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f)
 {
-    int i, j, n = 0, old;
-    Genes *h = NULL;
-    NodeClass *current, *tmp;
+    int i, j;
 
     /* Check whether we have reached bottom of recursion */
-    if (Length(stack) == 0)
+    if (stack.empty())
     {
+        Genes *h = NULL;
         RunData new_path_data;
         /* Coalesce in reverse order to avoid having to keep track of
          * where other sequences are moved when sequences disappear by
@@ -4388,14 +4386,15 @@ static void coalesce_cande_recursion(LList *stack, std::vector<int> &component, 
     else
     {
         /* Still nodes left in the stack to visit */
-        current = (NodeClass *)Pop(stack);
+        NodeClass *current = stack.back();
+        stack.pop_back();
         if ((components[current->node] <= 0) && (components[current->node] != -current->_class))
         {
             /* No decision has yet been taken on whether to add current node
              * to current component.
              */
             /* Save old component value for restoration at exit */
-            old = components[current->node];
+            int old = components[current->node];
             /* Check whether current node is compatible with all other nodes
              * in current component.
              */
@@ -4403,13 +4402,15 @@ static void coalesce_cande_recursion(LList *stack, std::vector<int> &component, 
             {
                 /* Current node does not initiate new component */
                 for (i = 0; i < component.size(); i++)
-                    if (!C[current->node][component[i]])
+                {
+                    if (!compatibility_matrix[current->node][component[i]])
                         break;
+                }
             }
             else
             {
                 /* Current node does initiate new component */
-                component = {};
+                component.clear();
                 i = 0;
             }
             if (i == component.size())
@@ -4417,11 +4418,14 @@ static void coalesce_cande_recursion(LList *stack, std::vector<int> &component, 
                 /* Add current node to current component */
                 components[current->node] = current->_class;
                 component.push_back(current->node);
+
                 /* Add neighbours to stack */
+                std::vector<std::unique_ptr<NodeClass>> tmp;
+                int n = 0;
                 if (E[current->node].size() > 0)
                 {
-                    tmp = (NodeClass *)
-                        xmalloc(E[current->node].size() * sizeof(NodeClass));
+                    // tmp = (NodeClass *)
+                    //     xmalloc(E[current->node].size() * sizeof(NodeClass));
                     for (i = 0; i < E[current->node].size(); i++)
                     {
                         j = E[current->node][i];
@@ -4433,27 +4437,32 @@ static void coalesce_cande_recursion(LList *stack, std::vector<int> &component, 
                          */
                         if ((components[j] <= 0) && (components[j] != current->_class))
                         {
-                            tmp[n].node = E[current->node][i];
-                            tmp[n]._class = current->_class;
-                            Push(stack, tmp + n);
+                            auto node = std::make_unique<NodeClass>();
+                            node->node = E[current->node][i];
+                            node->_class = current->_class;
+                            stack.push_back(node.get());
+                            tmp.push_back(std::move(node));
                             n++;
                         }
                     }
                 }
-                coalesce_cande_recursion(stack, component, g, E, C, components, main_path_data, f);
+                coalesce_cande_recursion(stack, component, g, E, compatibility_matrix, components, main_path_data, f);
                 /* Clean up */
                 if (E[current->node].size() > 0)
                 {
                     for (i = 0; i < n; i++)
-                        Pop(stack);
-                    free(tmp);
+                        stack.pop_back();
                 }
                 if (current->_class - 1 == current->node)
+                {
                     /* This node initiated a new component */
                     component.clear();
-                else
+                }
+                else if (component.size() > 0)
+                {
                     /* Did not! */
                     component.pop_back();
+                }
             }
 
             /* Leave current node out of current component if component is
@@ -4462,20 +4471,22 @@ static void coalesce_cande_recursion(LList *stack, std::vector<int> &component, 
             if (current->node != current->_class - 1)
             {
                 components[current->node] = -current->_class;
-                coalesce_cande_recursion(stack, component, g, E, C, components, main_path_data, f);
+                coalesce_cande_recursion(stack, component, g, E, compatibility_matrix, components, main_path_data, f);
             }
 
             /* Restore old components value for current node */
             components[current->node] = old;
         }
         else
+        {
             /* Decision already made for current, continue with rest of
              * nodes on stack.
              */
-            coalesce_cande_recursion(stack, component, g, E, C, components, main_path_data, f);
+            coalesce_cande_recursion(stack, component, g, E, compatibility_matrix, components, main_path_data, f);
+        }
 
         /* Restore current to stack */
-        Push(stack, current);
+        stack.push_back(current);
     }
 }
 
@@ -4491,12 +4502,15 @@ static void coalesce_cande_recursion(LList *stack, std::vector<int> &component, 
 void coalesce_compatibleandentangled_map(Genes *g, const RunData &main_run_data, STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j;
-    std::vector<int> component = {};
+    std::vector<int> component(0, 0);
+    // component.clear();
     std::vector<int> E[g->n];
-    int **C = (int **)xmalloc(g->n * sizeof(int *));
-    LList *stack = MakeLList();
-    int *components = (int *)xcalloc(g->n, sizeof(int));
-    NodeClass *tmp = (NodeClass *)xmalloc(g->n * sizeof(NodeClass));
+    std::vector<std::vector<int>> compatibility_matrix(g->n, std::vector<int>(g->n, 0));
+    std::vector<NodeClass *> stack;
+    // LList *stack = MakeLList();
+    std::vector<int> components(g->n, 0);
+    std::vector<std::unique_ptr<NodeClass>> tmp;
+    // NodeClass *tmp = (NodeClass *)xmalloc(g->n * sizeof(NodeClass));
 
     /* Start by constructing edge list for each node of compatible and
      * entangled graphs.
@@ -4504,17 +4518,21 @@ void coalesce_compatibleandentangled_map(Genes *g, const RunData &main_run_data,
     for (i = 0; i < g->n; i++)
     {
         E[i] = {};
-        C[i] = (int *)xcalloc(g->n, sizeof(int));
         /* Also use loop to insert each node in stack with itself as _class */
-        tmp[i].node = i;
-        tmp[i]._class = i + 1;
-        Enqueue(stack, tmp + i);
+        auto node = std::make_unique<NodeClass>();
+        node->node = i;
+        node->_class = i + 1;
+        stack.push_back(node.get());
+        tmp.push_back(std::move(node));
+        // tmp[i].node = i;
+        // tmp[i]._class = i + 1;
+        // Enqueue(stack, tmp + i);
     }
     for (i = 0; i < g->n; i++)
         for (j = i + 1; j < g->n; j++)
             if (compatible(g, i, j))
             {
-                C[i][j] = C[j][i] = 1;
+                compatibility_matrix[i][j] = compatibility_matrix[j][i] = 1;
                 /* There is no point in pursuing an entanglement edge if the
                  * two concerned sequences are not compatible; hence we put
                  * the edge addition to E inside the check of compatibility.
@@ -4527,17 +4545,11 @@ void coalesce_compatibleandentangled_map(Genes *g, const RunData &main_run_data,
             }
 
     /* Initiate enumeration of all splits into connected components */
-    coalesce_cande_recursion(stack, component, g, E, C, components, main_run_data, f);
-
+    coalesce_cande_recursion(stack, component, g, E, compatibility_matrix, components, main_run_data, f);
+    component.clear();
     /* Clean up */
-    for (i = 0; i < g->n; i++)
-    {
-        free(C[i]);
-    }
-    free(C);
-    free(components);
-    free(tmp);
-    DestroyLList(stack);
+    // free(tmp);
+    // DestroyLList(stack);
 }
 
 /* Enumerate all partitions of sequences in g into sets that
@@ -4563,9 +4575,6 @@ std::vector<std::unique_ptr<HistoryFragment>> coalesce_compatibleandentangled(Ge
     coalesce_compatibleandentangled_map(g, main_path_data, coalesce_compatibleandentangled_f);
     return std::move(coalesce_compatibleandentangled_states);
 }
-
-
-
 
 /* Find all prefixs of the sequences in g that are maximally
  * compatible with another sequence in g and perform the corresponding
@@ -4950,7 +4959,7 @@ void maximal_postfix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &
                 RunData new_path_data = main_path_data.copy_for_new_fragment();
                 if (split_removepostfix(h, s, b[s].index, b[s].block, new_path_data) != -1)
                 {
-                    
+
                     if (g_use_eventlist && new_path_data.eventlist.in_use)
                     {
                         new_path_data.eventlist.reset();
