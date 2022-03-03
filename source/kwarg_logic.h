@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "gene.h"
 #include "hashtable.h"
+#include "common.h"
 
 typedef struct _Result
 {
@@ -11,9 +12,10 @@ typedef struct _Result
     int rmflips = 0;
     int recombs = 0;
     int depth;
+    RunSettings run_settings;
 } Result;
 
-double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double),
+Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double),
                  void (*reset)(void), RunSettings run_settings, RunData &run_data);
 std::vector<Result> mass_run_kwarg(Genes *g, FILE *print_progress, std::vector<int> (*take_sample)(std::vector<double>, int),
                                    RunSettings run_settings, RunData &main_path_run_data, int num_samples);

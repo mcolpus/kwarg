@@ -19,6 +19,7 @@
 #include <errno.h>
 
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <array>
 #include <algorithm>
@@ -64,6 +65,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-Z[x]", "Sets the random seed z (only one run is made in this case).", 70, -1);
     print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset (solutions with more than x recombinations will be abandoned).", 70, -1);
     print_option(f, "-Y[x]", "Provide an upper bound x on the number of recurrent needed for the input dataset (solutions with more than x recurrent mutations will be abandoned).", 70, -1);
+    print_option(f, "-O[name]", "Output csv of runs to file name.", 70, -1);
     print_option(f, "-s", "Turns off the header row of the results table.", 70, -1);
     print_option(f, "-h, -H -?", "Print this information and stop.", 70, -1);
 }
@@ -332,7 +334,6 @@ int main(int argc, char **argv)
            multruns = 0,
            costs_in = 0;
     bool use_dfs = false;
-    double n;
     Gene_Format format = GENE_ANY;
     Gene_SeqType seqtype = GENE_BINARY;
     FILE *print_progress = stdout;
@@ -347,6 +348,7 @@ int main(int argc, char **argv)
           *dottree_files = MakeLList(),
           *gmltree_files = MakeLList(),
           *gdltree_files = MakeLList();
+    std::string run_record_file;
 
     // Enqueue(history_files, (void *)"hello.txt");
     // Enqueue(history_files, stdout);
@@ -376,13 +378,14 @@ int main(int argc, char **argv)
     double rr_costs[100] = {0};
 
     RunData run_data;
+    
 
 #ifdef ENABLE_VERBOSE
     set_verbose(1);
 #endif
 
 /* Analyse command line options */
-#define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::Iv:iekmofaZ:Q:sL:nhH?"
+#define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::Iv:iekmofaZ:Q:sL:O::nhH?"
 
     /* Parse command line options */
     while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0)
@@ -815,6 +818,30 @@ int main(int argc, char **argv)
                 exit(1);
             }
             break;
+        case 'O':
+            /* Output run record as csv.
+             */
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    std::cerr << "Option -o requires an output file.\n";
+                    exit(1);
+                }
+
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "a")) == NULL)
+                {
+                    std::cerr << "Could not open file " << optarg << " for output.\n";
+                    exit(1);
+                }
+                fclose(fp);
+                run_record_file = optarg;
+            }
+            else
+                std::cerr << "Please specify file\n";
+            break;
         case 'h':
         case 'H':
         case '?':
@@ -956,6 +983,9 @@ int main(int argc, char **argv)
         g_lookup[rec_max] = 0;
     }
 
+    double total_time = 0.0;
+    std::vector<Result> all_results;
+
     for (l = 0; l < T_in; l++)
     {
         RunSettings run_settings;
@@ -1024,27 +1054,30 @@ int main(int argc, char **argv)
                 clock_t tic = clock();
                 // n = run_kwarg(h, print_progress, select, _reset_selections, run_settings, run_data);
                 auto results = mass_run_kwarg(h, print_progress, sample, run_settings, run_data, multruns);
+                all_results.insert(all_results.end(), results.begin(), results.end());
                 clock_t toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
-
+                total_time += timer;
                 free_genes(h);
             }
             else
             {
-                double total_time = 0;
+                double time_at_this_setting = 0;
                 /* Find a history for each iteration */
                 for (j = 0; j <= multruns; j++)
                 {
                     h = copy_genes(g);
                     run_data = base_run_data;
+                    run_settings.run_seed = initialise_x2random(run_seed);
 
                     // Get a history
                     clock_t tic = clock();
-                    n = run_kwarg(h, print_progress, select, _reset_selections, run_settings, run_data);
+                    Result result = run_kwarg(h, print_progress, select, _reset_selections, run_settings, run_data);
+                    all_results.push_back(result);
                     clock_t toc = clock();
                     timer = (double)(toc - tic) / CLOCKS_PER_SEC;
-                    total_time += timer;
+                    time_at_this_setting += timer;
                     printf("%15.8f\n", timer);
                     // The run_kwarg function will update rec_max and the g_lookup array
 
@@ -1052,11 +1085,45 @@ int main(int argc, char **argv)
                     free_genes(h);
                     run_seed = 0;
                 }
-                printf("Total time: %15.8f\n", total_time);
+                printf("Total time for this setting: %15.8f\n", time_at_this_setting);
+                total_time += time_at_this_setting;
             }
 
             
         }
+    }
+
+    printf("Total time: %15.8f\n", total_time);
+
+    /* Output results to csv */
+    if (run_record_file != "")
+    {
+        /* Output run record */
+        bool file_empty = false;
+        std::ifstream fin;
+        fin.open(run_record_file, std::ios::in);
+        if (fin.peek() == std::ifstream::traits_type::eof())
+        {
+            std::cout << "no records file found. Creating new one.\n";
+            file_empty = true;
+        }
+
+        std::fstream fout;
+        fout.open(run_record_file, std::ios::out | std::ios::app);
+
+        if (file_empty)
+        {
+            fout << "recombinations,sequencing errors,recurrent mutations,run seed,se_cost,rm_cost,r_cost,rr_cost,temp,recomb_max,rm_max\n";
+        }
+
+        for (Result &result : all_results)
+        {
+            fout << result.recombs << "," << result.seflips << "," << result.rmflips << ","
+                 << std::to_string(result.run_settings.run_seed) << "," << result.run_settings.se_cost << "," << result.run_settings.rm_cost << "," << result.run_settings.r_cost << "," 
+                 << result.run_settings.rr_cost << "," << result.run_settings.temp << "," << result.run_settings.rec_max << "," << result.run_settings.rm_max << "\n";
+        }
+
+        std::cout << "results recorded.\n";
     }
 
     /* Output inferred ARG */

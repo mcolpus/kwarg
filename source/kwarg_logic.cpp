@@ -311,7 +311,7 @@ static bool _generate_predecessors(std::vector<std::unique_ptr<HistoryFragment>>
 
 /* Main function of kwarg implementing neighbourhood search.
  */
-double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void),
+Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void),
                  RunSettings run_settings, RunData &main_path_run_data)
 {
     int nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds;
@@ -537,6 +537,15 @@ double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
         {
             fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", run_settings.run_seed, run_settings.temp, run_settings.se_cost, run_settings.rm_cost, run_settings.r_cost, run_settings.rr_cost, total_nbdsize);
         }
+
+        Result result{
+        .seflips = -1,
+        .rmflips = -1,
+        .recombs = -1,
+        .depth = -1};
+        result.run_settings = run_settings;
+
+        return result;
     }
     else
     {
@@ -575,9 +584,16 @@ double run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
                 update_lookup(g_lookup, recombs, seflips + rmflips);
             }
         }
-    }
 
-    return r;
+        Result result{
+        .seflips = seflips,
+        .rmflips = rmflips,
+        .recombs = recombs,
+        .depth = 0};
+        result.run_settings = run_settings;
+
+        return result;
+    }
 }
 
 static void _print_depth_indent(FILE *print_progress, int depth)
@@ -594,7 +610,9 @@ static void add_result(RunSettings &run_settings, int seflips, int rmflips, int 
         .rmflips = rmflips,
         .recombs = recombs,
         .depth = depth};
+    result.run_settings = run_settings;
     results.push_back(result);
+    
 
     if (!g_lookup.empty())
     {

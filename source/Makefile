@@ -87,22 +87,16 @@ LDLIBS := -lm
 endif
 endif
 
-SRCFILES = beagle.cpp kwarg.cpp simplify.cpp flip.cpp gene.cpp llist.cpp elist.cpp hashtable.cpp getwordsize.cpp common.cpp bounds.cpp beagle_logic.cpp kwarg_logic.cpp mergesort.cpp enumerate.cpp arg.cpp backtrack.cpp topological_sort.cpp mystring.cpp arg_builder.cpp arg_builder_frontend.cpp
-HDRFILES = gene.h llist.h elist.h hashtable.h common.h bounds.h beagle_logic.h kwarg_logic.h mergesort.h enumerate.h arg.h backtrack.h topological_sort.h mystring.h arg_builder.h
-EXECUTABLES = beagle kwarg simplify flip getwordsize arg_builder_frontend
+SRCFILES = beagle.cpp kwarg.cpp simplify.cpp flip.cpp gene.cpp llist.cpp elist.cpp hashtable.cpp getwordsize.cpp common.cpp bounds.cpp beagle_logic.cpp kwarg_logic.cpp mergesort.cpp enumerate.cpp arg.cpp backtrack.cpp topological_sort.cpp mystring.cpp
+HDRFILES = gene.h llist.h elist.h hashtable.h common.h bounds.h beagle_logic.h kwarg_logic.h mergesort.h enumerate.h arg.h backtrack.h topological_sort.h mystring.h
+EXECUTABLES = beagle kwarg simplify flip getwordsize
 DATA = kreitman_snp.txt
 SCRIPTS = generatebitfunctions.py
 INSTRUCTIONS = 
 AUTOSRCFILES = bitfunctions.c
 AUTOHDRFILES = bitfunctions.h
 
-all: beagle kwarg simplify flip arg_builder_frontend
-
-arg_builder_frontend: arg_builder_frontend.o gene.o arg_builder.o
-
-arg_builder_frontend.o: arg_builder_frontend.cpp gene.h arg_builder.h Makefile
-
-arg_builder.o: arg_builder.cpp arg_builder.h gene.h
+all: beagle kwarg simplify flip
 
 beagle: beagle.o gene.o bounds.o beagle_logic.o kwarg_logic.o llist.o elist.o hashtable.o common.o bitfunctions.o mergesort.o arg.o backtrack.o mystring.o
 
