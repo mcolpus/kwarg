@@ -4424,8 +4424,6 @@ static void coalesce_cande_recursion(std::vector<NodeClass *> &stack, std::vecto
                 int n = 0;
                 if (E[current->node].size() > 0)
                 {
-                    // tmp = (NodeClass *)
-                    //     xmalloc(E[current->node].size() * sizeof(NodeClass));
                     for (i = 0; i < E[current->node].size(); i++)
                     {
                         j = E[current->node][i];
@@ -4504,14 +4502,11 @@ void coalesce_compatibleandentangled_map(Genes *g, const RunData &main_run_data,
 {
     int i, j;
     std::vector<int> component(0, 0);
-    // component.clear();
     std::vector<int> E[g->n];
     std::vector<std::vector<int>> compatibility_matrix(g->n, std::vector<int>(g->n, 0));
     std::vector<NodeClass *> stack;
-    // LList *stack = MakeLList();
     std::vector<int> components(g->n, 0);
     std::vector<std::unique_ptr<NodeClass>> tmp;
-    // NodeClass *tmp = (NodeClass *)xmalloc(g->n * sizeof(NodeClass));
 
     /* Start by constructing edge list for each node of compatible and
      * entangled graphs.
@@ -4525,9 +4520,6 @@ void coalesce_compatibleandentangled_map(Genes *g, const RunData &main_run_data,
         node->_class = i + 1;
         stack.push_back(node.get());
         tmp.push_back(std::move(node));
-        // tmp[i].node = i;
-        // tmp[i]._class = i + 1;
-        // Enqueue(stack, tmp + i);
     }
     for (i = 0; i < g->n; i++)
         for (j = i + 1; j < g->n; j++)
@@ -4548,9 +4540,6 @@ void coalesce_compatibleandentangled_map(Genes *g, const RunData &main_run_data,
     /* Initiate enumeration of all splits into connected components */
     coalesce_cande_recursion(stack, &component, g, E, compatibility_matrix, components, main_run_data, f);
     component.clear();
-    /* Clean up */
-    // free(tmp);
-    // DestroyLList(stack);
 }
 
 /* Enumerate all partitions of sequences in g into sets that
