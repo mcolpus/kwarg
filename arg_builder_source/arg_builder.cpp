@@ -189,7 +189,6 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-M[x]", "Specify cost of a recurrent mutation (default: x = 0.9).", 70, -1);
     print_option(f, "-B[x]", "Specify cost of a back mutation (default: x = 1.0).", 70, -1);
     print_option(f, "-R[x]", "Specify cost of a single recombination (default: x = 1.1).", 70, -1);
-    print_option(f, "-C[x]", "Specify cost of a multiple cross-over recombination (default: x = 1.1).", 70, -1);
     print_option(f, "-V[x]", "level of verbosity", 70, -1);
     print_option(f, "-d[name]", "Output ancestral recombination graph of minimum recombination history in dot format to file name.", 70, -1);
     print_option(f, "-g[name]", "Output ancestral recombination graph of minimum recombination history in GDL format to file name.", 70, -1);
@@ -201,7 +200,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-c", "Perform clean algorithm first", 70, -1);
     print_option(f, "-k[x]", "maximum number of parents via combination (default = max = 4).", 70, -1);
     print_option(f, "-r[x]", "Input data has x root(s) given. Otherwise root is all zero. More than one root has odd behaviour TODO:", 70, -1);
-    print_option(f, "-F[x]", "Find root for given sequences, using strategy x.", 70, -1);
+    print_option(f, "-F[x]", "Find root for given sequences, using strategy x. 1: random, 2: try 1 at each location separately, 3: scan left to right changing to 1 if better", 70, -1);
     print_option(f, "-f[x]", "number of iterations to use when finding a root.", 70, -1);
     print_option(f, "-Q[x]", "Sets the number of runs.", 70, -1);
     print_option(f, "-S[x]", "Sets the random seed.", 70, -1);
@@ -209,6 +208,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-Y[x]", "Provide an upper bound x on the number of recurrent mutations needed for the input dataset.", 70, -1); // TODO: remove this
     print_option(f, "-Z[x]", "Provide an upper bound x on the number of back mutations needed for the input dataset.", 70, -1);
     print_option(f, "-T[x]", "Run type (used on multiruns). 0: simple random, 1: deal with problem sites last, 2: deal with problem sites first, 3: fewest mutation sequences first.", 70, -1);
+    print_option(f, "-L[x]", "Location selection method. 0: first best, 1: random from best, 2: random from within 0.5, 3: random from within 1.0.", 70, -1);
     print_option(f, "-h, -H -?", "Print this information and stop.", 70, -1);
 }
 
@@ -290,15 +290,14 @@ int main(int argc, char **argv)
     int find_root_strategy = 0; // 0 means root is given/assumed to be all zero
     int find_root_iterations = 10;
 
-    int run_seed = 0;
+    int run_seed = clock();
     int num_runs = 1;
     int how_verbose = 0;
     bool label_sequences = false;
 
-    float cost_rm = 0.9;
+    float cost_rm = 1.0;
     float cost_bm = 1.0;
-    float cost_recomb = 1.1;
-    float cost_multirecomb = 1.1;
+    float cost_recomb = 1.0;
 
     std::vector<float> costs_recomb = {};
     std::vector<float> costs_rms = {};
@@ -310,13 +309,14 @@ int main(int argc, char **argv)
     int recomb_max = -1, rm_max = -1, bm_max = -1;
 
     int multi_run_strategy = 0;
+    int location_selection_method = 0;
 
     std::vector<std::string> dot_files = {};
     std::vector<std::string> gml_files = {};
     std::vector<std::string> gdl_files = {};
-    std::string run_record_file;
+    std::string run_record_file = "";
 
-#define KWARG_OPTIONS "M:B:R:C:V:d::g::j::o::e:slck:r:F:f:Q:S:X:Y:Z:T:hH?"
+#define KWARG_OPTIONS "M:B:R:V:d::g::j::o::e:slck:r:F:f:Q:S:X:Y:Z:T:L:hH?"
 
     /* Parse command line options */
     int i;
@@ -341,6 +341,7 @@ int main(int argc, char **argv)
                     token = strtok(NULL, ",");
                 }
             }
+            break;
         case 'B':
             if (optarg != 0)
             {
@@ -358,6 +359,7 @@ int main(int argc, char **argv)
                     token = strtok(NULL, ",");
                 }
             }
+            break;
         case 'R':
             if (optarg != 0)
             {
@@ -374,17 +376,6 @@ int main(int argc, char **argv)
 
                     token = strtok(NULL, ",");
                 }
-            }
-        case 'C':
-            cost_multirecomb = std::stof(optarg);
-            if (errno != 0)
-            {
-                std::cerr << "Some error occured with cost_multirecomb input.\n";
-                exit(1);
-            }
-            if (cost_multirecomb < 0 && cost_multirecomb != 0)
-            {
-                std::cerr << "negative value (normally -1) means multiple recombinations not allowed.\n";
             }
             break;
         case 'V':
@@ -590,6 +581,14 @@ int main(int argc, char **argv)
                 exit(1);
             }
             break;
+        case 'L':
+            location_selection_method = std::stoi(optarg);
+            if (errno != 0 || location_selection_method < 0)
+            {
+                std::cerr << "location selection method should be a non-negative integer.\n";
+                exit(1);
+            }
+            break;
         case 'h':
         case 'H':
         case '?':
@@ -619,9 +618,11 @@ int main(int argc, char **argv)
     ARG arg;
     RunRecord record;
 
+    clock_t tic = clock();
+    
     if (costs_recomb.size() <= 1 && costs_rms.size() <= 1 && costs_bms.size() <= 1)
     {
-        std::tie(arg, record) = build_arg_main(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, find_root_strategy, find_root_iterations,
+        std::tie(arg, record) = build_arg_main(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, location_selection_method, find_root_strategy, find_root_iterations,
                                                max_recombination_parents, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
     }
     else
@@ -634,7 +635,7 @@ int main(int argc, char **argv)
         }
         if (how_verbose >= 1)
             std::cout << "Calling search algorithm\n";
-        
+
         if (costs_recomb.size() == 0)
             costs_recomb.push_back(cost_recomb);
         if (costs_rms.size() == 0)
@@ -642,9 +643,13 @@ int main(int argc, char **argv)
         if (costs_bms.size() == 0)
             costs_bms.push_back(cost_bm);
 
-        std::tie(arg, record) = build_arg_search(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy,
+        std::tie(arg, record) = build_arg_search(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, location_selection_method,
                                                  max_recombination_parents, costs_rms, costs_bms, costs_recomb);
     }
+
+    clock_t toc = clock();
+    double timer = (double)(toc - tic) / CLOCKS_PER_SEC;
+    std::cout << "Time taken for all runs: " << timer << ".\n";
 
     /* Output ARG in dot format */
     for (auto dot_file : dot_files)
@@ -679,29 +684,33 @@ int main(int argc, char **argv)
         fclose(fp);
     }
 
-    /* Output run record */
-    bool file_empty = false;
-    std::ifstream fin;
-    fin.open(run_record_file, std::ios::in);
-    if (fin.peek() == std::ifstream::traits_type::eof())
+    if (run_record_file != "")
     {
-        std::cout << "no records file found. Creating new one.\n";
-        file_empty = true;
-    }
+        /* Output run record */
+        bool file_empty = false;
+        std::ifstream fin;
+        fin.open(run_record_file, std::ios::in);
+        if (fin.peek() == std::ifstream::traits_type::eof())
+        {
+            std::cout << "no records file found. Creating new one.\n";
+            file_empty = true;
+        }
 
-    std::fstream fout;
-    fout.open(run_record_file, std::ios::out | std::ios::app);
+        std::fstream fout;
+        fout.open(run_record_file, std::ios::out | std::ios::app);
 
-    if (file_empty)
-    {
-        fout << "recombinations,back mutations,recurrent mutations,run seed,recombination cost,recurrent mutation cost,back mutation cost\n";
-    }
+        if (file_empty)
+        {
+            fout << "recombinations,back mutations,recurrent mutations,run seed,recombination cost,recurrent mutation cost,back mutation cost\n";
+        }
 
-    for (Run &run : record.runs)
-    {
-        std::cout << "adding record\n";
-        fout << run.recombinations << "," << run.back_mutations << "," << run.recurrent_mutations << ","
-             << run.seed << "," << run.recomb_cost << "," << run.recurrent_mutations << "," << run.back_mutations << "\n";
+        for (Run &run : record.runs)
+        {
+            fout << run.recombinations << "," << run.back_mutations << "," << run.recurrent_mutations << ","
+                 << std::to_string(run.seed) << "," << run.recomb_cost << "," << run.rm_cost << "," << run.bm_cost << "\n";
+        }
+
+        std::cout << "records recorded.\n";
     }
 
     return 0;
