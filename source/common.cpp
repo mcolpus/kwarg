@@ -190,18 +190,18 @@ void *xrealloc(void *oldadr, int n)
  */
 double initialise_x2random(double seed)
 {
-#ifndef DEBUG
+// #ifndef DEBUG
     if (seed == 0)
     {
         seed = (double)time(NULL) + (double)xrandom();
     }
     srandom(seed);
     return seed;
-#else
-    /* Make sure random sequence is the same for every run */
-    srandom(123);
-    return 123;
-#endif
+// #else
+//     /* Make sure random sequence is the same for every run */
+//     srandom(123);
+//     return 123;
+// #endif
 }
 
 long int _xseed;
