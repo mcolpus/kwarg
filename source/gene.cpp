@@ -3875,7 +3875,6 @@ int split_removeprefix(Genes *g, int a, int index, int block, RunData &run_data)
     unsigned long filter;
     int blocks = divblocksize(g->length - 1) + 1;
     Genes *h = copy_genes(g);
-    int b;
     int block2 = block;
 
     if (index != 0)
@@ -3905,8 +3904,8 @@ int split_removeprefix(Genes *g, int a, int index, int block, RunData &run_data)
     for (; block2 < blocks; block2++)
         h->data[a].type[block2] = h->data[a].ancestral[block2] = 0;
 
-    b = find_safe_coalescence(h, a);
-    if (!run_data.sequence_labels.empty())
+    int b = find_safe_coalescence(h, a);
+    if (!run_data.sequence_labels.empty() && b >= 0 && b < run_data.sequence_labels.size())
     {
         run_data.sequence_labels[b] = -1;
     }
@@ -5865,7 +5864,6 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &ma
         *compatible = (unsigned long *)xmalloc(blocks * sizeof(unsigned long)),
         *compatible2 = (unsigned long *)xmalloc(blocks * sizeof(unsigned long)),
         *leftmaximal = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-    Genes *h;
     Index *prefixs = NULL, *postfixs = NULL;
     Event *e;
 #ifdef ENABLE_VERBOSE
@@ -6001,8 +5999,13 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &ma
                 /* Start by splitting out subsumed infix */
                 leftindex = modblocksize(left);
                 leftblock = divblocksize(left);
-                h = copy_genes(g);
+                Genes *h = copy_genes(g);
+                if (main_path_data.sequence_labels == std::vector<int>({-1, -1, 5, 6, -1, -1, 9}))
+                {
+                    int ldks = 0;
+                }
                 RunData new_path_data = main_path_data.copy_for_new_fragment();
+
                 _split(h, i, leftindex, leftblock, new_path_data);
                 if (split_removeprefix(h, g->n, modblocksize(right), divblocksize(right), new_path_data) != -1)
                 {
@@ -6032,6 +6035,7 @@ void maximal_infix_coalesces_map(Genes *g, Index *a, Index *b, const RunData &ma
                 {
                     free_genes(h);
                 }
+                
 #ifdef ENABLE_VERBOSE
                 if (v > 1)
                 {

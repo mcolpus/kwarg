@@ -85,9 +85,6 @@ bool _RunData::do_use_eventlist()
 
 _RunData::~_RunData()
 {
-    sequence_labels.clear();
-    site_labels.clear();
-
     if (greedy_functioncalls != NULL)
     {
         hashtable_destroy(greedy_functioncalls, free, NULL, free);

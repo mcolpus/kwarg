@@ -241,8 +241,8 @@ typedef struct _RunData
     bool do_track = true; // Will be used to toggle when event_list etc should be added to
 
     double current_step_cost; // Note that sequence and site labels aren't used by beagle
-    std::vector<int> sequence_labels;
-    std::vector<int> site_labels;
+    std::vector<int> sequence_labels = {};
+    std::vector<int> site_labels = {};
     int seq_numbering;
 
     EventList eventlist;
@@ -265,6 +265,9 @@ typedef struct _RunData
     {
         do_track = true;
         current_step_cost = 0;
+        seq_numbering = 0;
+        sequence_labels = {};
+        site_labels = {};
     }
 
     _RunData(bool make_empty)
