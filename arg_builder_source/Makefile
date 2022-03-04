@@ -1,7 +1,7 @@
 # Tools to use
 CC = g++
 
-DEBUG = yes
+# DEBUG = yes
 
 # Flags to the C compiler
 # If DEBUG is 'yes', the executable is not optimised and compiled with
@@ -30,7 +30,7 @@ LDLIBS := -lm
 endif
 endif
 
-SRCFILES =  arg_builder.cpp arg_builder_logic.cpp vector_set_operations.cpp clean.cpp
+SRCFILES =  arg_builder.cpp arg_builder_logic.cpp vector_set_operations.cpp step_function.cpp clean.cpp
 HDRFILES =  arg_builder_logic.h vector_set_operations.h step_function.h clean.h
 EXECUTABLES = arg_builder
 DATA = kreitman_snp.txt
@@ -49,9 +49,9 @@ arg_builder_logic.o: arg_builder_logic.cpp arg_builder_logic.h vector_set_operat
 
 vector_set_operations.o: vector_set_operations.h
 
-step_function.o: step_function.h
-
 clean.o: clean.cpp arg_builder_logic.h
+
+step_function.o: step_function.cpp step_function.h
 
 archive: ${SRCFILES} ${HDRFILES} ${DATA} ${SCRIPTS} ${INSTRUCTIONS} Makefile
 	tar cvf kwarg.`date +%d%m%y`.tar ${SRCFILES} ${HDRFILES} ${DATA} ${SCRIPTS} ${INSTRUCTIONS} Makefile

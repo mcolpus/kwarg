@@ -186,9 +186,9 @@ static void _print_usage(FILE *f, char *name)
     fprintf(f, "Usage: %s [options] < [input]\n", name);
     pretty_print(f, "The program reads data from the input file specified and constructs history by threading a sequence at a time.", 70, 0);
     fprintf(f, "Legal options are:\n");
-    print_option(f, "-M[x]", "Specify cost of a recurrent mutation (default: x = 0.9).", 70, -1);
+    print_option(f, "-M[x]", "Specify cost of a recurrent mutation (default: x = 1.0).", 70, -1);
     print_option(f, "-B[x]", "Specify cost of a back mutation (default: x = 1.0).", 70, -1);
-    print_option(f, "-R[x]", "Specify cost of a single recombination (default: x = 1.1).", 70, -1);
+    print_option(f, "-R[x]", "Specify cost of a single recombination (default: x = 1.0).", 70, -1);
     print_option(f, "-V[x]", "level of verbosity", 70, -1);
     print_option(f, "-d[name]", "Output ancestral recombination graph of minimum recombination history in dot format to file name.", 70, -1);
     print_option(f, "-g[name]", "Output ancestral recombination graph of minimum recombination history in GDL format to file name.", 70, -1);

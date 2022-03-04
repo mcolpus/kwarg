@@ -2143,7 +2143,7 @@ ARG _build_arg_from_order(const Genes genes, int roots_given, const std::vector<
         step += 1;
         if (_how_verbose >= 3)
         {
-            std::string filename = "dotty";
+            std::string filename = "network_progress";
             filename += std::to_string(step) + ".dot";
             auto fp = fopen(filename.c_str(), "w");
             arg_output(arg, genes, fp, ARGDOT, true, LABEL_BOTH);
