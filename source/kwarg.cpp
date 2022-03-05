@@ -350,9 +350,6 @@ int main(int argc, char **argv)
           *gdltree_files = MakeLList();
     std::string run_record_file;
 
-    // Enqueue(history_files, (void *)"hello.txt");
-    // Enqueue(history_files, stdout);
-
     ARG *arg = NULL;
     ARGLabels nodelabel = ARGLABEL;
     int edgelabel = 0;
@@ -360,7 +357,7 @@ int main(int argc, char **argv)
     gc_enabled = 0;
     Event *e;
     LList *tmp;
-    int run_seed = 0;
+    double run_seed = 0;
     int rec_max = INT_MAX;
     int rm_max = INT_MAX;
     char *token;
@@ -761,15 +758,10 @@ int main(int argc, char **argv)
             seqtype = GENE_NUCLEIC;
             break;
         case 'Z':
-            run_seed = strtod(optarg, &endptr);
-            if (errno != 0 || *endptr != '\0')
-            {
-                fprintf(stderr, "Seed input should be a positive integer.\n");
-                exit(1);
-            }
+            run_seed = std::stod(optarg);
             if (run_seed <= 0)
             {
-                fprintf(stderr, "Seed input should be a positive integer.\n");
+                fprintf(stderr, "Seed input should be a positive.\n");
                 exit(1);
             }
             break;

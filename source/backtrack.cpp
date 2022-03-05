@@ -88,7 +88,8 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, RunData &run_data)
 {
     EventList eventlist = run_data.eventlist; 
 
-    output_eventlist_as_text(output, eventlist);
+    if (output != NULL)
+        output_eventlist_as_text(output, eventlist);
 
     int i, j, k, l, n = a->g->n, next_seq = a->g->n, *edges, n_se = 0, n_rm = 0, n_re = 0;
     LList *positions, *sequences, *tmp;
@@ -760,7 +761,7 @@ ARG *eventlist2history(const AnnotatedGenes *a, FILE *output, RunData &run_data)
 
         }
 
-        if (g_howverbose != -1 && output != stdout && output != NULL)
+        if (g_howverbose != -1 && output != NULL && output != stdout)
         {
             fprintf(output, "Total: %d sequencing errors, %d recurrent mutations, %d recombinations.\n", n_se, n_rm, n_re);
         }

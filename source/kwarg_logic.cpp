@@ -780,7 +780,7 @@ static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vecto
                     //     continue;
                     // }
 
-                    if (new_seflips + new_rmflips + (lb_array[j] / 2) >= g_lookup[new_recombs])
+                    if (new_seflips + new_rmflips + (lb_array[j] / 2) > g_lookup[new_recombs])
                     {
                         // bad_soln = true;
                         if (g_howverbose >= 1)
@@ -845,7 +845,7 @@ static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vecto
         // seen in earlier solutions.
         if (run_settings.rec_max != INT_MAX && !g_lookup.empty())
         {
-            if (seflips + rmflips >= g_lookup[recombs])
+            if (seflips + rmflips > g_lookup[recombs])
             {
                 // bad_soln = true;
                 if (g_howverbose >= 1)
