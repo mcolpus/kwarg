@@ -98,7 +98,7 @@ def graph_grid(grid, outputfile):
         nodes = [0.0, 1.0/float(n), 0.5, 1.0]
         bounds = range(-1,n+2)
 
-    cmap = mpl.colors.LinearSegmentedColormap.from_list("mycmap", list(zip(nodes, colours)))
+    cmap = mpl.colors.LinearSegmentedColormap.from_list("mycmap", list(zip(nodes, colours)), N = len(bounds) - 1)
 
     img = plt.imshow(grid.transpose(), interpolation='nearest',
                      cmap=cmap, aspect='auto', origin='lower')
