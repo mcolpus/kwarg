@@ -16,6 +16,7 @@
 #include <float.h>
 
 #include <memory>
+#include <iostream>
 
 #include "gene.h"
 #include "common.h"
@@ -374,9 +375,14 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
 
     // greedy_choice will point to History fragment to be selected
     auto greedy_choice = std::make_unique<HistoryFragment>();
+    clock_t tic = clock();
 
     while (!choice_fixed)
     {
+        double timer = (double)(clock() - tic) / CLOCKS_PER_SEC;
+        std::cout << "time elapsed on search: " << timer << "\r";
+        std::cout.flush();
+
         choice_fixed = _generate_predecessors(predecessors, g, print_progress, main_path_run_data, run_settings);
 
         /* Finalise choice and prepare for next iteration */
@@ -637,6 +643,11 @@ static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vecto
         fprintf(print_progress, "Recurse with (se, rm, r): (%2d, %2d, %2d) at depth: %2d \n", seflips, rmflips, recombs, depth);
     }
 
+    double timer = (double)(clock() - _mass_run_tic) / CLOCKS_PER_SEC;
+    std::cout << "time elapsed on search: " << timer << "\r";
+    std::cout.flush();
+    
+
     // Note we assume that the g passed in belongs to a unique pointer to a HistoryFragment. So we do not free it.
 
     int nbdsize = 0, total_nbdsize = 0, preds;
@@ -866,6 +877,7 @@ static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vecto
     }
 }
 
+double _mass_run_tic;
 std::vector<Result> mass_run_kwarg(Genes *g, FILE *print_progress, std::vector<int> (*take_sample)(std::vector<double>, int),
                                    RunSettings run_settings, RunData &main_path_run_data, int num_samples)
 {
@@ -914,6 +926,7 @@ std::vector<Result> mass_run_kwarg(Genes *g, FILE *print_progress, std::vector<i
     }
 
     // 2. Start recursion
+    _mass_run_tic = clock();
     _mass_run_kwarg_recursion(g, print_progress, take_sample, run_settings, main_path_run_data, num_samples, 0, 0, 0, 0);
 
     free_genes(g);
