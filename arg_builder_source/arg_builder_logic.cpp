@@ -2529,7 +2529,7 @@ std::tuple<ARG, RunRecord> build_arg_search(const Genes genes, bool clean_sequen
         _cost_recurrent_mutation = rm_cost;
         for (float bm_cost : costs_bm)
         {
-            _cost_back_mutation = bm_cost;
+            _cost_back_mutation = rm_cost + bm_cost;
             for (float recomb_cost : costs_recomb)
             {
                 _cost_recombination = recomb_cost;

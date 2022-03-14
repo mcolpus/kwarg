@@ -187,7 +187,7 @@ static void _print_usage(FILE *f, char *name)
     pretty_print(f, "The program reads data from the input file specified and constructs history by threading a sequence at a time.", 70, 0);
     fprintf(f, "Legal options are:\n");
     print_option(f, "-M[x]", "Specify cost of a recurrent mutation (default: x = 1.0).", 70, -1);
-    print_option(f, "-B[x]", "Specify cost of a back mutation (default: x = 1.0).", 70, -1);
+    print_option(f, "-B[x]", "Specify additional cost of a back mutation compared to recurrent mutation (default: x = 1.0).", 70, -1);
     print_option(f, "-R[x]", "Specify cost of a single recombination (default: x = 1.0).", 70, -1);
     print_option(f, "-V[x]", "level of verbosity", 70, -1);
     print_option(f, "-d[name]", "Output ancestral recombination graph of minimum recombination history in dot format to file name.", 70, -1);
@@ -331,7 +331,7 @@ int main(int argc, char **argv)
                 while (token != NULL)
                 {
                     float cost = std::stof(token);
-                    if (cost < 0 && cost != 0)
+                    if (cost < 0 && cost != -1)
                     {
                         std::cerr << "negative value (normally -1) means recurrent mutations not allowed.\n";
                     }
@@ -349,7 +349,7 @@ int main(int argc, char **argv)
                 while (token != NULL)
                 {
                     float cost = std::stof(token);
-                    if (cost < 0 && cost != 0)
+                    if (cost < 0 && cost != -1)
                     {
                         std::cerr << "negative value (normally -1) means back mutations not allowed.\n";
                     }
@@ -367,7 +367,7 @@ int main(int argc, char **argv)
                 while (token != NULL)
                 {
                     float cost = std::stof(token);
-                    if (cost < 0 && cost != 0)
+                    if (cost < 0 && cost != -1)
                     {
                         std::cerr << "negative value (normally -1) means recombinations not allowed.\n";
                     }
@@ -636,6 +636,7 @@ int main(int argc, char **argv)
     
     if (costs_recomb.size() <= 1 && costs_rms.size() <= 1 && costs_bms.size() <= 1)
     {
+        cost_bm += cost_rm;
         std::tie(arg, record) = build_arg_main(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, location_selection_method, find_root_strategy, find_root_iterations,
                                                max_recombination_parents, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max, run_record_file);
     }
