@@ -114,7 +114,7 @@ def graph_grid(grid, outputfile):
                 cax=ax2, orientation='vertical',
                 label="recurrent mutations")
 
-    fig.savefig(outputfile + "_grid.png")
+    fig.savefig(outputfile)
 
 
 def graph_all_recombs_vs_rare_mutations(arg_runs, outputfile):
@@ -147,7 +147,7 @@ def graph_all_recombs_vs_rare_mutations(arg_runs, outputfile):
 
     # plt.show()
 
-    fig.savefig(outputfile + "_rare_muts.png")
+    fig.savefig(outputfile)
 
 def graph_comparison(arg_runs_list, labels, outputfile):
     fig = plt.figure(3)
@@ -174,22 +174,23 @@ def graph_comparison(arg_runs_list, labels, outputfile):
     plt.ylabel('recurrent mutations (all kinds)')
     plt.legend(loc="upper right")
 
-    fig.savefig(outputfile + ".png")
+    fig.savefig(outputfile)
 
 
 def main(argv):
     inputfile = ''
     outputfile = ''
     labels_text = ''
+    grid_outputfile = ''
 
     try:
-        opts, args = getopt.getopt(argv, "hi:o:l:", ["ifile=", "ofile=", "labels="])
+        opts, args = getopt.getopt(argv, "hi:o:l:g:", ["ifile=", "ofile=", "labels=", "gridfile="])
     except getopt.GetoptError:
-        print('calculate_optimal_arg_grid.py -i <input file> -o <output file> -l <labels>')
+        print('graph_results.py -i <input file> -o <output file> -l <labels> -g <output file for grid>')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('calculate_optimal_arg_grid.py -i <input file> -o <output file> -l <labels>')
+            print('graph_results.py -i <input file> -o <output file> -l <labels>')
             sys.exit()
         elif opt in ("-i", "--ifile"):
             inputfile = arg
@@ -197,10 +198,13 @@ def main(argv):
             outputfile = arg
         elif opt in ("-l", "--labels"):
             labels_text = arg
+        elif opt in ("-g", "--gridfile"):
+            grid_outputfile = arg
 
     print('Input file is: ', inputfile)
     print('Output file is: ', outputfile)
     print('Labels are: ', labels_text)
+    print('Output grid file: ', grid_outputfile)
 
     if ',' in inputfile:
         # Perform a comparison
@@ -210,16 +214,20 @@ def main(argv):
     else:
         arg_runs = read_args(inputfile)
         (fewest_rms, max_recombs, max_bms) = runs_to_dict(arg_runs)
-        grid = calculate_optimal_grid(fewest_rms, max_recombs, max_bms)
-
-        graph_grid(grid, outputfile)
 
         graph_all_recombs_vs_rare_mutations(arg_runs, outputfile)
 
         print(max_recombs)
         print(max_bms)
         print(fewest_rms)
-        print(grid)
+
+        if (grid_outputfile != ''):
+            grid = calculate_optimal_grid(fewest_rms, max_recombs, max_bms)
+            graph_grid(grid, grid_outputfile)
+            print(grid)
+
+
+        
 
 
 if __name__ == "__main__":
