@@ -1149,6 +1149,12 @@ int main(int argc, char **argv)
                     // Tidy up for the next run
                     free_genes(h);
                     run_seed = 0;
+
+                    if ((max_run_time > 0) && (timer > max_run_time))
+                    {
+                        // If one run was too long then assume all others at this setting will be also.
+                        break;
+                    }
                 }
                 printf("Total time for this setting: %15.8f\n", time_at_this_setting);
                 total_time += time_at_this_setting;
