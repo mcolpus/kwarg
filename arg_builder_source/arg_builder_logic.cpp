@@ -2118,6 +2118,8 @@ Gene create_random_root(int seq_length, int seed)
 
 ARG _build_arg_from_order(const Genes genes, int roots_given, const std::vector<int> &order)
 {
+    clock_t tic = clock();
+
     ARG arg = roots_given > 0 ? ARG(false) : ARG(true);
 
     for (int root_num = 0; root_num < roots_given; root_num++)
@@ -2129,16 +2131,20 @@ ARG _build_arg_from_order(const Genes genes, int roots_given, const std::vector<
     auto rng = std::default_random_engine(_run_seed);
 
     int step = 0;
+    double delta = 0;
+    if (_location_selection_method == 1)
+        delta = 0.0;
+    else if (_location_selection_method == 2)
+        delta = 0.5;
+    else if (_location_selection_method == 3)
+        delta = 1.0;
+
     for (int index : order)
     {
         if (_location_selection_method == 0)
             add_seq_to_arg_with_multi_recombs(arg, genes.genes[index]);
-        else if (_location_selection_method == 1)
-            add_seq_to_arg_with_randomness(arg, genes.genes[index], 0.0, rng());
-        else if (_location_selection_method == 2)
-            add_seq_to_arg_with_randomness(arg, genes.genes[index], 0.5, rng());
-        else if (_location_selection_method == 3)
-            add_seq_to_arg_with_randomness(arg, genes.genes[index], 1.0, rng());
+        else
+            add_seq_to_arg_with_randomness(arg, genes.genes[index], delta, rng());
 
         step += 1;
         if (_how_verbose >= 3)
@@ -2151,9 +2157,12 @@ ARG _build_arg_from_order(const Genes genes, int roots_given, const std::vector<
         }
     }
 
+    clock_t toc = clock();
+    double timer = (double)(toc - tic) / CLOCKS_PER_SEC;
+
     // Add arg to record
     _run_record.add_record(arg.number_of_recombinations, arg.number_of_recurrent_mutations, arg.number_of_back_mutations,
-                           _run_seed, _cost_recombination, _cost_recurrent_mutation, _cost_back_mutation);
+                           _run_seed, timer, _cost_recombination, _cost_recurrent_mutation, _cost_back_mutation);
 
     return std::move(arg);
 }
@@ -2494,6 +2503,9 @@ std::tuple<ARG, RunRecord> build_arg_search(const Genes genes, bool clean_sequen
         std::tie(history, _site_multiplicitity, site_extent) = clean_genes(genes_copy, _how_verbose);
 
     ARG arg;
+    int steps = costs_rm.size() * costs_bm.size() * costs_recomb.size();
+    int step = 0;
+    int barWidth = 70;
     for (float rm_cost : costs_rm)
     {
         _cost_recurrent_mutation = rm_cost;
@@ -2505,10 +2517,27 @@ std::tuple<ARG, RunRecord> build_arg_search(const Genes genes, bool clean_sequen
                 _cost_recombination = recomb_cost;
 
                 arg = _run_multi_runs(genes_copy, number_of_runs, run_seed, multi_run_strategy, 0);
+                step += 1;
+                if (_how_verbose >= 0)
+                {
+                    float progress = static_cast<float>(step) / static_cast<float>(steps);
+                    std::cout << "[";
+                    int pos = barWidth * progress;
+                    for (int i = 0; i < barWidth; ++i) {
+                        if (i < pos) std::cout << "=";
+                        else if (i == pos) std::cout << ">";
+                        else std::cout << " ";
+                    }
+                    std::cout << "] " << int(progress * 100.0) << " %\r";
+                    std::cout.flush();
+                }
                 run_seed = _run_seed;
             }
         }
     }
+
+    if(_how_verbose >= 0)
+        std::cout << std::endl;
 
     if (roots_given == 1)
     {

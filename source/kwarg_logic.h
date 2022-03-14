@@ -12,6 +12,7 @@ typedef struct _Result
     int rmflips = 0;
     int recombs = 0;
     int depth;
+    double run_time = 0.0;
     RunSettings run_settings;
 } Result;
 

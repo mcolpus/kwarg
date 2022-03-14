@@ -1044,12 +1044,24 @@ int main(int argc, char **argv)
 
                 // Get a history
                 clock_t tic = clock();
-                // n = run_kwarg(h, print_progress, select, _reset_selections, run_settings, run_data);
                 auto results = mass_run_kwarg(h, print_progress, sample, run_settings, run_data, multruns);
-                all_results.insert(all_results.end(), results.begin(), results.end());
                 clock_t toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
+
+                // We add a blank result which simply records the time for this batch search.
+
+                Result timer_result{
+                .seflips = -2,
+                .rmflips = -2,
+                .recombs = -2,
+                .depth = -2,
+                .run_time = timer};
+                timer_result.run_settings = run_settings;
+                
+                all_results.push_back(timer_result);
+                all_results.insert(all_results.end(), results.begin(), results.end());
+
                 total_time += timer;
                 free_genes(h);
             }
@@ -1066,11 +1078,14 @@ int main(int argc, char **argv)
                     // Get a history
                     clock_t tic = clock();
                     Result result = run_kwarg(h, print_progress, select, _reset_selections, run_settings, run_data);
-                    all_results.push_back(result);
                     clock_t toc = clock();
                     timer = (double)(toc - tic) / CLOCKS_PER_SEC;
+
+                    result.run_time = timer;
                     time_at_this_setting += timer;
                     printf("%15.8f\n", timer);
+                    
+                    all_results.push_back(result);
                     // The run_kwarg function will update rec_max and the g_lookup array
 
                     // Tidy up for the next run
@@ -1105,14 +1120,16 @@ int main(int argc, char **argv)
 
         if (file_empty)
         {
-            fout << "recombinations,sequencing errors,recurrent mutations,run seed,se_cost,rm_cost,r_cost,rr_cost,temp,recomb_max,rm_max\n";
+            fout << "recombinations,sequencing errors,recurrent mutations,run seed,run time,se_cost,rm_cost,r_cost,rr_cost,temp,recomb_max,rm_max\n";
         }
 
         for (Result &result : all_results)
         {
             fout << result.recombs << "," << result.seflips << "," << result.rmflips << ","
-                 << std::to_string(result.run_settings.run_seed) << "," << result.run_settings.se_cost << "," << result.run_settings.rm_cost << "," << result.run_settings.r_cost << "," 
-                 << result.run_settings.rr_cost << "," << result.run_settings.temp << "," << result.run_settings.rec_max << "," << result.run_settings.rm_max << "\n";
+                 << std::to_string(result.run_settings.run_seed) << "," << std::to_string(result.run_time) << ","
+                 << result.run_settings.se_cost << "," << result.run_settings.rm_cost << "," << result.run_settings.r_cost << ","
+                 << result.run_settings.rr_cost << "," << result.run_settings.temp << ","
+                 << result.run_settings.rec_max << "," << result.run_settings.rm_max << "\n";
         }
 
         std::cout << "results recorded.\n";

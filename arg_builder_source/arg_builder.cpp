@@ -612,8 +612,7 @@ int main(int argc, char **argv)
     // TODO: Read input from file or stdin
     Genes genes = read_input(std::cin, label_sequences);
 
-    if (how_verbose >= 1)
-        std::cout << "read input\n";
+    std::cout << "read input genes\n";
 
     ARG arg;
     RunRecord record;
@@ -701,13 +700,14 @@ int main(int argc, char **argv)
 
         if (file_empty)
         {
-            fout << "recombinations,back mutations,recurrent mutations,run seed,recombination cost,recurrent mutation cost,back mutation cost\n";
+            fout << "recombinations,back mutations,recurrent mutations,run seed,time to build,recombination cost,recurrent mutation cost,back mutation cost\n";
         }
 
         for (Run &run : record.runs)
         {
             fout << run.recombinations << "," << run.back_mutations << "," << run.recurrent_mutations << ","
-                 << std::to_string(run.seed) << "," << run.recomb_cost << "," << run.rm_cost << "," << run.bm_cost << "\n";
+                 << std::to_string(run.seed) << "," << std::to_string(run.build_time) << "," << run.recomb_cost << "," 
+                 << run.rm_cost << "," << run.bm_cost << "\n";
         }
 
         std::cout << "records recorded.\n";

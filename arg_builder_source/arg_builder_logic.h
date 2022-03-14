@@ -216,17 +216,19 @@ typedef struct _Run
     int back_mutations;
 
     int seed;
+    double build_time;
     float recomb_cost;
     float rm_cost;
     float bm_cost;
 
-    _Run(int recombs, int rms, int bms, int run_seed, float cost_recomb, float cost_rm, float cost_bm)
+    _Run(int recombs, int rms, int bms, int run_seed, double run_build_time, float cost_recomb, float cost_rm, float cost_bm)
     {
         recombinations = recombs;
         recurrent_mutations = rms;
         back_mutations = bms;
 
         seed = run_seed;
+        build_time = run_build_time;
         recomb_cost = cost_recomb;
         rm_cost = cost_rm;
         bm_cost = cost_bm;
@@ -246,9 +248,9 @@ typedef struct _RunRecord
         // recombs_and_bms_to_rms.clear();
     }
 
-    void add_record(int recombs, int rms, int bms, int run_seed, float cost_recomb, float cost_rm, float cost_bm)
+    void add_record(int recombs, int rms, int bms, int run_seed, double build_time, float cost_recomb, float cost_rm, float cost_bm)
     {
-        Run run(recombs, rms, bms, run_seed, cost_recomb, cost_rm, cost_bm);
+        Run run(recombs, rms, bms, run_seed, build_time, cost_recomb, cost_rm, cost_bm);
         runs.push_back(run);
 
         // update recombs_to_rare_mutations

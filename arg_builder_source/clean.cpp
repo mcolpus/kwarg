@@ -177,7 +177,7 @@ std::tuple<std::vector<HistoryStep>, std::vector<int>, std::vector<int>> clean_g
         }
     }
 
-    if (how_verbose >= 1)
+    if (how_verbose >= 0)
         std::cout << "Cleaning finished, now have " << gs.size() << " genes and " << remaining_columns.size() << " sites.\n";
 
     genes.genes = std::move(gs);
