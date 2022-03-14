@@ -634,6 +634,7 @@ static void add_result(RunSettings &run_settings, int seflips, int rmflips, int 
     }
 }
 
+double _mass_run_tic;
 static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vector<int> (*take_sample)(std::vector<double>, int),
                                       RunSettings &run_settings, RunData &path_run_data, int num_samples, int seflips, int rmflips, int recombs, int depth)
 {
@@ -877,7 +878,6 @@ static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vecto
     }
 }
 
-double _mass_run_tic;
 std::vector<Result> mass_run_kwarg(Genes *g, FILE *print_progress, std::vector<int> (*take_sample)(std::vector<double>, int),
                                    RunSettings run_settings, RunData &main_path_run_data, int num_samples)
 {
