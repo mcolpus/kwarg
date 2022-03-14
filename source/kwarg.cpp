@@ -61,6 +61,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-n", "Assume input consists of nucleic sequences; anything but a/c/g/t/u is considered an unresolved site (default is to assume binary, i.e. 0/1, format where anything but a 0 or a 1 is considered an unresolved site). If the most recent common ancestor is assumed known (see option -k), the first sequence in the input data is considered to specify the wild type of each site and is not included as part of the sample set.", 70, -1);
     print_option(f, "-k", "Assume that the common ancestral sequence is known, i.e. that we know which is the wild type and which is the mutant in each site. If the data is in binary format, the all-0 sequence is assumed to be the common ancestral sequence (this does not need to be present in the data). If the data is in amino acid or nucleotide format, the common ancestral sequence has to be specified directly and is taken to be the first sequence in the data file (see options -a and -n)", 70, -1);
     print_option(f, "-m", "If multiple runs are being done, use a DFS tree search rather than simply repeated random runs", 70, -1);
+    print_option(f, "-r[x]", "max run time", 70, -1);
     print_option(f, "-Q[x]", "Sets the number of runs.", 70, -1);
     print_option(f, "-Z[x]", "Sets the random seed z (only one run is made in this case).", 70, -1);
     print_option(f, "-X[x]", "Provide an upper bound x on the number of recombinations needed for the input dataset (solutions with more than x recombinations will be abandoned).", 70, -1);
@@ -376,12 +377,14 @@ int main(int argc, char **argv)
 
     RunData run_data;
 
+    double max_run_time = 0.0;
+
 #ifdef ENABLE_VERBOSE
     set_verbose(1);
 #endif
 
 /* Analyse command line options */
-#define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::Iv:iekmofaZ:Q:sL:O::nhH?"
+#define KWARG_OPTIONS "S:M:R:C:T:V:X:Y:b::d::g::j::t::D::G::J::Iv:iekmofaZ:r:Q:sL:O::nhH?"
 
     /* Parse command line options */
     while ((i = getopt(argc, argv, KWARG_OPTIONS)) >= 0)
@@ -756,6 +759,14 @@ int main(int argc, char **argv)
         case 'n':
             seqtype = GENE_NUCLEIC;
             break;
+        case 'r':
+            max_run_time = std::stod(optarg);
+            if (max_run_time < 0)
+            {
+                fprintf(stderr, "max_run_time should not be negative.\n");
+                exit(1);
+            }
+            break;
         case 'Z':
             run_seed = std::stod(optarg);
             if (run_seed <= 0)
@@ -1058,7 +1069,7 @@ int main(int argc, char **argv)
 
                 // Get a history
                 clock_t tic = clock();
-                auto results = mass_run_kwarg(h, print_progress, sample, run_settings, run_data, multruns);
+                auto results = mass_run_kwarg(h, print_progress, sample, run_settings, run_data, multruns, max_run_time);
                 clock_t toc = clock();
                 timer = (double)(toc - tic) / CLOCKS_PER_SEC;
                 printf("%15.8f\n", timer);
@@ -1112,7 +1123,7 @@ int main(int argc, char **argv)
 
                     // Get a history
                     clock_t tic = clock();
-                    Result result = run_kwarg(h, print_progress, select, _reset_selections, run_settings, run_data);
+                    Result result = run_kwarg(h, print_progress, select, _reset_selections, run_settings, run_data, max_run_time);
                     clock_t toc = clock();
                     timer = (double)(toc - tic) / CLOCKS_PER_SEC;
 

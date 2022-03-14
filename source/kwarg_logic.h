@@ -17,7 +17,7 @@ typedef struct _Result
 } Result;
 
 Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double),
-                 void (*reset)(void), RunSettings run_settings, RunData &run_data);
+                 void (*reset)(void), RunSettings run_settings, RunData &run_data, double max_run_time);
 std::vector<Result> mass_run_kwarg(Genes *g, FILE *print_progress, std::vector<int> (*take_sample)(std::vector<double>, int),
-                                   RunSettings run_settings, RunData &main_path_run_data, int num_samples);
+                                   RunSettings run_settings, RunData &main_path_run_data, int num_samples, double max_run_time);
 #endif

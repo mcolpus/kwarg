@@ -313,7 +313,7 @@ static bool _generate_predecessors(std::vector<std::unique_ptr<HistoryFragment>>
 /* Main function of kwarg implementing neighbourhood search.
  */
 Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*reset)(void),
-                 RunSettings run_settings, RunData &main_path_run_data)
+                 RunSettings run_settings, RunData &main_path_run_data, double max_run_time)
 {
     int nbdsize = 0, total_nbdsize = 0, seflips = 0, rmflips = 0, recombs = 0, preds;
     bool bad_soln = false;
@@ -376,16 +376,19 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
     // greedy_choice will point to History fragment to be selected
     
     clock_t tic = clock();
-    double timer = 0.0;
 
     while (!choice_fixed)
     {
-        double new_timer = (double)(clock() - tic) / CLOCKS_PER_SEC;
-        if (new_timer > 120 && timer <= 120)
-            std::cout << "This process has taken a long time!!!!\n";
-        timer = new_timer;
+        double timer = (double)(clock() - tic) / CLOCKS_PER_SEC;
         std::cout << "time elapsed on search: " << timer << "\r";
         std::cout.flush();
+
+        if ((max_run_time > 0) && (timer > max_run_time))
+        {
+            fprintf(stderr, "Timed out.");
+            bad_soln = true;
+            break;
+        }
 
         auto greedy_choice = std::make_unique<HistoryFragment>();
 
@@ -637,6 +640,7 @@ static void add_result(RunSettings &run_settings, int seflips, int rmflips, int 
 }
 
 double _mass_run_tic;
+double _max_run_time;
 static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vector<int> (*take_sample)(std::vector<double>, int),
                                       RunSettings &run_settings, RunData &path_run_data, int num_samples, int seflips, int rmflips, int recombs, int depth)
 {
@@ -649,6 +653,12 @@ static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vecto
     double timer = (double)(clock() - _mass_run_tic) / CLOCKS_PER_SEC;
     std::cout << "time elapsed on search: " << timer << "\r";
     std::cout.flush();
+
+    if ((_max_run_time > 0) && (timer > _max_run_time))
+    {
+        std::cout << "Timed out.\n";
+        return;
+    }
     
 
     // Note we assume that the g passed in belongs to a unique pointer to a HistoryFragment. So we do not free it.
@@ -683,6 +693,7 @@ static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vecto
     if (nbdsize == 0)
     {
         fprintf(stderr, "No neighbours left to search but MRCA not reached.");
+        return;
     }
     total_nbdsize = total_nbdsize + nbdsize;
 
@@ -881,11 +892,13 @@ static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vecto
 }
 
 std::vector<Result> mass_run_kwarg(Genes *g, FILE *print_progress, std::vector<int> (*take_sample)(std::vector<double>, int),
-                                   RunSettings run_settings, RunData &main_path_run_data, int num_samples)
+                                   RunSettings run_settings, RunData &main_path_run_data, int num_samples, double max_run_time)
 {
     // Roughly same result as running kwarg num_samples times. Each time a nbhd is created we will take
     // many samples from it rather than just 1. We then take a dfs approach
     results.clear();
+
+    _max_run_time = max_run_time;
 
 #ifdef ENABLE_VERBOSE
     int v = verbose();
