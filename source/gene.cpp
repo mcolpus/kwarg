@@ -66,12 +66,12 @@ int gene_knownancestor = 0;
 /* Free memory used by a genes data structure */
 void free_genes(Genes *g)
 {
-    int i;
-    for (i = 0; i < g->n; i++)
+    for (int i = 0; i < g->n; i++)
     {
         free(g->data[i].type);
         free(g->data[i].ancestral);
     }
+    free(g->data);
     free(g);
 }
 
@@ -1347,19 +1347,18 @@ void add_ancestral_sites(Sites *s)
 Genes *copy_genes(Genes *g)
 {
     Genes *_new = (Genes *)xmalloc(sizeof(Genes));
-    int i, blocks = divblocksize(g->length - 1) + 1;
+    int blocks = divblocksize(g->length - 1) + 1;
 
     _new->length = g->length;
     _new->n = g->n;
     _new->data = (Gene *)xmalloc(_new->n * sizeof(Gene));
 
-    for (i = 0; i < _new->n; i++)
+    for (int i = 0; i < _new->n; i++)
     {
         _new->data[i].type = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
         memcpy(_new->data[i].type, g->data[i].type, blocks * sizeof(unsigned long));
         _new->data[i].ancestral = (unsigned long *)xmalloc(blocks * sizeof(unsigned long));
-        memcpy(_new->data[i].ancestral, g->data[i].ancestral,
-               blocks * sizeof(unsigned long));
+        memcpy(_new->data[i].ancestral, g->data[i].ancestral, blocks * sizeof(unsigned long));
     }
 
     return _new;

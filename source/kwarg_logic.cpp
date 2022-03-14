@@ -456,8 +456,6 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
             {
                 // compute score and check if better than that of greedy_choice
                 /* Set f to be new choice */
-                if (f->g->n == 0)
-                    int dshaudhsi = 1;
                 greedy_choice = std::move(f);
                 // output_genes(greedy_choice->g, stderr, "greedy_choice update:\n");
             }
@@ -470,6 +468,7 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
         // greedy_choice is a unique pointer and everything in it will be reset so need to copy out elements.
         if (!choice_fixed)
             g = copy_genes(greedy_choice->g);
+
         main_path_run_data.sequence_labels = greedy_choice->elements;
         main_path_run_data.site_labels = greedy_choice->sites;
 
@@ -515,13 +514,6 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
         r += greedy_choice->step_cost;
 
         /* Clean up */
-        // HistoryFragment *ptr = greedy_choice.release(); // Needed so that it doesn't delete all it's members (which other variables are now pointing to)
-        // free(ptr);
-
-        // if (choice_fixed)
-        // {
-        //     free_genes(g);
-        // }
 
         // Can abandon the run if the number of recombinations already exceeds rec_max
         if (recombs > run_settings.rec_max)
@@ -541,9 +533,6 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
             }
         }
     }
-
-    if (g != nullptr)
-        free_genes(g); // Catch errors
 
     // If we exited the loop because of a sub-optimal solution, record this
     if (bad_soln)

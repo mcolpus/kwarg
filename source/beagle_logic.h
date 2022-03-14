@@ -5,7 +5,7 @@
 #include "gene.h"
 #include "hashtable.h"
 
-extern int exact_randomise;
+extern bool exact_randomise;
 int beagle(Genes *g, FILE *print_progress, RunData &run_data);
 int beagle_bounded(Genes *g, FILE *print_progress, int lower, int upper, RunData &run_data);
 int beagle_reusable(Genes *g, FILE *print_progress, HashTable *t, RunData &run_data);

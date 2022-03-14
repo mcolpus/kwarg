@@ -16,6 +16,7 @@
 #include <float.h>
 
 #include <memory>
+#include <algorithm>
 
 #include "gene.h"
 #include "common.h"
@@ -39,16 +40,42 @@
 
 typedef struct _BeagleSplitInformation
 {
-    HistoryFragment *g;
+    std::unique_ptr<HistoryFragment> u_hist_ptr;
     int am;
     char splits;
     char representative;
+
+    _BeagleSplitInformation() = default;
+
+    // Can't simply copy due to unique pointer
+    _BeagleSplitInformation(_BeagleSplitInformation const &) = delete;
+    _BeagleSplitInformation &operator=(_BeagleSplitInformation const &) = delete;
+
+    // But can move
+    _BeagleSplitInformation& operator=(_BeagleSplitInformation&& other)
+    {
+        u_hist_ptr = std::move(other.u_hist_ptr);
+        am = other.am;
+        splits = other.splits;
+        representative = other.representative;
+
+        return *this;
+    }
+
+    // move constructor, takes a rvalue reference &&
+    _BeagleSplitInformation (_BeagleSplitInformation&& other)
+    {
+        u_hist_ptr = std::move(other.u_hist_ptr);
+        am = other.am;
+        splits = other.splits;
+        representative = other.representative;
+    }
 } BeagleSplitInformation;
 
 /* Variables declared globally to avoid parameter clutter */
-int exact_randomise = 0;    /* Random evolutionary histories? */
-static int reusable = 0;    /* Is hash table reusable? */
-static int skip_lookup = 0; /* Should LOOKUP event be allowed? */
+bool exact_randomise = false;    /* Random evolutionary histories? */
+static bool reusable = false;    /* Is hash table reusable? */
+static bool skip_lookup = false; /* Should LOOKUP event be allowed? */
 
 /* The smaller element is the one with the smallest number of splits,
  * or if those are equal the element with the smaller amount of
@@ -117,72 +144,55 @@ static void permute_vector(std::vector<T> &vec)
  * recombinations already used exceeds target. The total number of
  * ancestral states transferred is added to n.
  */
-static int transfer2splitinformation(BeagleSplitInformation *splits,
-                                     std::vector<std::unique_ptr<HistoryFragment>> &genes, int base, int *n,
-                                     HashTable *t, int target, RunData &run_data)
+static bool transfer2splitinformation(std::vector<BeagleSplitInformation> &alt_splits,
+                                      std::vector<std::unique_ptr<HistoryFragment>> &genes, int base, int *n,
+                                      HashTable *table, int target, RunData &run_data)
 {
-    int i, prevtarget, bound;
-    void *lookup;
-    Genes *g;
-    PackedGenes *p;
-    Event *e;
+    // genes will be cleared out in this process
 
     /* Insert all feasible branches from genes into splits */
-    for (i = 0; i < genes.size(); i++)
+    for (int i = 0; i < genes.size(); i++)
     {
         /* Check whether we have already encountered this ancestral state
          * with the same, or larger, target.
          */
-        splits[*n].g = genes[i].release();
-        g = splits[*n].g->g;
+        BeagleSplitInformation new_split;
+        new_split.u_hist_ptr = std::move(genes[i]);
 
-        p = pack_genes(g);
-        if (hashtable_lookup((void *)p, t, &lookup))
+        PackedGenes *p = pack_genes(new_split.u_hist_ptr->g);
+        void *lookup;
+        if (hashtable_lookup((void *)p, table, &lookup))
         {
             /* This ancestral state is already present in the hash table */
-            prevtarget = (intptr_t)lookup;
-            splits[*n].representative = 0;
+            int prevtarget = (intptr_t)lookup;
+            new_split.representative = 0;
+
             if (reusable && (prevtarget < 0) && (base - target <= prevtarget + 1))
             {
+                free_packedgenes(p);
                 /* We know this set of sequences needs at most as many
                  * recombinations as we have left.
                  */
-                free_packedgenes(p);
                 if (!skip_lookup)
                 {
                     /* And we don't want to search histories */
                     if (g_use_eventlist && run_data.eventlist.in_use)
                     {
-                        run_data.eventlist.append(splits[*n].g->events);
+                        run_data.eventlist.append(new_split.u_hist_ptr->events);
                         Event e;
                         e.type = LOOKUP;
                         e.event.lookup = -prevtarget - 1;
                         run_data.eventlist.push_back(e);
                     }
-                    free(splits[*n].g);
+
                     /* We found a solution - eliminate all candidates */
-                    free_genes(g);
                     for (i++; i < genes.size(); i++)
                     {
-                        splits[*n].g = genes[i].release();
-                        if (g_use_eventlist && run_data.eventlist.in_use)
-                        {
-                            splits[*n].g->events.destroy();
-                        }
-                        free_genes(splits[*n].g->g);
-                        free(splits[*n].g);
+                        genes[i].reset(nullptr);
                     }
-                    for (i = 0; i < *n; i++)
-                    {
-                        free_genes(splits[i].g->g);
-                        if (g_use_eventlist && run_data.eventlist.in_use)
-                        {
-                            splits[i].g->events.destroy();
-                        }
-                        free(splits[i].g);
-                    }
-                    free(splits);
-                    return 1;
+
+                    alt_splits.clear();
+                    return true;
                 }
             }
             else if ((reusable && ((2 * (target - base) + (base > 0) < prevtarget) || (base - target > prevtarget + 1))) || (!reusable && (target - base <= prevtarget)))
@@ -190,12 +200,6 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                 /* We know this set of sequences needs more recombinations
                  * than we have left.
                  */
-                if (g_use_eventlist && run_data.eventlist.in_use)
-                {
-                    splits[*n].g->events.destroy();
-                }
-                free(splits[*n].g);
-                free_genes(g);
                 free_packedgenes(p);
                 continue;
             }
@@ -205,52 +209,47 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
                  * exists with fewer than target - base recombinations.
                  */
                 hashtable_update((void *)p,
-                                 (void *)((target - base) << reusable), t, NULL);
+                                 (void *)((target - base) << reusable), table, NULL);
                 free_packedgenes(p);
             }
         }
         else
         {
-            splits[*n].representative = 1;
+            new_split.representative = 1;
 
             /* Compute lower bound for this sequence set */
-            bound = LOWERBOUND(g);
+            int bound = LOWERBOUND(new_split.u_hist_ptr->g);
 
             /* Is there any hope for this branch */
             if (bound > target - base)
             {
 #ifdef BEAGLE_DONOTSTORELEAVES
                 free_packedgenes(p);
-                free_genes(g);
 #else
                 if (reusable)
                     hashtable_update((void *)p, (void *)(2 * bound), t, NULL);
                 else
                     hashtable_update((void *)p, (void *)(bound - 1), t, NULL);
 #endif
-                if (g_use_eventlist && run_data.eventlist.in_use)
-                {
-                    splits[*n].g->events.destroy();
-                }
-                free(splits[*n].g);
-                continue;
+                continue; // new_split will be reset
             }
 
             /* By the structure of the method, we know that no history
              * exists with fewer than target - base recombinations.
              */
             hashtable_update((void *)p,
-                             (void *)((target - base) << reusable), t, NULL);
+                             (void *)((target - base) << reusable), table, NULL);
         }
 
-        splits[*n].am = ancestral_material(g);
-        splits[*n].splits = base;
+        new_split.am = ancestral_material(new_split.u_hist_ptr->g);
+        new_split.splits = base;
 
         /* Another sequence set inserted into splits */
+        alt_splits.push_back(std::move(new_split));
         (*n)++;
     }
 
-    return 0;
+    return false;
 }
 
 /* Check whether any of the set of sequences in genes can be explained
@@ -260,14 +259,10 @@ static int transfer2splitinformation(BeagleSplitInformation *splits,
  */
 static int check_for_bottom(const std::vector<std::unique_ptr<HistoryFragment>> &genes, RunData &run_data)
 {
-    int i;
-    Genes *g;
-    HistoryFragment *s;
-
-    for (i = 0; i < genes.size(); i++)
+    for (int i = 0; i < genes.size(); i++)
     {
-        s = genes[i].get();
-        g = s->g;
+        HistoryFragment *history = genes[i].get();
+        Genes *g = history->g;
         if (no_recombinations_required(g, run_data))
         {
             /* We can explain the set of sequences with no further recombinations */
@@ -280,8 +275,8 @@ static int check_for_bottom(const std::vector<std::unique_ptr<HistoryFragment>> 
 #endif
             if (g_use_eventlist && run_data.eventlist.in_use)
             {
-                run_data.eventlist.append(s->events);
-                s->events.set_null();
+                run_data.eventlist.append(history->events);
+                history->events.set_null();
             }
             return 1;
         }
@@ -289,7 +284,6 @@ static int check_for_bottom(const std::vector<std::unique_ptr<HistoryFragment>> 
 
     return 0;
 }
-
 
 /* Recursion actually implementing the branch&bound procedure of
  * beagle. The hash table t is used for the dynamic programming and
@@ -308,10 +302,10 @@ static int check_for_bottom(const std::vector<std::unique_ptr<HistoryFragment>> 
 static int beagle_recursion(Genes *g, HashTable *t, int target,
                             int try_coalesces, RunData &run_data)
 {
-    int i, j, n;
+    int j, max_possible_splits = 0;
     Index *start, *end;
     std::vector<std::unique_ptr<HistoryFragment>> coalesced, prefix, postfix, infix, overlap;
-    BeagleSplitInformation *splits;
+    std::vector<BeagleSplitInformation> alt_splits;
 #ifdef ENABLE_VERBOSE
     int v = verbose();
     set_verbose(0);
@@ -325,7 +319,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
          * other but where the ancestral material is still entangled.
          */
         coalesced = coalesce_compatibleandentangled(g, run_data);
-        n = coalesced.size();
+        max_possible_splits = coalesced.size();
         if (check_for_bottom(coalesced, run_data))
         {
 #ifdef ENABLE_VERBOSE
@@ -340,9 +334,9 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         }
     }
     else
-        n = 0;
+        max_possible_splits = 0;
 
-    i = 0;
+    int num_splits = 0;
     if (target > 0)
     {
         /* There is room for at least one split */
@@ -377,10 +371,10 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         {
             vector_append(postfix, prefix);
             permute_vector(postfix);
-            n += postfix.size();
+            max_possible_splits += postfix.size();
         }
         else
-            n += prefix.size() + postfix.size();
+            max_possible_splits += prefix.size() + postfix.size();
         if (check_for_bottom(postfix, run_data))
         {
             free(start);
@@ -430,10 +424,10 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
             {
                 vector_append(overlap, infix);
                 permute_vector(overlap);
-                n += overlap.size();
+                max_possible_splits += overlap.size();
             }
             else
-                n += infix.size() + overlap.size();
+                max_possible_splits += infix.size() + overlap.size();
 
             if (check_for_bottom(overlap, run_data))
             {
@@ -461,10 +455,9 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                 return 1;
             }
 
-            if (n > 0)
+            if (max_possible_splits > 0)
             {
-                splits = (BeagleSplitInformation *) xmalloc(n * sizeof(BeagleSplitInformation));
-                if (!exact_randomise && transfer2splitinformation(splits, infix, 2, &i, t, target, run_data))
+                if (!exact_randomise && transfer2splitinformation(alt_splits, infix, 2, &num_splits, t, target, run_data))
                 {
                     free(start);
                     free(end);
@@ -483,7 +476,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
 #endif
                     return 1;
                 }
-                if (transfer2splitinformation(splits, overlap, 2, &i, t, target, run_data))
+                if (transfer2splitinformation(alt_splits, overlap, 2, &num_splits, t, target, run_data))
                 {
                     free(start);
                     free(end);
@@ -507,14 +500,10 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                 }
             }
         }
-        else if (n > 0)
+
+        if (max_possible_splits > 0)
         {
-            splits = (BeagleSplitInformation *)
-                xmalloc(n * sizeof(BeagleSplitInformation));
-        }
-        if (n > 0)
-        {
-            if (!exact_randomise && transfer2splitinformation(splits, prefix, 1, &i, t, target, run_data))
+            if (!exact_randomise && transfer2splitinformation(alt_splits, prefix, 1, &num_splits, t, target, run_data))
             {
                 free(start);
                 free(end);
@@ -531,7 +520,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
 #endif
                 return 1;
             }
-            if (transfer2splitinformation(splits, postfix, 1, &i, t, target, run_data))
+            if (transfer2splitinformation(alt_splits, postfix, 1, &num_splits, t, target, run_data))
             {
                 free(start);
                 free(end);
@@ -556,15 +545,12 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
         free(start);
         free(end);
     }
-    else if (try_coalesces && (coalesced.size() > 0))
-        splits = (BeagleSplitInformation *)
-            xmalloc(coalesced.size() * sizeof(BeagleSplitInformation));
 
     if (try_coalesces)
     {
         if (coalesced.size() > 0)
         {
-            if (transfer2splitinformation(splits, coalesced, 0, &i, t, target, run_data))
+            if (transfer2splitinformation(alt_splits, coalesced, 0, &num_splits, t, target, run_data))
             {
 #ifdef ENABLE_VERBOSE
                 if (v)
@@ -588,34 +574,54 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
 #endif
 
     fflush(stdout);
-    if (i > 0)
+    if (num_splits > 0)
     {
         /* ...and there are actually some */
         if (exact_randomise)
-            permute(splits, i);
+        {
+            permute_vector(alt_splits);
+        }
         else
-            merge_sort(splits, i, sizeof(BeagleSplitInformation),
-                       (int (*)(char *, char *))compareboundandancestralmaterial);
+        {
+            struct
+            {
+                bool operator()(const BeagleSplitInformation &a, const BeagleSplitInformation &b) const
+                {
+                    if ((a.representative < b.representative) || 
+                        ((a.representative == b.representative) && ((a.splits > b.splits) || ((a.splits == b.splits) && (a.am < b.am)))))
+                        return true;
+                    else
+                        return false;
+                }
+            } splitCmp;
+            sort(alt_splits.begin(), alt_splits.end(), splitCmp);
+        }
 #ifdef ENABLE_VERBOSE
         if (v > 1)
-            for (j = 0; j < i; j++)
-            {
-                output_genes_indexed(splits[j].g->g, NULL);
-                printf("is #%d; splits %d, and ancestral material %d\n",
-                       j, splits[j].splits, splits[j].am);
-            }
-#endif
-        for (j = 0; j < i; j++)
         {
-            g = splits[j].g->g;
-            if (beagle_recursion(g, t, target - splits[j].splits,
-                                 (splits[j].splits > 0), run_data))
+            int j = 0;
+            for (const auto &split : alt_splits)
+            {
+                output_genes_indexed(split.u_hist_ptr->g, NULL);
+                printf("is #%d; splits %d, and ancestral material %d\n",
+                       j, split.splits, split.am);
+                j++;
+            }
+        }
+#endif
+
+
+        for (const auto &split : alt_splits)
+        {
+            g = split.u_hist_ptr->g;
+            if (beagle_recursion(g, t, target - split.splits,
+                                 (split.splits > 0), run_data))
             {
                 /* We found a branch leading to at most target recombinations */
 #ifdef ENABLE_VERBOSE
                 if (v)
                 {
-                    printf("Obtained from %d splits in:\n", splits[j].splits);
+                    printf("Obtained from %d splits in:\n", split.splits);
                     output_genes_indexed(g, NULL);
                 }
 #endif
@@ -638,44 +644,37 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
                      * transfer2splitinformation.
                      */
                     hashtable_update((void *)p,
-                                     (void *)(splits[j].splits - target - 1), t, NULL);
+                                     (void *)(split.splits - target - 1), t, NULL);
                     free_packedgenes(p);
                 }
                 if (g_use_eventlist && run_data.eventlist.in_use)
-                    run_data.eventlist.prepend(splits[j].g->events);
-                free_genes(splits[j].g->g);
-                free(splits[j].g);
-                j++;
-                for (; j < i; j++)
-                {
-                    free_genes(splits[j].g->g);
-                    if (g_use_eventlist && run_data.eventlist.in_use)
-                    {
-                        splits[j].g->events.destroy();
-                    }
-                    free(splits[j].g);
-                }
-                free(splits);
+                    run_data.eventlist.prepend(split.u_hist_ptr->events);
+                
+                alt_splits.clear();
                 return 1;
             }
             else if (reusable)
             {
                 p = pack_genes(g);
                 hashtable_update((void *)p,
-                                 (void *)(2 * (target - splits[j].splits) + try_coalesces + 1), t, NULL);
+                                 (void *)(2 * (target - split.splits) + try_coalesces + 1), t, NULL);
                 free_packedgenes(p);
             }
 
-            free_genes(splits[j].g->g);
             if (g_use_eventlist && run_data.eventlist.in_use)
             {
-                splits[j].g->events.destroy();
+                split.u_hist_ptr->events.destroy();
             }
-            free(splits[j].g);
         }
+
+
+
+
+
+
     }
-    if (n > 0)
-        free(splits);
+
+    alt_splits.clear();
 
     /* We cannot explain g with at most target recombinations. Return
      * this informative fact.
