@@ -4334,11 +4334,12 @@ typedef struct _NodeClass
  * graph, components is an array containing current assignment, and
  * states is the list new ancestral states are stored in.
  */
-static void coalesce_cande_recursion(std::vector<NodeClass *> &stack, std::vector<int> *component, Genes *g,
+static void coalesce_cande_recursion(std::vector<NodeClass *> &stack, std::vector<int> &component, Genes *g,
                                      std::vector<int> E[], std::vector<std::vector<int>> &compatibility_matrix, std::vector<int> &components,
                                      const RunData &main_path_data, STORE_FRAGMENT_FUNCTION_TYPE f)
 {
     int i, j;
+    std::vector<int> old_component; // Used if node initiates new component
 
     /* Check whether we have reached bottom of recursion */
     if (stack.empty())
@@ -4400,23 +4401,25 @@ static void coalesce_cande_recursion(std::vector<NodeClass *> &stack, std::vecto
             if (current->_class - 1 != current->node)
             {
                 /* Current node does not initiate new component */
-                for (i = 0; i < component->size(); i++)
+                for (i = 0; i < component.size(); i++)
                 {
-                    if (!compatibility_matrix[current->node][(*component)[i]])
+                    if (!compatibility_matrix[current->node][component[i]])
                         break;
                 }
             }
             else
             {
                 /* Current node does initiate new component */
-                component = new std::vector<int>;
+                old_component = component;
+                component.clear();
                 i = 0;
             }
-            if (i == component->size())
+
+            if (i == component.size())
             {
                 /* Add current node to current component */
                 components[current->node] = current->_class;
-                component->push_back(current->node);
+                component.push_back(current->node);
 
                 /* Add neighbours to stack */
                 std::vector<std::unique_ptr<NodeClass>> tmp;
@@ -4453,13 +4456,12 @@ static void coalesce_cande_recursion(std::vector<NodeClass *> &stack, std::vecto
                 if (current->_class - 1 == current->node)
                 {
                     /* This node initiated a new component */
-                    component->clear();
-                    free(component);
+                    component = old_component;
                 }
-                else if (component->size() > 0)
+                else if (component.size() > 0)
                 {
                     /* Did not! */
-                    component->pop_back();
+                    component.pop_back();
                 }
             }
 
@@ -4537,7 +4539,7 @@ void coalesce_compatibleandentangled_map(Genes *g, const RunData &main_run_data,
             }
 
     /* Initiate enumeration of all splits into connected components */
-    coalesce_cande_recursion(stack, &component, g, E, compatibility_matrix, components, main_run_data, f);
+    coalesce_cande_recursion(stack, component, g, E, compatibility_matrix, components, main_run_data, f);
     component.clear();
 }
 

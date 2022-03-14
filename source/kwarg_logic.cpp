@@ -374,14 +374,20 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
         free_genes(g);
 
     // greedy_choice will point to History fragment to be selected
-    auto greedy_choice = std::make_unique<HistoryFragment>();
+    
     clock_t tic = clock();
+    double timer = 0.0;
 
     while (!choice_fixed)
     {
-        double timer = (double)(clock() - tic) / CLOCKS_PER_SEC;
+        double new_timer = (double)(clock() - tic) / CLOCKS_PER_SEC;
+        if (new_timer > 120 && timer <= 120)
+            std::cout << "This process has taken a long time!!!!\n";
+        timer = new_timer;
         std::cout << "time elapsed on search: " << timer << "\r";
         std::cout.flush();
+
+        auto greedy_choice = std::make_unique<HistoryFragment>();
 
         choice_fixed = _generate_predecessors(predecessors, g, print_progress, main_path_run_data, run_settings);
 
@@ -401,6 +407,8 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
         if (nbdsize == 0)
         {
             fprintf(stderr, "No neighbours left to search but MRCA not reached.");
+            bad_soln = true;
+            break;
         }
         total_nbdsize = total_nbdsize + nbdsize;
 
@@ -448,6 +456,8 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
             {
                 // compute score and check if better than that of greedy_choice
                 /* Set f to be new choice */
+                if (f->g->n == 0)
+                    int dshaudhsi = 1;
                 greedy_choice = std::move(f);
                 // output_genes(greedy_choice->g, stderr, "greedy_choice update:\n");
             }
@@ -457,9 +467,9 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
 
         predecessors.clear();
 
-        // greedy_choice is a unique pointer and everything it will be reset so need to copy out elements.
-        // output_genes(greedy_choice->g, stderr, "greedy_choice:\n");
-        g = greedy_choice->g;
+        // greedy_choice is a unique pointer and everything in it will be reset so need to copy out elements.
+        if (!choice_fixed)
+            g = copy_genes(greedy_choice->g);
         main_path_run_data.sequence_labels = greedy_choice->elements;
         main_path_run_data.site_labels = greedy_choice->sites;
 
@@ -505,13 +515,13 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
         r += greedy_choice->step_cost;
 
         /* Clean up */
-        HistoryFragment *ptr = greedy_choice.release(); // Needed so that it doesn't delete all it's members (which other variables are now pointing to)
-        free(ptr);
+        // HistoryFragment *ptr = greedy_choice.release(); // Needed so that it doesn't delete all it's members (which other variables are now pointing to)
+        // free(ptr);
 
-        if (choice_fixed)
-        {
-            free_genes(g);
-        }
+        // if (choice_fixed)
+        // {
+        //     free_genes(g);
+        // }
 
         // Can abandon the run if the number of recombinations already exceeds rec_max
         if (recombs > run_settings.rec_max)
@@ -531,6 +541,9 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
             }
         }
     }
+
+    if (g != nullptr)
+        free_genes(g); // Catch errors
 
     // If we exited the loop because of a sub-optimal solution, record this
     if (bad_soln)

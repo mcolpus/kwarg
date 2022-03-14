@@ -44,7 +44,6 @@ HistoryFragment::~HistoryFragment()
 {
     if (g != NULL)
         free_genes(g);
-    events.destroy();
 }
 
 void _RunData::clear_all()

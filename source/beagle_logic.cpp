@@ -463,8 +463,7 @@ static int beagle_recursion(Genes *g, HashTable *t, int target,
 
             if (n > 0)
             {
-                splits = (BeagleSplitInformation *)
-                    xmalloc(n * sizeof(BeagleSplitInformation));
+                splits = (BeagleSplitInformation *) xmalloc(n * sizeof(BeagleSplitInformation));
                 if (!exact_randomise && transfer2splitinformation(splits, infix, 2, &i, t, target, run_data))
                 {
                     free(start);
