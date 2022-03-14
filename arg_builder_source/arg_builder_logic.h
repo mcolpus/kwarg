@@ -285,7 +285,7 @@ float get_cost(const int rms, const int bms);
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 ARGOutputFormat format, int how_to_label_edges, ARGOutputLabels node_labels);
 std::tuple<ARG, RunRecord> build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int location_selection_method, int find_root_strategy, int find_root_iterations,
-                                          int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max);
+                                          int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max, std::string run_record_file);
 std::tuple<ARG, RunRecord> build_arg_search(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int location_selection_method,
-                                            int max_number_parents, std::vector<float> costs_rm, std::vector<float> costs_bm, std::vector<float> costs_recomb);
+                                            int max_number_parents, std::vector<float> costs_rm, std::vector<float> costs_bm, std::vector<float> costs_recomb, std::string run_record_file);
 #endif

@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
+#include <fstream>
 
 #include "arg_builder_logic.h"
 #include "vector_set_operations.h"
@@ -35,6 +36,7 @@ std::vector<int> _site_multiplicitity;
 RunRecord _run_record;
 int _run_seed = 0;
 int _location_selection_method = 0;
+std::string _run_record_file = "";
 
 std::string vector_to_string(const std::vector<int> &v, bool make_negative = false)
 {
@@ -2164,6 +2166,18 @@ ARG _build_arg_from_order(const Genes genes, int roots_given, const std::vector<
     _run_record.add_record(arg.number_of_recombinations, arg.number_of_recurrent_mutations, arg.number_of_back_mutations,
                            _run_seed, timer, _cost_recombination, _cost_recurrent_mutation, _cost_back_mutation);
 
+    if (_run_record_file != "")
+    {
+        Run run = _run_record.runs.back();
+
+        std::fstream fout;
+        fout.open(_run_record_file, std::ios::out | std::ios::app);
+
+        fout << run.recombinations << "," << run.back_mutations << "," << run.recurrent_mutations << ","
+             << std::to_string(run.seed) << "," << std::to_string(run.build_time) << "," << run.recomb_cost << ","
+             << run.rm_cost << "," << run.bm_cost << "\n";
+    }
+
     return std::move(arg);
 }
 
@@ -2313,7 +2327,8 @@ ARG _build_arg_multi_runs(const Genes input_genes, bool clean_sequences, int num
 }
 
 std::tuple<ARG, RunRecord> build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int location_selection_method, int find_root_strategy, int find_root_iterations,
-                                          int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max)
+                                          int max_number_parents, float cost_rm, float cost_bm, float cost_recomb, int recomb_max, int rm_max, int bm_max,
+                                          std::string run_record_file)
 {
     _multi_roots_given = roots_given > 1;
     _how_verbose = how_verbose;
@@ -2330,6 +2345,7 @@ std::tuple<ARG, RunRecord> build_arg_main(const Genes genes, bool clean_sequence
 
     _run_record.clear();
     _location_selection_method = location_selection_method;
+    _run_record_file = run_record_file;
 
     if (how_verbose >= 1)
         std::cout << "Starting to build arg\n";
@@ -2457,7 +2473,8 @@ std::tuple<ARG, RunRecord> build_arg_main(const Genes genes, bool clean_sequence
 }
 
 std::tuple<ARG, RunRecord> build_arg_search(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int location_selection_method,
-                                            int max_number_parents, std::vector<float> costs_rm, std::vector<float> costs_bm, std::vector<float> costs_recomb)
+                                            int max_number_parents, std::vector<float> costs_rm, std::vector<float> costs_bm, std::vector<float> costs_recomb,
+                                            std::string run_record_file)
 {
     // This is used for trialling with many different costs. Works only for no root or 1 root.
     // Not really search for best arg, but for run record
@@ -2474,6 +2491,7 @@ std::tuple<ARG, RunRecord> build_arg_search(const Genes genes, bool clean_sequen
 
     _run_record.clear();
     _location_selection_method = location_selection_method;
+    _run_record_file = run_record_file;
 
     if (how_verbose >= 1)
         std::cout << "Starting arg search\n";
@@ -2523,10 +2541,14 @@ std::tuple<ARG, RunRecord> build_arg_search(const Genes genes, bool clean_sequen
                     float progress = static_cast<float>(step) / static_cast<float>(steps);
                     std::cout << "[";
                     int pos = barWidth * progress;
-                    for (int i = 0; i < barWidth; ++i) {
-                        if (i < pos) std::cout << "=";
-                        else if (i == pos) std::cout << ">";
-                        else std::cout << " ";
+                    for (int i = 0; i < barWidth; ++i)
+                    {
+                        if (i < pos)
+                            std::cout << "=";
+                        else if (i == pos)
+                            std::cout << ">";
+                        else
+                            std::cout << " ";
                     }
                     std::cout << "] " << int(progress * 100.0) << " %\r";
                     std::cout.flush();
@@ -2536,7 +2558,7 @@ std::tuple<ARG, RunRecord> build_arg_search(const Genes genes, bool clean_sequen
         }
     }
 
-    if(_how_verbose >= 0)
+    if (_how_verbose >= 0)
         std::cout << std::endl;
 
     if (roots_given == 1)

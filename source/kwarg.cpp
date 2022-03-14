@@ -375,7 +375,6 @@ int main(int argc, char **argv)
     double rr_costs[100] = {0};
 
     RunData run_data;
-    
 
 #ifdef ENABLE_VERBOSE
     set_verbose(1);
@@ -978,6 +977,21 @@ int main(int argc, char **argv)
     double total_time = 0.0;
     std::vector<Result> all_results;
 
+    if (run_record_file != "")
+    {
+        /* Output run record */
+        bool file_empty = false;
+        std::ifstream fin;
+        fin.open(run_record_file, std::ios::in);
+        if (fin.peek() == std::ifstream::traits_type::eof())
+        {
+            std::cout << "no records file found. Creating new one.\n";
+            std::fstream fout;
+            fout.open(run_record_file, std::ios::out | std::ios::app);
+            fout << "recombinations,sequencing errors,recurrent mutations,run seed,run time,se_cost,rm_cost,r_cost,rr_cost,temp,recomb_max,rm_max\n";
+        }
+    }
+
     for (l = 0; l < T_in; l++)
     {
         RunSettings run_settings;
@@ -1052,13 +1066,34 @@ int main(int argc, char **argv)
                 // We add a blank result which simply records the time for this batch search.
 
                 Result timer_result{
-                .seflips = -2,
-                .rmflips = -2,
-                .recombs = -2,
-                .depth = -2,
-                .run_time = timer};
+                    .seflips = -2,
+                    .rmflips = -2,
+                    .recombs = -2,
+                    .depth = -2,
+                    .run_time = timer};
                 timer_result.run_settings = run_settings;
-                
+
+                if (run_record_file != "")
+                {
+                    std::fstream fout;
+                    fout.open(run_record_file, std::ios::out | std::ios::app);
+
+                    fout << timer_result.recombs << "," << timer_result.seflips << "," << timer_result.rmflips << ","
+                             << std::to_string(timer_result.run_settings.run_seed) << "," << std::to_string(timer_result.run_time) << ","
+                             << timer_result.run_settings.se_cost << "," << timer_result.run_settings.rm_cost << "," << timer_result.run_settings.r_cost << ","
+                             << timer_result.run_settings.rr_cost << "," << timer_result.run_settings.temp << ","
+                             << timer_result.run_settings.rec_max << "," << timer_result.run_settings.rm_max << "\n";
+
+                    for (Result &result : results)
+                    {
+                        fout << result.recombs << "," << result.seflips << "," << result.rmflips << ","
+                             << std::to_string(result.run_settings.run_seed) << "," << std::to_string(result.run_time) << ","
+                             << result.run_settings.se_cost << "," << result.run_settings.rm_cost << "," << result.run_settings.r_cost << ","
+                             << result.run_settings.rr_cost << "," << result.run_settings.temp << ","
+                             << result.run_settings.rec_max << "," << result.run_settings.rm_max << "\n";
+                    }
+                }
+
                 all_results.push_back(timer_result);
                 all_results.insert(all_results.end(), results.begin(), results.end());
 
@@ -1084,9 +1119,21 @@ int main(int argc, char **argv)
                     result.run_time = timer;
                     time_at_this_setting += timer;
                     printf("%15.8f\n", timer);
-                    
+
                     all_results.push_back(result);
                     // The run_kwarg function will update rec_max and the g_lookup array
+
+                    if (run_record_file != "")
+                    {
+                        std::fstream fout;
+                        fout.open(run_record_file, std::ios::out | std::ios::app);
+
+                        fout << result.recombs << "," << result.seflips << "," << result.rmflips << ","
+                             << std::to_string(result.run_settings.run_seed) << "," << std::to_string(result.run_time) << ","
+                             << result.run_settings.se_cost << "," << result.run_settings.rm_cost << "," << result.run_settings.r_cost << ","
+                             << result.run_settings.rr_cost << "," << result.run_settings.temp << ","
+                             << result.run_settings.rec_max << "," << result.run_settings.rm_max << "\n";
+                    }
 
                     // Tidy up for the next run
                     free_genes(h);
@@ -1095,45 +1142,10 @@ int main(int argc, char **argv)
                 printf("Total time for this setting: %15.8f\n", time_at_this_setting);
                 total_time += time_at_this_setting;
             }
-
-            
         }
     }
 
     printf("Total time: %15.8f\n", total_time);
-
-    /* Output results to csv */
-    if (run_record_file != "")
-    {
-        /* Output run record */
-        bool file_empty = false;
-        std::ifstream fin;
-        fin.open(run_record_file, std::ios::in);
-        if (fin.peek() == std::ifstream::traits_type::eof())
-        {
-            std::cout << "no records file found. Creating new one.\n";
-            file_empty = true;
-        }
-
-        std::fstream fout;
-        fout.open(run_record_file, std::ios::out | std::ios::app);
-
-        if (file_empty)
-        {
-            fout << "recombinations,sequencing errors,recurrent mutations,run seed,run time,se_cost,rm_cost,r_cost,rr_cost,temp,recomb_max,rm_max\n";
-        }
-
-        for (Result &result : all_results)
-        {
-            fout << result.recombs << "," << result.seflips << "," << result.rmflips << ","
-                 << std::to_string(result.run_settings.run_seed) << "," << std::to_string(result.run_time) << ","
-                 << result.run_settings.se_cost << "," << result.run_settings.rm_cost << "," << result.run_settings.r_cost << ","
-                 << result.run_settings.rr_cost << "," << result.run_settings.temp << ","
-                 << result.run_settings.rec_max << "," << result.run_settings.rm_max << "\n";
-        }
-
-        std::cout << "results recorded.\n";
-    }
 
     /* Output inferred ARG */
     if ((Length(history_files) > 0) || (Length(dot_files) > 0) || (Length(gml_files) > 0) || (Length(gdl_files) > 0) || (Length(tree_files) > 0) || (Length(dottree_files) > 0) || (Length(gmltree_files) > 0) || (Length(gdltree_files) > 0))

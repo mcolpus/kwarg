@@ -614,6 +614,21 @@ int main(int argc, char **argv)
 
     std::cout << "read input genes\n";
 
+    if (run_record_file != "")
+    {
+        /* Output run record */
+        std::ifstream fin;
+        fin.open(run_record_file, std::ios::in);
+        if (fin.peek() == std::ifstream::traits_type::eof())
+        {
+            std::cout << "no records file found. Creating new one.\n";
+
+            std::fstream fout;
+            fout.open(run_record_file, std::ios::out | std::ios::app);
+            fout << "recombinations,back mutations,recurrent mutations,run seed,time to build,recombination cost,recurrent mutation cost,back mutation cost\n";
+        }
+    }
+
     ARG arg;
     RunRecord record;
 
@@ -622,7 +637,7 @@ int main(int argc, char **argv)
     if (costs_recomb.size() <= 1 && costs_rms.size() <= 1 && costs_bms.size() <= 1)
     {
         std::tie(arg, record) = build_arg_main(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, location_selection_method, find_root_strategy, find_root_iterations,
-                                               max_recombination_parents, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max);
+                                               max_recombination_parents, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max, run_record_file);
     }
     else
     {
@@ -643,7 +658,7 @@ int main(int argc, char **argv)
             costs_bms.push_back(cost_bm);
 
         std::tie(arg, record) = build_arg_search(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, location_selection_method,
-                                                 max_recombination_parents, costs_rms, costs_bms, costs_recomb);
+                                                 max_recombination_parents, costs_rms, costs_bms, costs_recomb, run_record_file);
     }
 
     clock_t toc = clock();
@@ -683,35 +698,6 @@ int main(int argc, char **argv)
         fclose(fp);
     }
 
-    if (run_record_file != "")
-    {
-        /* Output run record */
-        bool file_empty = false;
-        std::ifstream fin;
-        fin.open(run_record_file, std::ios::in);
-        if (fin.peek() == std::ifstream::traits_type::eof())
-        {
-            std::cout << "no records file found. Creating new one.\n";
-            file_empty = true;
-        }
-
-        std::fstream fout;
-        fout.open(run_record_file, std::ios::out | std::ios::app);
-
-        if (file_empty)
-        {
-            fout << "recombinations,back mutations,recurrent mutations,run seed,time to build,recombination cost,recurrent mutation cost,back mutation cost\n";
-        }
-
-        for (Run &run : record.runs)
-        {
-            fout << run.recombinations << "," << run.back_mutations << "," << run.recurrent_mutations << ","
-                 << std::to_string(run.seed) << "," << std::to_string(run.build_time) << "," << run.recomb_cost << "," 
-                 << run.rm_cost << "," << run.bm_cost << "\n";
-        }
-
-        std::cout << "records recorded.\n";
-    }
 
     return 0;
 }
