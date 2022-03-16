@@ -133,18 +133,23 @@ double score_renormalise(Genes *g, double score, double step_cost, bool choice_f
  * 5 recombinations and 10 RMs but has not yet resolved all incompatibilities, then
  * this solution will be sub-optimal and can be abandoned.
  */
-void update_lookup(std::vector<int> &lku, int index, int bd)
+void update_lookup(std::vector<int> &lku, int recombs, int rms)
 {
+    if (lku.size() <= recombs)
+        return;
+    if (lku[recombs] <= rms)
+        return;
     // Let S = number of SE + RM in the solution
     // Let R = number of recombinations in the solution
+    // We use the fact that a rm can be replaced by two recombs
     // Then lookup[R] = S, lookup[R + 1 : R + 2*S] <= S, lookup[R + 2*S : end] = 0
-    int k = (lku.size() - 1 > index + 2 * bd ? index + 2 * bd : lku.size() - 1);
-    lku[index] = bd;
-    for (int i = index + 1; i <= k; i++)
+    int k = (lku.size() - 1 > recombs + 2 * rms ? recombs + 2 * rms : lku.size() - 1);
+    lku[recombs] = rms;
+    for (int i = recombs + 1; i <= k; i++)
     {
-        if (lku[i] > bd)
+        if (lku[i] > rms)
         {
-            lku[i] = bd;
+            lku[i] = rms;
         }
     }
     for (int i = k + 1; i < lku.size(); i++)
@@ -359,8 +364,16 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
     }
     if (!g_lookup.empty())
     {
-        if (g_lookup[0] == INT_MAX)
-            update_lookup(g_lookup, 0, g->n * g->length);
+        int site_count = g->n * g->length;
+        // Can make history purely with recurrent mutations by making every history direct to the root
+        update_lookup(g_lookup, 0, site_count);
+
+        if (site_count < run_settings.rec_max)
+        {
+            // Can also do history where we have zero root and all-1 child. Everything else comes from recombinations of these two.
+            run_settings.rec_max = site_count;
+            update_lookup(g_lookup, site_count, 0);
+        }
     }
 
     /* Repeatedly choose an event back in time, until data set has been
@@ -385,7 +398,7 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
 
         if ((max_run_time > 0) && (timer > max_run_time))
         {
-            fprintf(stderr, "Timed out.");
+            std::cout << "Timed out.                           \n";
             bad_soln = true;
             break;
         }
@@ -522,6 +535,7 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
         if (recombs > run_settings.rec_max)
         {
             bad_soln = true;
+            std::cout << "rec_max exceeded                                          \n";
             break;
         }
 
@@ -532,6 +546,7 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
             if (seflips + rmflips > g_lookup[recombs])
             {
                 bad_soln = true;
+                std::cout << "  g_lookup exceeded exceeded. rms: " << seflips + rmflips << ", recombs: " << recombs << ", lookup: " << g_lookup[recombs] << "\n";
                 break;
             }
         }
@@ -542,17 +557,17 @@ Result run_kwarg(Genes *g, FILE *print_progress, int (*select)(double), void (*r
     {
         if (run_settings.run_reference > 0)
         {
-            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", run_settings.run_reference, run_settings.run_seed, run_settings.temp, run_settings.se_cost, run_settings.rm_cost, run_settings.r_cost, run_settings.rr_cost, total_nbdsize);
+            fprintf(print_progress, "%10d %13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", run_settings.run_reference, run_settings.run_seed, run_settings.temp, run_settings.se_cost, run_settings.rm_cost, run_settings.r_cost, run_settings.rr_cost, -seflips, -rmflips, -recombs, total_nbdsize);
         }
         else
         {
-            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f  NA  NA  NA %10d ", run_settings.run_seed, run_settings.temp, run_settings.se_cost, run_settings.rm_cost, run_settings.r_cost, run_settings.rr_cost, total_nbdsize);
+            fprintf(print_progress, "%13.0f %6.1f %8.2f %8.2f %8.2f %8.2f %3d %3d %3d %10d ", run_settings.run_seed, run_settings.temp, run_settings.se_cost, run_settings.rm_cost, run_settings.r_cost, run_settings.rr_cost, -seflips, -rmflips, -recombs, total_nbdsize);
         }
 
         Result result{
-        .seflips = -1,
-        .rmflips = -1,
-        .recombs = -1,
+        .seflips = -seflips,
+        .rmflips = -rmflips,
+        .recombs = -recombs,
         .depth = -1};
         result.run_settings = run_settings;
 
@@ -656,7 +671,7 @@ static void _mass_run_kwarg_recursion(Genes *g, FILE *print_progress, std::vecto
 
     if ((_max_run_time > 0) && (timer > _max_run_time))
     {
-        std::cout << "Timed out.\n";
+        std::cout << "Timed out.                           \n";
         return;
     }
     
@@ -936,8 +951,16 @@ std::vector<Result> mass_run_kwarg(Genes *g, FILE *print_progress, std::vector<i
     }
     if (!g_lookup.empty())
     {
-        if (g_lookup[0] == INT_MAX)
-            update_lookup(g_lookup, 0, g->n * g->length);
+        int site_count = g->n * g->length;
+        // Can make history purely with recurrent mutations by making every history direct to the root
+        update_lookup(g_lookup, 0, site_count);
+
+        if (site_count < run_settings.rec_max)
+        {
+            // Can also do history where we have zero root and all-1 child. Everything else comes from recombinations of these two.
+            run_settings.rec_max = site_count;
+            update_lookup(g_lookup, site_count, 0);
+        }
     }
 
     // 2. Start recursion

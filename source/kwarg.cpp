@@ -359,7 +359,7 @@ int main(int argc, char **argv)
     Event *e;
     LList *tmp;
     double run_seed = 0;
-    int rec_max = INT_MAX;
+    int recomb_max = INT_MAX;
     int rm_max = INT_MAX;
     char *token;
     //     int gc_ind = 0;
@@ -789,7 +789,7 @@ int main(int argc, char **argv)
             }
             break;
         case 'X':
-            rec_max = strtol(optarg, &endptr, 10);
+            recomb_max = strtol(optarg, &endptr, 10);
             if (errno != 0 || *endptr != '\0')
             {
                 fprintf(stderr, "Upper bound on number of recombinations should be a positive integer.\n");
@@ -797,7 +797,7 @@ int main(int argc, char **argv)
             }
             break;
         case 'Y':
-            rm_max = strtol(optarg, &endptr, 10);
+            rm_max = std::stoi(optarg);
             if (errno != 0 || *endptr != '\0')
             {
                 fprintf(stderr, "Upper bound on number of recurrent mutations should be a positive integer.\n");
@@ -971,18 +971,18 @@ int main(int argc, char **argv)
     // Create the g_lookup array if will have multiple runs
     if (multruns > 0 || cost_in > 1)
     {
-        if (rec_max == INT_MAX)
+        if (recomb_max == INT_MAX)
         {
-            rec_max = 1000; // TODO What should this be
+            recomb_max = 999; // Doesn't work with 1000. Vector stops filling up??
         }
         // Will store SE + RM in a g_lookup list with index = number of recombinations
         g_lookup = {};
-        for (i = 0; i <= rec_max; i++)
+        for (i = 0; i <= recomb_max; i++)
         {
             g_lookup.push_back(INT_MAX);
         }
-        // We need 0 se/rm for rec_max recombinations
-        g_lookup[rec_max] = 0;
+        // We need 0 se/rm for recomb_max recombinations
+        g_lookup[recomb_max] = 0;
     }
 
     double total_time = 0.0;
@@ -1007,7 +1007,7 @@ int main(int argc, char **argv)
     {
         RunSettings run_settings;
         run_settings.run_reference = run_reference;
-        run_settings.rec_max = rec_max;
+        run_settings.rec_max = recomb_max;
         run_settings.rm_max = rm_max;
 
         run_settings.temp = T_array[l];
@@ -1132,7 +1132,7 @@ int main(int argc, char **argv)
                     printf("%15.8f\n", timer);
 
                     all_results.push_back(result);
-                    // The run_kwarg function will update rec_max and the g_lookup array
+                    // The run_kwarg function will update recomb_max and the g_lookup array
 
                     if (run_record_file != "")
                     {
@@ -1153,6 +1153,11 @@ int main(int argc, char **argv)
                     if ((max_run_time > 0) && (timer > max_run_time))
                     {
                         // If one run was too long then assume all others at this setting will be also.
+                        break;
+                    }
+                    if (abs(result.rmflips + result.seflips) >= run_settings.rm_max)
+                    {
+                        // If a run has too many recurrent mutations than assume all at this setting will be also
                         break;
                     }
                 }
