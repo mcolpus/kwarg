@@ -30,7 +30,8 @@ def read_args(inputfile):
         recombinations = int(values[0])
         back_mutations = int(values[1]) # On kwarg this is sequential errors
         recurrent_mutations = int(values[2])
-        if (recombinations != -1):
+        if (recombinations >= 0 and back_mutations >= 0 and recurrent_mutations >= 0):
+            # Negative values are used for runs which finished in error
             arg_runs.append((recombinations, back_mutations, recurrent_mutations))
 
     file.close()
@@ -117,16 +118,17 @@ def graph_grid(grid, outputfile):
     fig.savefig(outputfile)
 
 
-def graph_all_recombs_vs_rare_mutations(arg_runs, outputfile):
-    fig = plt.figure(2)
-
+trade_rms_for_recombs = False
+def calculate_optimal_curve(arg_runs):
     recombinations = []
     rare_muts = []
     max_recombs = 0
+    min_recombs = sys.maxsize
     for (recombs, bms, rms) in arg_runs:
         recombinations.append(recombs)
         rare_muts.append(bms + rms)
         max_recombs = max(max_recombs, recombs)
+        min_recombs = min(min_recombs, recombs)
 
     fewest_rare_muts = [sys.maxsize for i in range(max_recombs+1)]
     for (recombs, bms, rms) in arg_runs:
@@ -134,8 +136,28 @@ def graph_all_recombs_vs_rare_mutations(arg_runs, outputfile):
 
     for i in range(1, max_recombs+1):
         fewest_rare_muts[i] = min(fewest_rare_muts[i-1], fewest_rare_muts[i])
+    
+    if trade_rms_for_recombs:
+        # Can remove a recurrent mutation by using two recombinations
+        for i in range(2, max_recombs+1):
+            fewest_rare_muts[i] = max(0, min(fewest_rare_muts[i-2] - 1, fewest_rare_muts[i]))
+        
+        if (fewest_rare_muts[max_recombs] > 0):
+            # Can extend so as to reach all recombinations
+            new_max_recombs = max_recombs + 2*fewest_rare_muts[max_recombs]
+            for i in range(max_recombs+1, new_max_recombs+1):
+                fewest_rare_muts.append(max(0, fewest_rare_muts[i-2] - 1))
+            
+            max_recombs = new_max_recombs
+    
+    return (fewest_rare_muts, min_recombs, max_recombs, recombinations, rare_muts)
 
-    plt.plot(range(max_recombs+1), fewest_rare_muts,
+def graph_all_recombs_vs_rare_mutations(arg_runs, outputfile):
+    fig = plt.figure(2)
+
+    (fewest_rare_muts, min_recombs, max_recombs, recombinations, rare_muts) = calculate_optimal_curve(arg_runs)
+
+    plt.plot(range(min_recombs, max_recombs+1), fewest_rare_muts[min_recombs:],
              color='red', label="optimal")
     plt.scatter(recombinations, rare_muts, color='blue',
                 label='all networks created')
@@ -153,21 +175,9 @@ def graph_comparison(arg_runs_list, labels, outputfile):
     fig = plt.figure(3)
 
     for arg_runs, label in zip(arg_runs_list, labels):
-        recombinations = []
-        rare_muts = []
-        max_recombs = 0
-        for (recombs, bms, rms) in arg_runs:
-            recombinations.append(recombs)
-            rare_muts.append(bms + rms)
-            max_recombs = max(max_recombs, recombs)
+        (fewest_rare_muts, min_recombs, max_recombs, recombinations, rare_muts) = calculate_optimal_curve(arg_runs)
         
-        fewest_rare_muts = [sys.maxsize for i in range(max_recombs+1)]
-        for (recombs, bms, rms) in arg_runs:
-            fewest_rare_muts[recombs] = min(fewest_rare_muts[recombs], bms+rms)
-        for i in range(1, max_recombs+1):
-            fewest_rare_muts[i] = min(fewest_rare_muts[i-1], fewest_rare_muts[i])
-        
-        plt.plot(range(max_recombs+1), fewest_rare_muts, label=label, alpha=0.7)
+        plt.plot(range(min_recombs, max_recombs+1), fewest_rare_muts[min_recombs:], label=label, alpha=0.7)
 
     plt.title('Recombinations vs Recurrent Mutations')
     plt.xlabel('Recombinations')
@@ -182,15 +192,16 @@ def main(argv):
     outputfile = ''
     labels_text = ''
     grid_outputfile = ''
+    global trade_rms_for_recombs
 
     try:
-        opts, args = getopt.getopt(argv, "hi:o:l:g:", ["ifile=", "ofile=", "labels=", "gridfile="])
+        opts, args = getopt.getopt(argv, "hi:o:l:g:t", ["ifile=", "ofile=", "labels=", "gridfile="])
     except getopt.GetoptError:
-        print('graph_results.py -i <input file> -o <output file> -l <labels> -g <output file for grid>')
+        print('graph_results.py -i <input file> -o <output file> -l <labels> -g <output file for grid> -t (smooth curve by trading rms for recombs)')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('graph_results.py -i <input file> -o <output file> -l <labels>')
+            print('graph_results.py -i <input file> -o <output file> -l <labels> -t (smooth curve by trading rms for recombs)')
             sys.exit()
         elif opt in ("-i", "--ifile"):
             inputfile = arg
@@ -200,6 +211,8 @@ def main(argv):
             labels_text = arg
         elif opt in ("-g", "--gridfile"):
             grid_outputfile = arg
+        elif opt in ("-t"):
+            trade_rms_for_recombs = True
 
     print('Input file is: ', inputfile)
     print('Output file is: ', outputfile)
