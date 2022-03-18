@@ -157,6 +157,8 @@ def graph_all_recombs_vs_rare_mutations(arg_runs, outputfile):
 
     (fewest_rare_muts, min_recombs, max_recombs, recombinations, rare_muts) = calculate_optimal_curve(arg_runs)
 
+    print(fewest_rare_muts)
+
     plt.plot(range(min_recombs, max_recombs+1), fewest_rare_muts[min_recombs:],
              color='red', label="optimal")
     plt.scatter(recombinations, rare_muts, color='blue',
@@ -232,7 +234,6 @@ def main(argv):
 
         print(max_recombs)
         print(max_bms)
-        print(fewest_rms)
 
         if (grid_outputfile != ''):
             grid = calculate_optimal_grid(fewest_rms, max_recombs, max_bms)

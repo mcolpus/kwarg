@@ -23,8 +23,7 @@ def sum_runtimes(inputfile):
 
     file.close()
 
-    print("total: ", total_time)
-    print("max: ", max(times), " min: ", min(times), " median: ", median(times), " mean: ", sum(times) / len(times))
+    print("total: ", total_time, " max: ", max(times), " min: ", min(times), " median: ", median(times), " mean: ", sum(times) / len(times))
     return times
 
 

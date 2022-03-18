@@ -122,23 +122,27 @@ def output(binary_sequences, sequence_labels, col_indexes, outfile):
 def main(argv):
     inputfile = ''
     outputfile = ''
+    merg_cols = True
 
     try:
-        opts, args = getopt.getopt(argv, "hm:i:o:", ["ifile=", "ofile="])
+        opts, args = getopt.getopt(argv, "hi:o:d", ["ifile=", "ofile="])
     except getopt.GetoptError:
-        print('clean_binary_sequences.py -i <input file> -o <output file>')
+        print('clean_binary_sequences.py -i <input file> -o <output file> -d (dont merge identical cols)')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('clean_binary_sequences.py -i <input file> -o <output file>')
+            print('clean_binary_sequences.py -i <input file> -o <output file> -d (dont merge identical cols)')
             sys.exit()
         elif opt in ("-i", "--ifile"):
             inputfile = arg
         elif opt in ("-o", "--ofile"):
             outputfile = arg
+        elif opt in ("-d"):
+            merg_cols = False
 
     print('Input file is: ', inputfile)
     print('Output file is: ', outputfile)
+    print('Merging cols: ', merg_cols)
 
     (sequence_labels, sequences, col_indexes) = read_sequences(inputfile)
 
@@ -148,9 +152,13 @@ def main(argv):
         (change1, sequences, col_indexes) = remove_uninformative_cols(sequences, col_indexes)
         if verbose:
             print("1 ", change1, col_indexes)
-        (change2, sequences, col_indexes) = merge_adj_identical_cols(sequences, col_indexes)
-        if verbose:
-            print("2", change2, col_indexes)
+
+        change2 = False
+        if merg_cols:
+            (change2, sequences, col_indexes) = merge_adj_identical_cols(sequences, col_indexes)
+            if verbose:
+                print("2", change2, col_indexes)
+
         (change3, sequences, sequence_labels) = remove_identical_rows(sequences, sequence_labels)
         if verbose:
             print("3", change3)
