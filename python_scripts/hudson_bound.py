@@ -5,35 +5,21 @@ import sys
 import getopt
 import random
 
+from clean_binary_sequences import read_sequences
+
 genes = np.zeros(0)
 incomp_grid = np.zeros(0)
 num_sequences = 0
 num_cols = 0
 
 
-def read_sequences(inputfile):
+def read_genes(inputfile):
     global genes
     global num_sequences
     global num_cols
 
-    sequences = []
-    sequence_labels = []
-
-    file = open(inputfile, "r")
-    seq = ""
-    for line in file.readlines():
-        if line[0] == '>':
-            sequence_labels.append(line[1:].replace('\n', ''))
-            if(seq != ""):
-                sequences.append([int(s) for s in seq])
-                seq = ""
-        else:
-            seq += line.replace('\n', '')
-    sequences.append([int(s) for s in seq])
-    file.close()
-
+    (_, sequences, num_cols) = read_sequences(inputfile)
     num_sequences = len(sequences)
-    num_cols = len(sequences[0])
 
     print("seqs: ", num_sequences, " cols: ", num_cols)
 
@@ -535,7 +521,7 @@ def main(argv):
     print('Input file is: ', inputfile)
     print('k2 is: ', ks)
 
-    read_sequences(inputfile)
+    read_genes(inputfile)
     # Input gets read to global variables
 
     for k in ks:

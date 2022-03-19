@@ -6,34 +6,20 @@ import getopt
 import itertools
 from itertools import chain , combinations
 
+from clean_binary_sequences import read_sequences
+
 genes = np.zeros(0)
 num_sequences = 0
 num_cols = 0
 
 
-def read_sequences(inputfile):
+def read_genes(inputfile):
     global genes
     global num_sequences
     global num_cols
 
-    sequences = []
-    sequence_labels = []
-
-    file = open(inputfile, "r")
-    seq = ""
-    for line in file.readlines():
-        if line[0] == '>':
-            sequence_labels.append(line[1:].replace('\n', ''))
-            if(seq != ""):
-                sequences.append([int(s) for s in seq])
-                seq = ""
-        else:
-            seq += line.replace('\n', '')
-    sequences.append([int(s) for s in seq])
-    file.close()
-
+    (_, sequences, num_cols) = read_sequences(inputfile)
     num_sequences = len(sequences)
-    num_cols = len(sequences[0])
 
     print("seqs: ", num_sequences, " cols: ", num_cols)
 
@@ -44,9 +30,6 @@ def read_sequences(inputfile):
                 genes[i][j] = -1
             else:
                 genes[i][j] = int(sequences[i][j])
-
-def get_subsets(M):
-    M_copy = M[:]
 
 def powerset(M, w, s):
     power_set = []
@@ -108,10 +91,10 @@ def main(argv):
     print('Input file is: ', inputfile)
     print('w: ', w, ' s:, ', s)
 
-    read_sequences(inputfile)
+    read_genes(inputfile)
 
-    print("H: ", haplotype_bound(genes))
-    print("H+: ", RecMin(genes, w, s))
+    print("H(M): ", haplotype_bound(genes))
+    print("RecMin(M): ", RecMin(genes, w, s))
 
 
 if __name__ == "__main__":

@@ -6,31 +6,9 @@ import getopt
 from typing import Sequence
 import numpy as np
 
+from clean_binary_sequences import read_sequences
+
 verbose = False
-
-def read_sequences(inputfile):
-    sequences = []
-    sequence_labels = []
-
-    file = open(inputfile, "r")
-    seq = ""
-    for line in file.readlines():
-        if line[0] == '>':
-            sequence_labels.append(line[1:].replace('\n', ''))
-            if(seq != ""):
-                sequences.append([int(s) for s in seq])
-                seq = ""
-        else:
-            seq += line.replace('\n', '')
-    sequences.append([int(s) for s in seq])
-    file.close()
-
-    num_sequences = len(sequences)
-    num_cols = len(sequences[0])
-
-    print("seqs: ", num_sequences, " cols: ", num_cols)
-
-    return (sequence_labels, sequences)
 
 def pairwise_hamming_old(sequences):
     num_sequences = len(sequences)
@@ -134,7 +112,7 @@ def main(argv):
 
     print('Input file is: ', inputfile)
 
-    (sequence_labels, sequences) = read_sequences(inputfile)
+    (_, sequences, _) = read_sequences(inputfile)
 
     if len(sequences) == 0 or len(sequences[0]) == 0:
         print("no data to give metrics for")

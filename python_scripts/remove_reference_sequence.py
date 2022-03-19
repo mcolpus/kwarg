@@ -1,27 +1,9 @@
 import sys
 import getopt
 
+from clean_binary_sequences import read_sequences
+
 verbose = False
-
-def read_sequences(inputfile):
-    sequences = []
-    sequence_labels = []
-
-    file = open(inputfile, "r")
-    seq = ""
-    for line in file.readlines():
-        if line[0] == '>':
-            sequence_labels.append(line[1:].replace('\n', ''))
-            if(seq != ""):
-                sequences.append([int(s) for s in seq])
-                seq = ""
-        else:
-            seq += line.replace('\n', '')
-    sequences.append([int(s) for s in seq])
-    file.close()
-
-    return (sequence_labels, sequences)
-
 
 def output(binary_sequences, sequence_labels, outfile):
     file = open(outfile, 'w')
@@ -55,7 +37,7 @@ def main(argv):
     print('Input file is: ', inputfile)
     print('Output file is: ', outputfile)
 
-    (sequence_labels, sequences) = read_sequences(inputfile)
+    (sequence_labels, sequences, _) = read_sequences(inputfile)
     output(sequences[1:], sequence_labels[1:], outputfile)
 
 

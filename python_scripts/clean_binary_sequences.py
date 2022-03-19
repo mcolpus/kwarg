@@ -10,26 +10,38 @@ def read_sequences(inputfile):
 
     file = open(inputfile, "r")
     seq = ""
+    first_loop = True
+    has_labels = False
+
     for line in file.readlines():
-        if line[0] == '>':
-            sequence_labels.append(line[1:].replace('\n', ''))
-            if(seq != ""):
-                sequences.append([int(s) for s in seq])
-                seq = ""
+        if first_loop:
+            first_loop = False
+            has_labels = line[0] == '>'
+        
+        if has_labels:
+            if line[0] == '>':
+                sequence_labels.append(line[1:].replace('\n', ''))
+                if(seq != ""):
+                    sequences.append([int(s) for s in seq])
+                    seq = ""
+            else:
+                seq += line.replace('\n', '')
         else:
-            seq += line.replace('\n', '')
-    sequences.append([int(s) for s in seq])
+            sequences.append([int(s) for s in line.replace('\n', '')])
+    
+    if has_labels:
+        sequences.append([int(s) for s in seq])
     file.close()
 
-    num_sequences = len(sequences)
+    if len(sequences) == 0:
+        print("No sequences in input!")
+        return ([], [], 0)
+    
+    if not has_labels:
+        sequence_labels = ["seq {}".format(i) for i in range(len(sequences))]
     num_cols = len(sequences[0])
 
-    print("seqs: ", num_sequences)
-    print("cols: ", num_cols)
-
-    col_indexes = range(num_cols)
-
-    return (sequence_labels, sequences, col_indexes)
+    return (sequence_labels, sequences, num_cols)
 
 def remove_uninformative_cols(sequences, col_indexes):
     seq_length = len(sequences[0])
@@ -122,46 +134,52 @@ def output(binary_sequences, sequence_labels, col_indexes, outfile):
 def main(argv):
     inputfile = ''
     outputfile = ''
-    merg_cols = True
+    merge_cols = True
+    merge_rows = True
 
     try:
-        opts, args = getopt.getopt(argv, "hi:o:d", ["ifile=", "ofile="])
+        opts, args = getopt.getopt(argv, "hi:o:c:r:", ["ifile=", "ofile="])
     except getopt.GetoptError:
-        print('clean_binary_sequences.py -i <input file> -o <output file> -d (dont merge identical cols)')
+        print('clean_binary_sequences.py -i <input file> -o <output file> -c <merge cols> -r <merge rows>')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('clean_binary_sequences.py -i <input file> -o <output file> -d (dont merge identical cols)')
+            print('clean_binary_sequences.py -i <input file> -o <output file> -c <merge cols> -r <merge rows>')
             sys.exit()
         elif opt in ("-i", "--ifile"):
             inputfile = arg
         elif opt in ("-o", "--ofile"):
             outputfile = arg
-        elif opt in ("-d"):
-            merg_cols = False
+        elif opt in ("-c"):
+            merge_cols = bool(arg)
+        elif opt in ("-r"):
+            merge_rows = bool(arg)
 
     print('Input file is: ', inputfile)
     print('Output file is: ', outputfile)
-    print('Merging cols: ', merg_cols)
+    print('Merging cols: ', merge_cols)
+    print('Merging rows: ', merge_rows)
 
-    (sequence_labels, sequences, col_indexes) = read_sequences(inputfile)
+    (sequence_labels, sequences, num_cols) = read_sequences(inputfile)
+    col_indexes = range(num_cols)
 
     somethings_changed = True
     while(somethings_changed):
+        change1 = change2 = change3 = False
         print("run iteration")
         (change1, sequences, col_indexes) = remove_uninformative_cols(sequences, col_indexes)
         if verbose:
             print("1 ", change1, col_indexes)
 
-        change2 = False
-        if merg_cols:
+        if merge_cols:
             (change2, sequences, col_indexes) = merge_adj_identical_cols(sequences, col_indexes)
             if verbose:
                 print("2", change2, col_indexes)
 
-        (change3, sequences, sequence_labels) = remove_identical_rows(sequences, sequence_labels)
-        if verbose:
-            print("3", change3)
+        if merge_rows:
+            (change3, sequences, sequence_labels) = remove_identical_rows(sequences, sequence_labels)
+            if verbose:
+                print("3", change3)
         somethings_changed = change1 or change2 or change3
     
     output(sequences, sequence_labels, col_indexes, outputfile)
