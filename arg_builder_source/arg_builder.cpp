@@ -636,7 +636,8 @@ int main(int argc, char **argv)
     
     if (costs_recomb.size() <= 1 && costs_rms.size() <= 1 && costs_bms.size() <= 1)
     {
-        cost_bm += cost_rm;
+        if (cost_bm >= 0)
+            cost_bm += cost_rm;
         std::tie(arg, record) = build_arg_main(genes, clean_sequences, how_verbose, number_roots_given, run_seed, num_runs, multi_run_strategy, location_selection_method, find_root_strategy, find_root_iterations,
                                                max_recombination_parents, cost_rm, cost_bm, cost_recomb, recomb_max, rm_max, bm_max, run_record_file);
     }
