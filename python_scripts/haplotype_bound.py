@@ -65,6 +65,31 @@ def RecMin(M, w, s):
 
     return len(recombs)
 
+def RecMinWithRobust(M, w, s):
+    power_set = powerset(range(M.shape[1]), w, s)
+    recombs = []
+    robust_recombs = []
+
+    for subset in power_set:
+        # recall that it is sorted by largest element in list
+        b = haplotype_bound(M[:, subset])
+
+        # should have b recombinations within interval spanning the subset.
+        lowest = np.min(subset)
+        highest = np.max(subset)
+        current_in_range = len([recomb for recomb in recombs if recomb > lowest])
+        current_in_range_robust = len([recomb for recomb in robust_recombs if recomb >= lowest])
+
+        if current_in_range < b:
+            # Need to add more recombs. A recombination at x means just before site x
+            recombs.extend([highest for i in range(b - current_in_range)])
+        
+        if current_in_range_robust < b:
+            # Need to add more recombs. A recombination at x means just before site x
+            robust_recombs.extend([highest for i in range(b - current_in_range)])
+
+    return len(recombs), len(robust_recombs)
+
 
 
 def main(argv):

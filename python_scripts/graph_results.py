@@ -38,6 +38,30 @@ def read_args(inputfile):
 
     return arg_runs
 
+def read_lower_bounds(inputfile):
+    lower_bounds = {}
+
+    file = open(inputfile, "r")
+    for line in file.readlines():
+        if len(line) == 0:
+            continue
+        elif line[0] == 'B':
+            continue  # this is the header ("Bound Type..")
+
+        bound_type, bound_value, bound_parameter = line.strip('\n').split(',')
+
+        if bound_type in ["hudson_overlap", "hudson_nonoverlap", "RecMin", "RecMinRobust"]:
+            lower_bounds[bound_type] = int(bound_value)
+        else:
+            if bound_type in lower_bounds:
+                lower_bounds[bound_type].append((int(bound_parameter), int(bound_value)))
+            else:
+                lower_bounds[bound_type] = [(int(bound_parameter), int(bound_value))]
+
+    file.close()
+
+    return lower_bounds
+
 
 def runs_to_dict(arg_runs):
     fewest_rms = {}
@@ -150,19 +174,91 @@ def calculate_optimal_curve(arg_runs):
             
             max_recombs = new_max_recombs
     
+    # Now remove tail only if there is something other than tail
+    if fewest_rare_muts[min_recombs] == 0:
+        max_recombs = min(max_recombs, min_recombs+10)
+    else:
+        for i in range(min_recombs, max_recombs):
+            if fewest_rare_muts[i] == 0:
+                max_recombs = i
+                break
+    
+    fewest_rare_muts = fewest_rare_muts[:max_recombs+1]
+
+    
     return (fewest_rare_muts, min_recombs, max_recombs, recombinations, rare_muts)
 
-def graph_all_recombs_vs_rare_mutations(arg_runs, outputfile):
-    fig = plt.figure(2)
+def graph_lower_bounds(lower_bound, max_recombs):
+    for (bound_type, value) in lower_bound.items():
+        if bound_type == "RecMin":
+            plt.scatter(x=int(value), y=0, marker='*', s=300, alpha=0.7, label='RecMin')
+        elif bound_type == "hudson_overlap":
+            plt.scatter(x=int(value), y=0, marker='8', s=300, alpha=0.7, label='Hudson-Kaplan')
+        elif bound_type == "RecMinRobust":
+            plt.plot([0, int(value)+0.1], [int(value)+0.1, 0], label='RecMin Robust')
+        elif bound_type == "hudson_nonoverlap":
+            plt.plot([0, int(value)-0.1], [int(value)-0.1, 0], label='1-robust HK')
+
+        elif bound_type == "strong_hudson":
+            line = [0 for _ in range(max_recombs)]
+            for (parameter, bound) in value:
+                for i in range(bound+1):
+                    line[i] = max(line[i], (bound - i) * parameter)
+            
+            end = 0
+            while (end < max_recombs and line[end] != 0):
+                end += 1
+
+            plt.plot(range(end+1), line[:end+1], '--', alpha=0.7, label='k-strong HK')
+        
+        elif bound_type == "robust_hudson":
+            line = [0 for _ in range(max_recombs)]
+            for (parameter, bound) in value:
+                for i in range(bound+1):
+                    line[i] = max(line[i], (bound - i) * parameter)
+            
+            end = 0
+            while (end < max_recombs and line[end] != 0):
+                end += 1
+
+            plt.plot(range(end+1), line[:end+1], ':', label='k-robust HK')
+        
+        elif bound_type == "random_adversarial_hudson":
+            line_dict = {}
+            for (p,b) in value:
+                if b in line_dict:
+                    line_dict[b] = min(p, line_dict[b])
+                else:
+                    line_dict[b] = p
+
+            plt.plot(list(line_dict.keys()),list(line_dict.values()), '-.', alpha=0.7, label="RNG-adversarial")
+        
+        elif bound_type == "adversarial_hudson":
+            line_dict = {}
+            for (p,b) in value:
+                if b in line_dict:
+                    line_dict[b] = min(p, line_dict[b])
+                else:
+                    line_dict[b] = p
+
+            plt.plot(list(line_dict.keys()),list(line_dict.values()), '-.', alpha=0.7, label="Adversarial HK")
+
+def graph_all_recombs_vs_rare_mutations(arg_runs, lower_bound, outputfile):
+    fig = plt.figure(2, figsize=[8, 6])
 
     (fewest_rare_muts, min_recombs, max_recombs, recombinations, rare_muts) = calculate_optimal_curve(arg_runs)
 
     print(fewest_rare_muts)
 
+
     plt.plot(range(min_recombs, max_recombs+1), fewest_rare_muts[min_recombs:],
-             color='red', label="optimal")
-    plt.scatter(recombinations, rare_muts, color='blue',
-                label='all networks created')
+             color='red', alpha=0.7, label="optimal")
+    plt.scatter(recombinations, rare_muts, color='blue', alpha=0.7,
+                label='networks created')
+
+    
+    graph_lower_bounds(lower_bound, max_recombs)
+
 
     plt.title('Recombinations vs Recurrent mutations \n for all args created')
     plt.xlabel('Recombinations')
@@ -171,42 +267,52 @@ def graph_all_recombs_vs_rare_mutations(arg_runs, outputfile):
 
     # plt.show()
 
-    fig.savefig(outputfile)
+    fig.savefig(outputfile, dpi=200, bbox_inches='tight')
 
-def graph_comparison(arg_runs_list, labels, outputfile):
-    fig = plt.figure(3)
+def graph_comparison(arg_runs_list, labels, lower_bound, outputfile):
+    fig = plt.figure(3, figsize=[4*1.5, 3*1.5])
+
+    lowest_max_recombs = 100000
 
     for arg_runs, label in zip(arg_runs_list, labels):
         (fewest_rare_muts, min_recombs, max_recombs, recombinations, rare_muts) = calculate_optimal_curve(arg_runs)
+        lowest_max_recombs = min(lowest_max_recombs, max_recombs)
         
         plt.plot(range(min_recombs, max_recombs+1), fewest_rare_muts[min_recombs:], label=label, alpha=0.7)
+    
+    if len(lower_bound) > 0:
+        graph_lower_bounds(lower_bound, lowest_max_recombs)
 
-    plt.title('Recombinations vs Recurrent Mutations')
+
+    # plt.title('Recombinations vs Recurrent Mutations')
     plt.xlabel('Recombinations')
     plt.ylabel('recurrent mutations (all kinds)')
     plt.legend(loc="upper right")
 
-    fig.savefig(outputfile)
+    fig.savefig(outputfile, dpi=200, bbox_inches='tight')
 
 
 def main(argv):
     inputfile = ''
+    lowerboundfile = ''
     outputfile = ''
     labels_text = ''
     grid_outputfile = ''
     global trade_rms_for_recombs
 
     try:
-        opts, args = getopt.getopt(argv, "hi:o:l:g:t", ["ifile=", "ofile=", "labels=", "gridfile="])
+        opts, args = getopt.getopt(argv, "hi:b:o:l:g:t", ["ifile=", "ofile=", "labels=", "gridfile="])
     except getopt.GetoptError:
-        print('graph_results.py -i <input file> -o <output file> -l <labels> -g <output file for grid> -t (smooth curve by trading rms for recombs)')
+        print('graph_results.py -i <input file(s)> -b <lowerbound file(s)> -o <output file> -l <labels> -g <output file for grid> -t (smooth curve by trading rms for recombs)')
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('graph_results.py -i <input file> -o <output file> -l <labels> -t (smooth curve by trading rms for recombs)')
+            print('graph_results.py -i <input file(s)> -b <lowerbound file(s)> -o <output file> -l <labels> -g <output file for grid> -t (smooth curve by trading rms for recombs)')
             sys.exit()
         elif opt in ("-i", "--ifile"):
             inputfile = arg
+        elif opt in ("-b"):
+            lowerboundfile = arg
         elif opt in ("-o", "--ofile"):
             outputfile = arg
         elif opt in ("-l", "--labels"):
@@ -217,6 +323,7 @@ def main(argv):
             trade_rms_for_recombs = True
 
     print('Input file is: ', inputfile)
+    print('lowerbound file is: ', lowerboundfile)
     print('Output file is: ', outputfile)
     print('Labels are: ', labels_text)
     print('Output grid file: ', grid_outputfile)
@@ -225,15 +332,31 @@ def main(argv):
         # Perform a comparison
         inputfiles = inputfile.split(',')
         arg_runs_list = [read_args(file) for file in inputfiles]
-        graph_comparison(arg_runs_list, labels_text.split(','), outputfile)
+
+        labels = labels_text.split(',')
+
+        if (len(labels) != len(arg_runs_list)):
+            print("number of labels different to number of inputs")
+            return
+
+        lower_bound = {}
+        if lowerboundfile != '':
+            lower_bound = read_lower_bounds(lowerboundfile)
+        
+        graph_comparison(arg_runs_list, labels_text.split(','), lower_bound, outputfile)
     else:
         arg_runs = read_args(inputfile)
         (fewest_rms, max_recombs, max_bms) = runs_to_dict(arg_runs)
 
-        graph_all_recombs_vs_rare_mutations(arg_runs, outputfile)
-
         print(max_recombs)
         print(max_bms)
+
+        lower_bound = {}
+        if lowerboundfile != '':
+            lower_bound = read_lower_bounds(lowerboundfile)
+        
+        graph_all_recombs_vs_rare_mutations(arg_runs, lower_bound, outputfile)
+
 
         if (grid_outputfile != ''):
             grid = calculate_optimal_grid(fewest_rms, max_recombs, max_bms)

@@ -2,8 +2,11 @@ from re import sub
 from xmlrpc.client import Unmarshaller
 import numpy as np
 import sys
+from os.path import exists
 import getopt
 import random
+
+from haplotype_bound import RecMin, RecMinWithRobust
 
 from clean_binary_sequences import read_sequences
 
@@ -189,7 +192,7 @@ def two_hudson2():
     return (len(regions), regions)
 
 
-def find_br_down_no_overlap(k, r, start_search, current_incomps):
+def find_br_down(k, r, start_search, current_incomps):
     # have found bk..b_(r+1) (b_r = b_index) and know current_incomps are incompatible with all of them
 
     for br in range(start_search, 0, -1):
@@ -199,7 +202,7 @@ def find_br_down_no_overlap(k, r, start_search, current_incomps):
                 # done
                 return ([br], subset[0:k])
             else:
-                (bs, ays) = find_br_down_no_overlap(k, r-1, br - 1, subset)
+                (bs, ays) = find_br_down(k, r-1, br - 1, subset)
                 if(len(bs) > 0):
                     bs.append(br)
                     return(bs, ays)
@@ -207,7 +210,7 @@ def find_br_down_no_overlap(k, r, start_search, current_incomps):
     return ([], [])
 
 
-def k_hudson_no_overlap(k):
+def k_strong_hudson(k):
     # will have a1 to ak incompatible with b1 to bk.
     # Each region must be completely separate
     # To make them smallest we actually base it on bk
@@ -219,7 +222,7 @@ def k_hudson_no_overlap(k):
         if(len(a_incomps) >= k and a_incomps[k-1] <= bk - k):
             # Checks if there is enough of a gap to fit b1,...,b(k-1)
 
-            (b_list, a_list) = find_br_down_no_overlap(k, k-1, bk-1, a_incomps)
+            (b_list, a_list) = find_br_down(k, k-1, bk-1, a_incomps)
             if(len(b_list) > 0):
                 b_list.append(bk)
                 regions.append((a_list, b_list))
@@ -231,78 +234,89 @@ def k_hudson_no_overlap(k):
     return (len(regions), regions)
 
 
-# Tail overlap section is problematic as it allows too much
+def find_disjoint_pairs(all_pairs, current_pairs, number_needed):
+    if number_needed == 0:
+        return current_pairs
 
-def intersect(l1, l2):
-    return [i for i in l1 if i in l2]
+    if len(all_pairs) == 0:
+        return []
 
-
-_far_left_boundary = 0
-_close_left_boundary = 0
-_incomps_with_earlier = []
-
-
-def k_hudson_tail_overlap_iterate(k, r, b_prev, b_k, shared_incomps):
-    # print(" iter r {}  b_prev {}  b_k {}  left {}  shared {}".format(r, b_prev, b_k, _close_left_boundary, shared_incomps))
-    global _close_left_boundary
-    global _incomps_with_earlier
-
-    if(r == k):
-        # print("r==k shared: ", shared_incomps[0:k-1] + shared_incomps[-1:])
-        return (shared_incomps[0:k-1] + shared_incomps[-1:], [b_k])
+    current_points = {i for pair in current_pairs for i in pair}
+    
+    (i, j) = all_pairs[0]
+    if i in current_points or j in current_points:
+        return find_disjoint_pairs(all_pairs[1:], current_pairs[:], number_needed)
     else:
-        for b_r in range(b_prev + 1, b_k):
-            intersection = intersect(
-                shared_incomps, _incomps_with_earlier[b_r])
-            if len(intersection) >= k and max(intersection) >= _close_left_boundary:
-                (a_list, b_list) = k_hudson_tail_overlap_iterate(
-                    k, r+1, b_r, b_k, intersection)
-                if len(b_list) > 0:
-                    b_list.append(b_r)
-                    return (a_list, b_list)
+        result = find_disjoint_pairs(all_pairs[1:], current_pairs + [(i,j)], number_needed - 1)
+        if result == []:
+            result = find_disjoint_pairs(all_pairs[1:], current_pairs[:], number_needed)
+        
+        return result
 
-    return ([], [])
+def find_closest_disjoint_pairs(all_pairs, number_needed):
+    result = find_disjoint_pairs(all_pairs, [], number_needed)
+    if result == []:
+        return []
+
+    best_result = result
+    best_right = max([j for (i,j) in result])
+
+    while (True):
+        all_pairs = [(i,j) for (i,j) in all_pairs if j < best_right]
+        result = find_disjoint_pairs(all_pairs, [], number_needed)
+        
+        if result != []:
+            best_result = result
+            best_right = max([j for (i,j) in result])
+        else:
+            break
+    
+    return best_result
 
 
-def k_hudson_tail_overlap(k):
-    # will have a1 to ak incompatible with b1 to bk
-    # Given a's incomp with b's, and x's with y's
-    # Then must have a's...b1 - b&x's - xk .. y's
-    # This is much harder to be optimal! So will try to minimize b_k, and then b1
-    regions = []
-    global _far_left_boundary
-    _far_left_boundary = 0  # a1...a(k-1) need to be equal or right of this
-    global _close_left_boundary
-    _close_left_boundary = k-1  # ak needs to be equal or right of this!
-    global _incomps_with_earlier
-    _incomps_with_earlier = [[] for b in range(num_cols)]
+def k_robust_hudson(k: int):
+    global num_cols
 
-    b = k
-    while b < num_cols:
+    # Searches for pairs 
+    regions = [] # region formed of (start, end, [pairs])
 
-        ealier_incomps = []
-        for a in range(_far_left_boundary, b):
-            if incomp(a, b):
-                ealier_incomps.append(a)
-        _incomps_with_earlier[b] = ealier_incomps
-        # print("b: ", b, " far-left: ", far_left_boundary, " incomp with ", ealier_incomps)
+    left = 0
+    middle = 0 # pairs will all go across middle
 
-        if len(ealier_incomps) >= k and max(ealier_incomps) >= _close_left_boundary:
-            (a_list, b_list) = k_hudson_tail_overlap_iterate(
-                k, 1, _close_left_boundary, b, ealier_incomps)
-            if len(b_list) > 0:
-                b_list.reverse()
-                regions.append((a_list, b_list))
-                print("found: ", a_list, "  ", b_list)
+    while middle < num_cols - k:
+        best_right : int = int(num_cols)
+        best_pairs = []
+        active_incomps = []
 
-                _far_left_boundary = b_list[0]
-                _close_left_boundary = b_list[-1]
-                b = _close_left_boundary
-                continue
+        while middle < best_right - k:
+            # remove incomps that are no longer active
+            active_incomps = [(i, j) for (i, j) in active_incomps if (j > middle and j < best_right)]
 
-        b += 1
+            # add new incomps
+            new_incomps = [(middle, j) for j in range(middle+1, best_right) if incomp(middle, j)]
+            active_incomps.extend(new_incomps)
 
+            if (len({i for (i,j) in active_incomps}) >= k):
+                # Now check if k disjoint pairs can be found 
+                pairs = find_closest_disjoint_pairs(active_incomps, k)
+
+                if pairs != []:
+                    best_right = max([j for (i,j) in pairs])
+                    best_pairs = pairs
+
+            middle += 1
+        
+        if best_pairs != []:
+            regions.append((left, best_right, best_pairs))
+
+        left = best_right + 1
+        middle = left
+    
     return (len(regions), regions)
+
+
+
+# Tail overlap section is problematic as it allows too much
 
 
 def masked_hudson(mask):
@@ -356,7 +370,7 @@ def split_out_dups(sites_used):
 
 _target_ratio = 2.0
 
-def crude_adverserial_hudson_iter(current_mask, m, ignored_sites):
+def crude_adversarial_hudson_iter(current_mask, m, ignored_sites):
     global _target_ratio
     # can place m more recurrent mutations
     (num_regions, regions) = masked_hudson(current_mask)
@@ -371,12 +385,11 @@ def crude_adverserial_hudson_iter(current_mask, m, ignored_sites):
     best_mask = []
 
     target = max(0, float(num_regions) - (2 * m)) # Best that can be done is to 
-    sites_considered = 0
     for site in sites_used:
         if site in ignored_sites:
             continue
 
-        (new_num_regions, new_regions, new_mask) = crude_adverserial_hudson_iter(current_mask + [site], m-1, ignored_sites[:])
+        (new_num_regions, new_regions, new_mask) = crude_adversarial_hudson_iter(current_mask + [site], m-1, ignored_sites[:])
         if (new_num_regions < best_num_regions):
             # Adverserial so want to minimize
             best_num_regions = new_num_regions
@@ -391,12 +404,12 @@ def crude_adverserial_hudson_iter(current_mask, m, ignored_sites):
     return [best_num_regions, best_regions, best_mask]
 
 
-def crude_adverserial_hudson(m):
-    make_incomp_grid()
-    # adverserial is allowed to select m sites to place recurrent mutations on
-    return crude_adverserial_hudson_iter([], m, [])
+def crude_adversarial_hudson(m):
+    # adversarial is allowed to select m sites to place recurrent mutations on
+    return crude_adversarial_hudson_iter([], m, [])
 
-def target_adverserial_hudson_iter(current_mask, m, ignored_sites):
+
+def target_adversarial_hudson_iter(current_mask, m, ignored_sites):
     global _target_ratio
     # can place m more recurrent mutations
     (num_regions, regions) = masked_hudson(current_mask)
@@ -438,7 +451,7 @@ def target_adverserial_hudson_iter(current_mask, m, ignored_sites):
         if site in ignored_sites:
             continue
 
-        (new_num_regions, new_regions, new_mask) = target_adverserial_hudson_iter(current_mask + [site], m-1, ignored_sites[:])
+        (new_num_regions, new_regions, new_mask) = target_adversarial_hudson_iter(current_mask + [site], m-1, ignored_sites[:])
         if (new_num_regions < best_num_regions):
             # Adverserial so want to minimize
             best_num_regions = new_num_regions
@@ -453,13 +466,12 @@ def target_adverserial_hudson_iter(current_mask, m, ignored_sites):
     return [best_num_regions, best_regions, best_mask]
 
 
-def target_adverserial_hudson(m):
-    make_incomp_grid()
-    # adverserial is allowed to select m sites to place recurrent mutations on
-    return target_adverserial_hudson_iter([], m, [])
+def target_adversarial_hudson(m):
+    # adversarial is allowed to select m sites to place recurrent mutations on
+    return target_adversarial_hudson_iter([], m, [])
 
 
-def random_adverserial_hudson_iter(current_mask, m):
+def random_adversarial_hudson_iter(current_mask, m):
     # can place m more recurrent mutations
     (num_regions, regions) = masked_hudson(current_mask)
     if (m == 0 or num_regions == 0):
@@ -469,19 +481,18 @@ def random_adverserial_hudson_iter(current_mask, m):
 
     site = random.choice(sites_used)
 
-    return random_adverserial_hudson_iter(current_mask + [site], m-1)
+    return random_adversarial_hudson_iter(current_mask + [site], m-1)
 
 
-def random_adverserial_hudson(m):
-    # adverserial is allowed to select m sites to place recurrent mutations on
-    make_incomp_grid()
+def random_adversarial_hudson(m):
+    # adversarial is allowed to select m sites to place recurrent mutations on
 
     best_num_regions = sys.maxsize
     best_regions = []
     bset_mask = []
 
-    for i in range(200):
-        (num_regions, regions, mask) = random_adverserial_hudson_iter([], m)
+    for i in range(300):
+        (num_regions, regions, mask) = random_adversarial_hudson_iter([], m)
         if (num_regions < best_num_regions):
             best_num_regions = num_regions
             best_regions = regions
@@ -490,99 +501,107 @@ def random_adverserial_hudson(m):
     return [best_num_regions, best_regions, best_mask]
 
 
+def output_standard(outfile, calculate_hudson, robust_k_max, strong_k_max, adversarial_max_m, random_adversarial_max_m, calculate_recmin):
+    global genes
+
+    if not exists(outfile):
+        file = open(outfile, 'w')
+        file.write("Bound type, bound value, parameter (k/m)\n")
+        file.close()
+    
+    file = open(outfile, 'a')
+
+    if calculate_hudson:
+        hudson_bound, _ = hudson(True)
+        file.write("hudson_overlap" + "," + str(hudson_bound) + "," + "\n")
+        print("hudson found")
+    
+    if calculate_recmin:
+        haplotype_bound, robust_haplotype_bound = RecMinWithRobust(genes, 12, 10)
+        file.write("RecMin" + "," + str(haplotype_bound) + "," + "\n")
+        file.write("RecMinRobust" + "," + str(robust_haplotype_bound) + "," + "\n")
+        print("RecMin found")
+
+    if calculate_hudson:
+        hudson_bound, _ = hudson(False)
+        file.write("hudson_nonoverlap" + "," + str(hudson_bound) + "," + "\n")
+        print("hudson non overlap found")
+    
+    for k in range(2, robust_k_max+1):
+        robust_bound, _ = k_robust_hudson(k)
+        file.write("robust_hudson" + "," + str(robust_bound) + "," + str(k) + "\n")
+        if robust_bound == 0:
+            break
+    print("robust hudsons found")
+    
+    for k in range(2, strong_k_max+1):
+        strong_bound, _ = k_strong_hudson(k)
+        file.write("strong_hudson" + "," + str(strong_bound) + "," + str(k) + "\n")
+        if strong_bound == 0:
+            break
+    print("strong hudsons found")
+    
+    if adversarial_max_m >= 0 or random_adversarial_max_m >= 0:
+        make_incomp_grid()
+
+    for m in range(0, adversarial_max_m+1):
+        adversarial_bound, _, _ = crude_adversarial_hudson(m)
+        file.write("adversarial_hudson" + "," + str(adversarial_bound) + "," + str(m) + "\n")
+        if adversarial_bound == 0:
+            break
+    print("adversarial hudsons found")
+
+    for m in range(0, random_adversarial_max_m+1):
+        adversarial_bound, _, _ = random_adversarial_hudson(m)
+        file.write("random_adversarial_hudson" + "," + str(adversarial_bound) + "," + str(m) + "\n")
+        if adversarial_bound == 0:
+            break
+    print("random adversarial hudsons found")
+
+    file.close()
+
 def main(argv):
     inputfile = ''
-    ks = [1]
-    print_regions = False
-    overlap = True
-    adverserial = False
+    outputfile = ''
+    calculate_hudson = False
+    robust_max = -1
+    strong_max = -1
+    adversarial_max = -1
+    random_adversarial_max = -1
+    calculate_recmin = False
 
     try:
-        opts, args = getopt.getopt(argv, "hi:k:pna", ["ifile="])
+        opts, args = getopt.getopt(argv, "i:o:hr:s:a:b:m", ["ifile=","ofile="])
     except getopt.GetoptError:
-        print('hudson_bound.py -i <input file> -k <k-incompatibilities or m rec-muts> -p (print regions) -n (non-overlap) -a (adversial approach)')
+        print('hudson_bound.py -i <input file> -o <output file> -h (calculate hudson) -r <robust max k> -s <strong max k> -a <adversarial max m> -b <random adversarial max m> -m (calculate recmin)')
         sys.exit(2)
     for opt, arg in opts:
-        if opt == '-h':
-            print(
-                'hudson_bound.py -i <input file> -k <find k-incompatibilities> -p (print regions) -n (non-overlap)')
-            sys.exit()
-        elif opt in ("-i", "--ifile"):
+        if opt in ("-i", "--ifile"):
             inputfile = arg
-        elif opt in ("-k"):
-            ks = [int(a) for a in arg.split(",")]
-        elif opt in ("-p"):
-            print_regions = True
-        elif opt in ("-n"):
-            overlap = False
+        elif opt in ("-o", "--ofile"):
+            outputfile = arg
+        elif opt in ("-h"):
+            calculate_hudson = True
+        elif opt in ("-r"):
+            robust_max = int(arg)
+        elif opt in ("-s"):
+            strong_max = int(arg)
         elif opt in ("-a"):
-            adverserial = True
+            adversarial_max = int(arg)
+        elif opt in ("-b"):
+            random_adversarial_max = int(arg)
+        elif opt in ("-m"):
+            calculate_recmin = True
 
     print('Input file is: ', inputfile)
-    print('k2 is: ', ks)
+    print('Output file is: ', outputfile)
 
     read_genes(inputfile)
     # Input gets read to global variables
 
-    for k in ks:
-        if adverserial:
-            (recombs, regions, mask) = crude_adverserial_hudson(k)
-            print("crude adverserial recombs: ", recombs,
-                  " with m: ", k, " and mask: ", sorted(mask))
-            print(regions)
-
-            (recombs, regions, mask) = target_adverserial_hudson(k)
-            print("target adverserial recombs: ", recombs,
-                  " with m: ", k, " and mask: ", sorted(mask))
-            print(regions)
-
-            if print_regions:
-                for (a, b) in regions:
-                    print("({}, {})".format(a, b))
-            continue
-
-        if (k == 1):
-            (recombs, regions) = hudson(overlap)
-            print("hudson recombs: ", recombs, " overlapping: ", overlap)
-
-            if print_regions:
-                for (a, b) in regions:
-                    print("({}, {})".format(a, b))
-            continue
-
-        if (not overlap):
-            (recombs, regions) = k_hudson_no_overlap(k)
-
-            print(k, "-hudson no overlap recombs: ", recombs)
-
-            if print_regions:
-                for (ays, bs) in regions:
-                    print("ays: ", ays, "   bs: ", bs)
-        elif (k == 2):
-            (recombs, regions) = two_hudson()
-
-            print("2-hudson type 1 recombs: ", recombs)
-
-            if print_regions:
-                for (a, b, i, j) in regions:
-                    print("({}, {}, {}, {})".format(a, b, i, j))
-
-            (recombs, regions) = two_hudson2()
-
-            print("2-hudson type 2 recombs: ", recombs)
-
-            if print_regions:
-                for (a, b, i, j) in regions:
-                    print("({}, {}, {}, {})".format(a, b, i, j))
-        else:
-            (recombs, regions) = k_hudson_tail_overlap(k)
-
-            print(k, "-hudson tail overlap recombs: ", recombs)
-            print("node that this allows tails to overlap too much")
-
-            if print_regions:
-                for (ays, bs) in regions:
-                    print("ays: ", ays, "   bs: ", bs)
+    if (outputfile != ''):
+        output_standard(outputfile, calculate_hudson, robust_max, strong_max, adversarial_max, random_adversarial_max, calculate_recmin)
+        return
 
 
 if __name__ == "__main__":
