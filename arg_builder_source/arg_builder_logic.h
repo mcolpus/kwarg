@@ -134,7 +134,7 @@ typedef struct _ARG
 
         new_root->type = ROOT;
         number_of_roots += 1;
-        new_root->id = -1 * number_of_roots;
+        new_root->id = -1 * (number_of_roots - 1);
         new_root->mutations = _root_mutations;
         new_root->label = root_label;
         new_root->predecessor.none = true;
@@ -151,7 +151,7 @@ typedef struct _ARG
         auto root = std::make_unique<Node>();
 
         root->type = ROOT;
-        root->id = -1;
+        root->id = 0;
         root->mutations.clear();
         root->label = "Root";
         root->predecessor.none = true;
@@ -168,7 +168,7 @@ typedef struct _ARG
             auto root = std::make_unique<Node>();
 
             root->type = ROOT;
-            root->id = -1;
+            root->id = 0;
             root->mutations.clear();
             root->label = "Root";
             root->predecessor.none = true;
@@ -184,7 +184,7 @@ typedef struct _ARG
         auto root = std::make_unique<Node>();
 
         root->type = ROOT;
-        root->id = -1;
+        root->id = 0;
         root->mutations = _root_mutations;
         root->label = root_label;
         root->predecessor.none = true;
@@ -282,6 +282,7 @@ typedef struct _RunRecord
 
 float get_cost(const int rms, const int bms, const int rcs);
 float get_cost(const int rms, const int bms);
+void arg_to_yaml(const ARG &arg, const Genes &genes, FILE *fp);
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
                 ARGOutputFormat format, int how_to_label_edges, ARGOutputLabels node_labels);
 std::tuple<ARG, RunRecord> build_arg_main(const Genes genes, bool clean_sequences, int how_verbose, int roots_given, int run_seed, int number_of_runs, int multi_run_strategy, int location_selection_method, int find_root_strategy, int find_root_iterations,

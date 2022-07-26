@@ -190,6 +190,7 @@ static void _print_usage(FILE *f, char *name)
     print_option(f, "-B[x]", "Specify additional cost of a back mutation compared to recurrent mutation (default: x = 1.0).", 70, -1);
     print_option(f, "-R[x]", "Specify cost of a single recombination (default: x = 1.0).", 70, -1);
     print_option(f, "-V[x]", "level of verbosity", 70, -1);
+    print_option(f, "-y[name]", "Output ancestral recombination graph of minimum recombination history in yaml format to file name.", 70, -1);
     print_option(f, "-d[name]", "Output ancestral recombination graph of minimum recombination history in dot format to file name.", 70, -1);
     print_option(f, "-g[name]", "Output ancestral recombination graph of minimum recombination history in GDL format to file name.", 70, -1);
     print_option(f, "-j[name]", "Output ancestral recombination graph of minimum recombination history in GML format to file name.", 70, -1);
@@ -311,12 +312,13 @@ int main(int argc, char **argv)
     int multi_run_strategy = 0;
     int location_selection_method = 0;
 
+    std::vector<std::string> yaml_files = {};
     std::vector<std::string> dot_files = {};
     std::vector<std::string> gml_files = {};
     std::vector<std::string> gdl_files = {};
     std::string run_record_file = "";
 
-#define KWARG_OPTIONS "M:B:R:V:d::g::j::o::e:slck:r:F:f:Q:S:X:Y:Z:T:L:hH?"
+#define KWARG_OPTIONS "M:B:R:V:y::d::g::j::o::e:slck:r:F:f:Q:S:X:Y:Z:T:L:hH?"
 
     /* Parse command line options */
     int i;
@@ -385,6 +387,30 @@ int main(int argc, char **argv)
                 std::cerr << "Verbosity input should be between 0 and 3 inclusive.\n";
                 exit(1);
             }
+            break;
+        case 'y':
+            /* Output ancestral recombination graph of history leading to
+             * minimum number of recombinations in yaml format.
+             */
+            /* Was a file name specified? */
+            if (optarg != 0)
+            {
+                if (optarg[0] == '-')
+                {
+                    std::cerr << "Option -y requires an output file.\n";
+                    exit(1);
+                }
+                /* Check whether file can be written before initiating computation */
+                if ((fp = fopen(optarg, "w")) == NULL)
+                {
+                    std::cerr << "Could not open file " << optarg << "for output.\n";
+                    exit(1);
+                }
+                fclose(fp);
+                yaml_files.push_back(optarg);
+            }
+            else
+                std::cerr << "Please specify file\n";
             break;
         case 'd':
             /* Output ancestral recombination graph of history leading to
@@ -666,6 +692,15 @@ int main(int argc, char **argv)
     clock_t toc = clock();
     double timer = (double)(toc - tic) / CLOCKS_PER_SEC;
     std::cout << "Time taken for all runs: " << timer << ".\n";
+
+
+    /* Output ARG in yaml format */
+    for (auto yaml_file : yaml_files)
+    {
+        fp = fopen(yaml_file.c_str(), "w");
+        arg_to_yaml(arg, genes, fp);
+        fclose(fp);
+    }
 
     /* Output ARG in dot format */
     for (auto dot_file : dot_files)

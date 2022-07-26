@@ -52,7 +52,6 @@ std::string vector_to_string(const std::vector<int> &v, bool make_negative = fal
             s += std::to_string(i);
         first = false;
     }
-
     return s;
 }
 
@@ -201,6 +200,89 @@ int get_mutations_represented(const std::vector<int> mutations)
 int get_mutations_represented(int mutation)
 {
     return _site_multiplicitity[mutation];
+}
+
+void set_time(std::vector<int> &times, const Node *node, int time)
+{
+    std::cout << time << " " << node->id << "\n";
+    if (times[node->id] < time)
+    {
+        // Then the times for this node and it's parents need updating
+        times[node->id] = time;
+
+        // Now update parents of this node
+
+        if (node->type == 1 || node->type == 2)
+        {
+            // single parent
+            set_time(times, node->predecessor.one->from, time + 1);
+        }
+        else if (node->type == 3)
+        {
+            // two parent
+            set_time(times, node->predecessor.two.prefix->from, time + 1);
+            set_time(times, node->predecessor.two.suffix->from, time + 1);
+        }
+    }
+}
+
+void arg_to_yaml(const ARG &arg, const Genes &genes, FILE *fp)
+{
+    fprintf(fp, "Header: ARG to YAML\n");
+    fprintf(fp, "number of nodes: %d\n", arg.nodes.size());
+    fprintf(fp, "sequence length: %d\n", genes.sequence_length);
+
+    
+
+    fprintf(fp, "root_mutations:%s\n", vector_to_string(arg.root_mutations).c_str());
+
+    // Need to set a time value for each node to capture correct ordering
+
+    std::vector<int> times(arg.nodes.size(), -1);
+    for (const auto &node : arg.nodes)
+    {
+        if (node->type == 1)
+        {
+            set_time(times, node.get(), 0);
+        }
+    }
+
+    fprintf(fp, "nodes:\n");
+    std::vector<std::string> type_names = {"unset", "sample", "coalescence", "recombination", "root"};
+    for (const auto &node : arg.nodes)
+    {
+        fprintf(fp, "  - id: %d\n", node->id);
+        fprintf(fp, "    label: %s\n", node->label.c_str());
+        fprintf(fp, "    type: %s\n", type_names[node->type].c_str());
+        fprintf(fp, "    mutations: %s\n", vector_to_string(node->mutations).c_str());
+        fprintf(fp, "    time: %d\n", times[node->id]);
+    }
+
+    fprintf(fp, "edges:\n");
+    for (const auto &edge : arg.edges)
+    {
+        fprintf(fp, "  - from: %d\n", edge->from->id);
+        fprintf(fp, "    to: %d\n", edge->to->id);
+        fprintf(fp, "    mutations: %s\n", vector_to_string(edge->mutations).c_str());
+        fprintf(fp, "    back_mutations: %s\n", vector_to_string(edge->back_mutations).c_str());
+
+        if (edge->to->type == RECOMBINATION)
+        {
+            if (edge->to->predecessor.two.prefix == edge.get())
+            {
+                fprintf(fp, "    type: prefix\n");
+            }
+            else
+            {
+                fprintf(fp, "    type: suffix\n");
+            }
+            fprintf(fp, "    crossover: %d\n", edge->to->predecessor.two.position);
+        }
+        else
+        {
+            fprintf(fp, "    type: single\n");
+        }
+    }
 }
 
 void arg_output(const ARG &arg, const Genes &genes, FILE *fp,
