@@ -204,7 +204,6 @@ int get_mutations_represented(int mutation)
 
 void set_time(std::vector<int> &times, const Node *node, int time)
 {
-    std::cout << time << " " << node->id << "\n";
     if (times[node->id] < time)
     {
         // Then the times for this node and it's parents need updating

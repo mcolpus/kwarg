@@ -61,7 +61,6 @@ for i in range(sequence_length):
 def add_edge(start, end, source, target):
     edges.add_row(start, end, source, target)
 
-
 for edge in arg["edges"]:
     if(edge["type"] == "single"):
         add_edge(0, sequence_length, edge["from"], edge["to"])
@@ -71,27 +70,30 @@ for edge in arg["edges"]:
         add_edge(edge["crossover"], sequence_length, edge["from"], edge["to"])
 
     if edge["mutations"] != None:
-        print(edge["mutations"])
         muts = [int(i) for i in str(edge["mutations"]).split(',')]
-        print("muts: ", muts)
 
         for mut in muts:
             derived_state = 0 if mut in ancestral_muts else 1
             mutations.add_row(mut, edge["to"], str(derived_state))
     
     if edge["back_mutations"] != None:
-        print("back ", edge["back_mutations"])
         muts = [int(i) for i in str(edge["back_mutations"]).split(',')]
-        print("muts: ", muts)
 
         for mut in muts:
             derived_state = 1 if mut in ancestral_muts else 0
             mutations.add_row(mut, edge["to"], str(derived_state))
 
 
+tables.sort()
+
 print(tables)
 
-tables.sort()
+muts_id_to_site = {}
+for id,site in enumerate(tables.mutations.asdict()["site"]):
+    muts_id_to_site[id] = site
+
+print(muts_id_to_site)
+
 tables.build_index()
 tables.compute_mutation_times()
 ts = tables.tree_sequence()
@@ -103,8 +105,9 @@ svg_size = (1600, 500)
 svg_string = ts.draw_svg(
     path="svg_vis.svg",
     size=svg_size,
-    y_axis=True, y_label=" ",  # optional: show a time scale on the left
+    y_axis=False, y_label=" ",  # optional: show a time scale on the left
     # Match the axis coordinate systems to the text view
     time_scale="rank", x_scale="treewise",
+    mutation_labels=muts_id_to_site
 )
-# display(SVG(svg_string))  # If the last line in a cell, wrapping this in display() is not needed
+display(SVG(svg_string))  # If the last line in a cell, wrapping this in display() is not needed
