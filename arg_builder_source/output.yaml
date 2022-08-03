@@ -1,0 +1,618 @@
+Header: ARG to YAML
+edges:
+- back_mutations: null
+  from: 2
+  mutations: 28853
+  to: 1
+  type: single
+- back_mutations: null
+  from: 11
+  mutations: 28880
+  to: 2
+  type: single
+- back_mutations: null
+  from: 5
+  mutations: 28579
+  to: 3
+  type: single
+- back_mutations: null
+  from: 2
+  mutations: 2284, 11082, 19169, 19508, 26115
+  to: 4
+  type: single
+- back_mutations: null
+  from: 7
+  mutations: 23730
+  to: 5
+  type: single
+- back_mutations: null
+  from: 5
+  mutations: 13215
+  to: 6
+  type: single
+- back_mutations: null
+  from: 2
+  mutations: 10096
+  to: 7
+  type: single
+- back_mutations: null
+  from: 7
+  mutations: 28579
+  to: 8
+  type: single
+- back_mutations: null
+  from: 0
+  mutations: 2479, 11082, 14804, 25047, 26143
+  to: 9
+  type: single
+- back_mutations: null
+  from: 0
+  mutations: 12709, 14395, 28853
+  to: 10
+  type: single
+- back_mutations: null
+  from: 17
+  mutations: 14407
+  to: 11
+  type: single
+- back_mutations: null
+  from: 11
+  mutations: 1819, 28513
+  to: 12
+  type: single
+- back_mutations: null
+  from: 0
+  mutations: 7823, 20269
+  to: 13
+  type: single
+- back_mutations: null
+  from: 2
+  mutations: null
+  to: 14
+  type: single
+- back_mutations: null
+  from: 0
+  mutations: 3036, 23402
+  to: 15
+  type: single
+- back_mutations: null
+  from: 15
+  mutations: null
+  to: 16
+  type: single
+- back_mutations: null
+  from: 15
+  mutations: 240
+  to: 17
+  type: single
+- back_mutations: null
+  from: 17
+  mutations: 2163, 4831, 6967, 16241, 17573, 28702
+  to: 18
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: 19838
+  to: 19
+  type: single
+- back_mutations: null
+  from: 9
+  mutations: 2090, 7392, 10322, 17246, 23875
+  to: 20
+  type: single
+- back_mutations: null
+  from: 19
+  mutations: 17409, 18787, 21829
+  to: 21
+  type: single
+- back_mutations: null
+  from: 13
+  mutations: 513
+  to: 22
+  type: single
+- back_mutations: null
+  from: 12
+  mutations: 2415, 20577, 25562
+  to: 23
+  type: single
+- back_mutations: null
+  from: 6
+  mutations: 1683, 4001, 13535, 14183, 21057, 28457
+  to: 24
+  type: single
+- back_mutations: null
+  from: 20
+  mutations: 16886, 28841
+  to: 25
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: 1418
+  to: 26
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: null
+  to: 27
+  type: single
+- back_mutations: null
+  from: 23
+  mutations: 14785
+  to: 28
+  type: single
+- back_mutations: null
+  from: 12
+  mutations: 25428, 27971, 28044
+  to: 29
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: 3372, 3922, 11194
+  to: 30
+  type: single
+- back_mutations: null
+  from: 20
+  mutations: 1514, 9222, 26391
+  to: 31
+  type: single
+- back_mutations: null
+  from: 22
+  mutations: null
+  to: 32
+  type: single
+- back_mutations: null
+  from: 9
+  mutations: 1757, 4184, 8939, 12399, 20031, 28867
+  to: 33
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: null
+  to: 34
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: null
+  to: 35
+  type: single
+- back_mutations: null
+  from: 9
+  mutations: 1456, 26339, 28850
+  to: 36
+  type: single
+- back_mutations: null
+  from: 12
+  mutations: 13616, 25349
+  to: 37
+  type: single
+- back_mutations: null
+  from: 9
+  mutations: 11073
+  to: 38
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: null
+  to: 39
+  type: single
+- back_mutations: null
+  from: 3
+  mutations: 26745, 27889
+  to: 40
+  type: single
+- back_mutations: null
+  from: 13
+  mutations: 17571, 21144, 25595, 29770
+  to: 41
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: null
+  to: 42
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: 25470
+  to: 43
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: 3314
+  to: 44
+  type: single
+- back_mutations: null
+  from: 13
+  mutations: 17265
+  to: 45
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: 27045
+  to: 46
+  type: single
+- back_mutations: null
+  from: 30
+  mutations: 14687
+  to: 47
+  type: single
+- back_mutations: null
+  from: 37
+  mutations: 20433, 26857
+  to: 48
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: 20795, 24037
+  to: 49
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: 1149, 22480
+  to: 50
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: 1413, 19010
+  to: 51
+  type: single
+- back_mutations: null
+  from: 13
+  mutations: 15713
+  to: 52
+  type: single
+- back_mutations: null
+  from: 9
+  mutations: null
+  to: 53
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: 3233, 4945, 22858, 26827
+  to: 54
+  type: single
+- back_mutations: null
+  from: 14
+  mutations: null
+  to: 55
+  type: single
+nodes:
+- clade: '?'
+  id: 0
+  label: Root
+  mutations: null
+  time: 8
+  type: root
+- clade: GR
+  id: 1
+  label: hCoV-19/England/NORT-294BFF/2020
+  mutations: 240, 3036, 14407, 23402, 28853, 28880
+  time: 0
+  type: sample
+- clade: '?'
+  id: 2
+  label: ancestral0
+  mutations: 240, 3036, 14407, 23402, 28880
+  time: 4
+  type: coalescence
+- clade: GR
+  id: 3
+  label: hCoV-19/England/LIVE-A878D/2020
+  mutations: 240, 3036, 10096, 14407, 23402, 23730, 28579, 28880
+  time: 1
+  type: sample
+- clade: GR
+  id: 4
+  label: hCoV-19/England/LIVE-A5674/2020
+  mutations: 240, 2284, 3036, 11082, 14407, 19169, 19508, 23402, 26115, 28880
+  time: 0
+  type: sample
+- clade: '?'
+  id: 5
+  label: ancestral1
+  mutations: 240, 3036, 10096, 14407, 23402, 23730, 28880
+  time: 2
+  type: coalescence
+- clade: GR
+  id: 6
+  label: hCoV-19/England/LIVE-AA68E/2020
+  mutations: 240, 3036, 10096, 13215, 14407, 23402, 23730, 28880
+  time: 1
+  type: sample
+- clade: '?'
+  id: 7
+  label: ancestral2
+  mutations: 240, 3036, 10096, 14407, 23402, 28880
+  time: 3
+  type: coalescence
+- clade: GR
+  id: 8
+  label: hCoV-19/England/SHEF-CD89E/2020
+  mutations: 240, 3036, 10096, 14407, 23402, 28579, 28880
+  time: 0
+  type: sample
+- clade: V
+  id: 9
+  label: hCoV-19/England/20139053504/2020
+  mutations: 2479, 2557, 11082, 14804, 25047, 26143
+  time: 2
+  type: sample
+- clade: L
+  id: 10
+  label: hCoV-19/England/LIVE-A7320/2020
+  mutations: 12709, 14395, 28853
+  time: 0
+  type: sample
+- clade: '?'
+  id: 11
+  label: ancestral3
+  mutations: 240, 3036, 14407, 23402
+  time: 5
+  type: coalescence
+- clade: G
+  id: 12
+  label: hCoV-19/England/CAMB-82385/2020
+  mutations: 240, 1819, 3036, 14407, 23402, 28513
+  time: 2
+  type: sample
+- clade: L
+  id: 13
+  label: hCoV-19/England/NOTT-10E256/2020
+  mutations: 7823, 20269
+  time: 2
+  type: sample
+- clade: GR
+  id: 14
+  label: hCoV-19/England/CAMB-7A39F/2020
+  mutations: 240, 3036, 14407, 23402, 28880
+  time: 2
+  type: sample
+- clade: '?'
+  id: 15
+  label: ancestral4
+  mutations: 3036, 23402
+  time: 7
+  type: coalescence
+- clade: O
+  id: 16
+  label: hCoV-19/England/NORT-295648/2020
+  mutations: 3036, 23402
+  time: 0
+  type: sample
+- clade: '?'
+  id: 17
+  label: ancestral5
+  mutations: 240, 3036, 23402
+  time: 6
+  type: coalescence
+- clade: G
+  id: 18
+  label: hCoV-19/England/20164077504/2020
+  mutations: 240, 2163, 3036, 4831, 6967, 16241, 17573, 23402, 28702
+  time: 0
+  type: sample
+- clade: GR
+  id: 19
+  label: hCoV-19/England/CAMB-7540A/2020
+  mutations: 240, 3036, 14407, 19838, 23402, 28880
+  time: 1
+  type: sample
+- clade: V
+  id: 20
+  label: hCoV-19/England/NORT-295253/2020
+  mutations: 2090, 7392, 10322, 11082, 14804, 17246, 23875, 26143
+  time: 1
+  type: sample
+- clade: GR
+  id: 21
+  label: hCoV-19/England/PORT-2D36D5/2020
+  mutations: 240, 3036, 14407, 17409, 18787, 19838, 21829, 23402, 28880
+  time: 0
+  type: sample
+- clade: L
+  id: 22
+  label: hCoV-19/England/201060018/2020
+  mutations: 513
+  time: 1
+  type: sample
+- clade: GH
+  id: 23
+  label: hCoV-19/England/LIVE-A9027/2020
+  mutations: 240, 2415, 3036, 14407, 20577, 23402, 25562
+  time: 1
+  type: sample
+- clade: GR
+  id: 24
+  label: hCoV-19/England/CAMB-82859/2020
+  mutations: 240, 1683, 3036, 4001, 10096, 13535, 14183, 14407, 21057, 23402, 23730,
+    28457, 28880
+  time: 0
+  type: sample
+- clade: V
+  id: 25
+  label: hCoV-19/England/SHEF-C0585/2020
+  mutations: 11082, 14804, 16886, 26143, 28841
+  time: 0
+  type: sample
+- clade: GR
+  id: 26
+  label: hCoV-19/England/SHEF-C4493/2020
+  mutations: 240, 1418, 3036, 14407, 23402, 28880
+  time: 0
+  type: sample
+- clade: GR
+  id: 27
+  label: hCoV-19/England/CAMB-73536/2020
+  mutations: 240, 3036, 14407, 23402, 28880
+  time: 0
+  type: sample
+- clade: GH
+  id: 28
+  label: hCoV-19/England/BRIS-122A09/2020
+  mutations: 240, 2415, 3036, 14407, 14785, 20577, 23402, 25562
+  time: 0
+  type: sample
+- clade: G
+  id: 29
+  label: hCoV-19/England/NOTT-10E001/2020
+  mutations: 240, 3036, 14407, 23402, 25428, 27971, 28044
+  time: 0
+  type: sample
+- clade: GR
+  id: 30
+  label: hCoV-19/England/CAMB-76ECF/2020
+  mutations: 240, 3036, 3372, 3922, 11194, 14407, 23402, 28880
+  time: 1
+  type: sample
+- clade: V
+  id: 31
+  label: hCoV-19/England/SHEF-BFEAC/2020
+  mutations: 1514, 9222, 11082, 14804, 17246, 26143, 26391
+  time: 0
+  type: sample
+- clade: L
+  id: 32
+  label: hCoV-19/England/SHEF-BFD54/2020
+  mutations: 513
+  time: 0
+  type: sample
+- clade: V
+  id: 33
+  label: hCoV-19/England/CAMB-83472/2020
+  mutations: 1757, 2479, 2557, 4184, 8939, 11082, 12399, 14804, 20031, 26143, 28867
+  time: 0
+  type: sample
+- clade: GR
+  id: 34
+  label: hCoV-19/England/TFCI-2704807/2020
+  mutations: 240, 3036, 14407, 23402, 28880
+  time: 0
+  type: sample
+- clade: GR
+  id: 35
+  label: hCoV-19/England/CAMB-729A4/2020
+  mutations: 240, 3036, 14407, 23402, 28880
+  time: 0
+  type: sample
+- clade: V
+  id: 36
+  label: hCoV-19/England/PORT-2D23FD/2020
+  mutations: 1456, 2479, 2557, 11082, 14804, 26143, 26339, 28850
+  time: 0
+  type: sample
+- clade: G
+  id: 37
+  label: hCoV-19/England/GSTT-265D7A9/2020
+  mutations: 240, 3036, 13616, 14407, 23402, 25349
+  time: 1
+  type: sample
+- clade: V
+  id: 38
+  label: hCoV-19/England/GSTT-265D5BE/2020
+  mutations: 2479, 2557, 11073, 11082, 14804, 26143
+  time: 0
+  type: sample
+- clade: GR
+  id: 39
+  label: hCoV-19/England/CAMB-7759C/2020
+  mutations: 240, 3036, 14407, 23402, 28880
+  time: 0
+  type: sample
+- clade: GR
+  id: 40
+  label: hCoV-19/England/NOTT-11126F/2020
+  mutations: 240, 3036, 10096, 14407, 23402, 23730, 26745, 27889, 28579, 28880
+  time: 0
+  type: sample
+- clade: L
+  id: 41
+  label: hCoV-19/England/BRIS-124DFF/2020
+  mutations: 17571, 21144, 25595, 29770
+  time: 0
+  type: sample
+- clade: GR
+  id: 42
+  label: hCoV-19/England/OXON-B42AB/2020
+  mutations: 240, 3036, 14407, 23402, 28880
+  time: 0
+  type: sample
+- clade: GR
+  id: 43
+  label: hCoV-19/England/LEED-2AA042/2020
+  mutations: 240, 3036, 14407, 23402, 25470, 28880
+  time: 0
+  type: sample
+- clade: GR
+  id: 44
+  label: hCoV-19/England/OXON-AED49/2020
+  mutations: 240, 3036, 3314, 14407, 23402, 28880
+  time: 0
+  type: sample
+- clade: L
+  id: 45
+  label: hCoV-19/England/20118104104/2020
+  mutations: 17265
+  time: 0
+  type: sample
+- clade: GR
+  id: 46
+  label: hCoV-19/England/NOTT-11286C/2020
+  mutations: 240, 3036, 14407, 23402, 27045, 28880
+  time: 0
+  type: sample
+- clade: GR
+  id: 47
+  label: hCoV-19/England/LIVE-A48CA/2020
+  mutations: 240, 3036, 3372, 14407, 14687, 23402, 28880
+  time: 0
+  type: sample
+- clade: G
+  id: 48
+  label: hCoV-19/England/PHEC-1B0B7/2020
+  mutations: 240, 3036, 14407, 20433, 23402, 25349, 26857
+  time: 0
+  type: sample
+- clade: GR
+  id: 49
+  label: hCoV-19/England/OXON-B4760/2020
+  mutations: 240, 3036, 14407, 20795, 23402, 24037, 28880
+  time: 0
+  type: sample
+- clade: GR
+  id: 50
+  label: hCoV-19/England/GSTT-265DD01/2020
+  mutations: 240, 1149, 3036, 14407, 22480, 23402, 28880
+  time: 0
+  type: sample
+- clade: GR
+  id: 51
+  label: hCoV-19/England/201360051/2020
+  mutations: 240, 1413, 3036, 14407, 19010, 23402, 28880
+  time: 0
+  type: sample
+- clade: L
+  id: 52
+  label: hCoV-19/England/20110015106/2020
+  mutations: 15713
+  time: 0
+  type: sample
+- clade: V
+  id: 53
+  label: hCoV-19/England/OXON-B3725/2020
+  mutations: 2479, 2557, 11082, 14804, 26143
+  time: 0
+  type: sample
+- clade: GR
+  id: 54
+  label: hCoV-19/England/TFCI-2707C71/2020
+  mutations: 240, 3036, 3233, 4945, 14407, 22858, 23402, 26827, 28880
+  time: 0
+  type: sample
+- clade: GR
+  id: 55
+  label: hCoV-19/England/TFCI-2707D14/2020
+  mutations: 240, 3036, 14407, 23402, 28880
+  time: 0
+  type: sample
+number of nodes: 56
+root_mutations: null
+sequence length: 29903
