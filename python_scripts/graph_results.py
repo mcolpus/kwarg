@@ -143,7 +143,7 @@ def graph_grid(grid, outputfile):
 
 
 trade_rms_for_recombs = False
-def calculate_optimal_curve(arg_runs):
+def calculate_optimal_curve(arg_runs, do_trade_rms_for_recombs = False):
     recombinations = []
     rare_muts = []
     max_recombs = 0
@@ -161,7 +161,7 @@ def calculate_optimal_curve(arg_runs):
     for i in range(1, max_recombs+1):
         fewest_rare_muts[i] = min(fewest_rare_muts[i-1], fewest_rare_muts[i])
     
-    if trade_rms_for_recombs:
+    if trade_rms_for_recombs or do_trade_rms_for_recombs:
         # Can remove a recurrent mutation by using two recombinations
         for i in range(2, max_recombs+1):
             fewest_rare_muts[i] = max(0, min(fewest_rare_muts[i-2] - 1, fewest_rare_muts[i]))
